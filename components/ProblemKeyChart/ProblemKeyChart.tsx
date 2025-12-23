@@ -2,7 +2,6 @@
 "use client";
 
 import React, { useMemo } from 'react';
-import { BarChart2, CheckCircle } from 'lucide-react'; // ✅ เพิ่มไอคอน
 
 interface ProblemKeyChartProps {
   mistakes: Record<string, number>; 
