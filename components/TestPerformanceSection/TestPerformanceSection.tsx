@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Play, Trophy, BarChart3 } from 'lucide-react';
+import { Play, Trophy } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -30,6 +30,7 @@ interface TestPerformanceSectionProps {
 }
 
 // --- (2) Components ย่อย (Tooltip & Dot) ---
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const CustomTooltip = ({ active, payload, coordinate, mode }: any) => {
   if (active && payload && payload.length) {
     const fullDate = payload[0].payload.fullDate;
@@ -58,6 +59,7 @@ const CustomTooltip = ({ active, payload, coordinate, mode }: any) => {
   return null;
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const CustomActiveDot = (props: any) => {
   const { cx, cy, setTooltipPos, payload } = props;
   useEffect(() => {
@@ -73,6 +75,8 @@ export default function TestPerformanceSection({
   recentResults,
 }: TestPerformanceSectionProps) {
   const [chartMode, setChartMode] = useState<'speed' | 'accuracy'>('speed');
+  
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [tooltipPos, setTooltipPos] = useState<any>(null);
 
   // เช็คว่ามีข้อมูลอย่างน้อย 1 อัน (สำหรับแสดง Best Speed ในกล่องรถ)
