@@ -1,0 +1,507 @@
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;700;800&display=swap');
+@import "tailwindcss";
+
+@font-face {
+  font-family: 'NunitoLocal';
+  src: url('/font/Nunito-ExtraBold.ttf');
+  font-weight: 800;
+  font-display: swap;
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+@tailwind utilities;
+
+.logo-font {
+  font-family: 'Nunito', sans-serif;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Sarabun', Arial, Helvetica, sans-serif;
+}
+
+.logo-font {
+  font-family: 'NunitoLocal', sans-serif;
+}
+
+@keyframes moveMaskLR_1 {
+  0% {
+    mask-position: -20% 30%;
+  }
+
+  100% {
+    mask-position: 120% 30%;
+  }
+}
+
+/* ท่าที่ 2: R->L (ต่ำ) */
+@keyframes moveMaskRL_1 {
+  0% {
+    mask-position: 120% 70%;
+  }
+
+  100% {
+    mask-position: -20% 70%;
+  }
+}
+
+/* ท่าที่ 3: L->R (สูง) */
+@keyframes moveMaskLR_2 {
+  0% {
+    mask-position: -20% 10%;
+  }
+
+  100% {
+    mask-position: 120% 10%;
+  }
+}
+
+/* คลาส "ฐาน" (ใช้ร่วมกัน) */
+.cloud-mask-base {
+  mask-image: url(/cloud.png);
+  mask-repeat: no-repeat;
+}
+
+/* ก้อนที่ 1 */
+.animate-cloud-1 {
+  mask-size: 75px 60px;
+  animation: moveMaskLR_1 46s linear infinite;
+  animation-delay: 0s;
+}
+
+/* ก้อนที่ 2 */
+.animate-cloud-2 {
+  mask-size: 70px 60px;
+  animation: moveMaskRL_1 78s linear infinite;
+  animation-delay: 8s;
+  animation-fill-mode: backwards;
+}
+
+/* ก้อนที่ 3 */
+.animate-cloud-3 {
+  mask-size: 60px 40px;
+  animation: moveMaskLR_2 60s linear infinite;
+  animation-delay: 17s;
+  animation-fill-mode: backwards;
+}
+
+.menu-link-base {
+  /* คลาสพื้นฐาน */
+  font-weight: 600;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  padding-top: 0.25rem;
+  padding-bottom: 0.15rem;
+  position: relative;
+}
+
+.menu-link-inactive {
+  color: #bfdbfe;
+}
+
+.menu-link-inactive:hover {
+  color: #ffffff;
+}
+
+.menu-link-active {
+  color: #ffffff;
+}
+
+.menu-link-active::after {
+  content: '';
+  position: absolute;
+
+  bottom: 0px;
+
+  left: 10%;
+  width: 80%;
+  height: 4px;
+  background-color: #facc15;
+
+  border-radius: 9999px;
+}
+
+/* --- ANIMATION การ์ดโผล่ --- */
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeInDown {
+  animation: fadeInDown 0.6s ease-out forwards;
+  opacity: 0;
+}
+
+/* --- ANIMATION ลอยขึ้นลง (Float) --- */
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-8px);
+    /* ขยับขึ้น 8px */
+  }
+
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+  /* 3s = 3 วินาที, infinite = วนไปเรื่อยๆ */
+}
+
+/* --- ANIMATION สั่น (Shake) --- */
+@keyframes shake {
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
+    transform: translateX(-4px);
+  }
+
+  20%,
+  40%,
+  60%,
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+.animate-shake {
+  animation: shake 0.4s ease-in-out;
+}
+
+/* --- ANIMATION การ์ดโผล่ (สำหรับแถวใหม่) --- */
+/* --- ANIMATION สไลด์ (สำหรับแถวใหม่) --- */
+/* (1. ท่าออก: สไลด์ไปทางซ้ายแล้วจางหายไป) */
+@keyframes slideOutToLeft {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateX(-50px);
+    /* ออกไปทางซ้าย 50px */
+  }
+}
+
+/* --- ANIMATION เด้งขึ้น (Pop Up Checkmark) --- */
+@keyframes pop-up-check {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+    /* เริ่มจากข้างล่าง 10px */
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    /* เด้งขึ้นมาที่เดิม */
+  }
+}
+
+.animate-pop-up-check {
+  animation: pop-up-check 0.3s ease-out forwards;
+}
+
+@keyframes blink {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0;
+    /* 50% = ดับสนิท */
+  }
+}
+
+/* 2. สร้างคลาส .animate-blink-custom ให้เรียกใช้ animation นี้ */
+.animate-blink-custom {
+  animation: blink 1.2s infinite;
+}
+
+/* (1) สร้าง Keyframes ชื่อ shake */
+@keyframes shake {
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
+    transform: translateX(-3px);
+    /* สั่นไปซ้าย */
+  }
+
+  20%,
+  40%,
+  60%,
+  80% {
+    transform: translateX(3px);
+    /* สั่นไปขวา */
+  }
+}
+
+/* (2) สร้างคลาส .animate-shake ให้เรียกใช้ */
+.animate-shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+@keyframes number-pop {
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.15);
+    /* (ขยาย 115%) */
+  }
+}
+
+.animate-number-pop {
+  animation: number-pop 0.3s ease-out;
+}
+
+/* ใช้กับดาวโผล่เวลาผ่านด่าน/คะแนนในหน้าสรุปผล */
+@keyframes star-pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.4);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    /* (จบที่ขนาดปกติ) */
+  }
+}
+
+.animate-star-pop-in {
+  animation: star-pop-in 0.4s ease-out forwards;
+  /* (ปรับ duration เป็น 0.6s) */
+}
+
+
+@keyframes shimmer-move {
+  0% {
+    transform: translateX(-150%) skewX(-30deg);
+  }
+
+  100% {
+    transform: translateX(150%) skewX(-30deg);
+  }
+}
+
+/* (2. คลาสสำหรับเรียกใช้ Shimmer) */
+@keyframes shimmer-move {
+  0% {
+    transform: translateX(-150%) skewX(-30deg);
+  }
+
+  100% {
+    transform: translateX(150%) skewX(-30deg);
+  }
+}
+
+.animate-shimmer-overlay {
+  /* (ปรับให้มี 3 เส้นแสง) */
+  background: linear-gradient(100deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.418) 10%,
+      /* เส้นแสงที่ 1 เริ่ม */
+      transparent 20%,
+      transparent 40%,
+      rgba(255, 255, 255, 0.466) 50%,
+      /* เส้นแสงที่ 3 เริ่ม */
+      transparent 60%,
+      transparent 100%);
+  background-size: 400px 100%;
+  /* (ปรับขนาดของเส้นแสงให้กว้างขึ้น เพื่อให้ครอบคลุมและดูเคลื่อนไหวได้ดีขึ้น) */
+  background-repeat: no-repeat;
+
+  animation: shimmer-move 5s infinite linear;
+  animation-delay: 0.1s;
+}
+
+/* ระเบิดดาว/Effect สรุปคะแนน */
+@keyframes star-burst-out {
+  0% {
+    transform: scale(0);
+    /* (เริ่มจากไม่มี) */
+    opacity: 1;
+    /* (สว่างเต็มที่) */
+    filter: blur(0px);
+    /* (ยังไม่เบลอ) */
+  }
+
+  50% {
+    transform: scale(4);
+    /* (ขยายใหญ่ขึ้น) */
+    opacity: 0.8;
+    /* (เริ่มจาง) */
+    filter: blur(2px);
+    /* (เริ่มเบลอ) */
+  }
+
+  100% {
+    transform: scale(3);
+    /* (ขยายใหญ่สุดก่อนหายไป) */
+    opacity: 0;
+    /* (จางหายไป) */
+    filter: blur(5px);
+    /* (เบลอมากจนหายไป) */
+    visibility: hidden;
+    /* (ซ่อนเมื่อจบ) */
+  }
+}
+
+@keyframes star-burst-out {
+  0% {
+    transform: scale(0);
+    opacity: 1;
+    filter: blur(0px);
+  }
+
+  50% {
+    transform: scale(2);
+    opacity: 0.8;
+    filter: blur(2px);
+  }
+
+  100% {
+    transform: scale(3);
+    opacity: 0;
+    filter: blur(5px);
+    visibility: hidden;
+  }
+}
+
+.animate-star-burst {
+  animation: star-burst-out 0.4s ease-out forwards;
+  background: radial-gradient(circle, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 150, 1) 50%, rgba(255, 255, 255, 0) 100%);
+  border-radius: 50%;
+  width: 80px;
+  height: 80px;
+}
+
+/* --- ANIMATION ดาวลอยขึ้นลง (Floating) --- */
+@keyframes floating-star {
+
+  0%,
+  100% {
+    transform: translateY(0);
+    /* (เริ่มและจบที่ตำแหน่งปกติ) */
+  }
+
+  50% {
+    transform: translateY(-8px);
+    /* (ขยับขึ้นไป 8px) */
+  }
+}
+
+.animate-floating-star {
+  animation: floating-star 3s ease-in-out infinite;
+  /* (วนลูป 3 วินาที) */
+}
+
+.raise-second-tone { position: relative; top: -6px; }
+
+@keyframes slideUpFade {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slideUpFade {
+  animation: slideUpFade 0.35s ease forwards;
+}
+
+/* Animation สำหรับหน้า Landing Page */
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0) rotate(3deg); }
+  50% { transform: translateY(-20px) rotate(3deg); }
+}
+
+@keyframes bounce-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.animate-float-slow {
+  animation: float-slow 6s ease-in-out infinite;
+}
+
+.animate-bounce-slow {
+  animation: bounce-slow 4s ease-in-out infinite;
+}
+
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.animate-cursor-blink {
+  animation: blink 1s step-end infinite;
+}
+
+
+html {
+  scroll-behavior: smooth;
+}
