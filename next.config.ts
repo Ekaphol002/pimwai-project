@@ -1,14 +1,20 @@
+// next.config.ts
+
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  // ✅ 1. ยอมให้ผ่านแม้จะมี Error Typescript
+// เปลี่ยนตรงนี้เป็น any
+const nextConfig: any = {
+  // 1. ปิด error TypeScript ตอน build
   typescript: {
     ignoreBuildErrors: true,
   },
-  // ✅ 2. ยอมให้ผ่านแม้จะมี Error Eslint
+  
+  // 2. ปิด error ESLint ตอน build
   eslint: {
     ignoreDuringBuilds: true,
   },
+
+  // config อื่นๆ (ถ้ามี)
 };
 
 export default nextConfig;
