@@ -158,7 +158,7 @@ export default function LandingPage() {
                     <div className="w-full aspect-[4/3] bg-blue-50 rounded-2xl mb-6 overflow-hidden relative shadow-inner border border-blue-100 group-hover/item:shadow-lg transition-all">
                       {/* ✅ Image for Lessons */}
                       <Image
-                        src="/lesson.png"
+                        src="/lesson.PNG"
                         alt="Lesson Preview"
                         fill
                         className="object-cover"
@@ -175,7 +175,7 @@ export default function LandingPage() {
                     <div className="w-full aspect-[4/3] bg-yellow-50 rounded-2xl mb-6 overflow-hidden relative shadow-inner border border-yellow-100 group-hover/item:shadow-lg transition-all">
                       {/* ✅ Image for Tests */}
                       <Image
-                        src="/tests.png"
+                        src="/tests.PNG"
                         alt="Test Preview"
                         fill
                         className="object-cover"
@@ -192,7 +192,7 @@ export default function LandingPage() {
                     <div className="w-full aspect-[4/3] bg-green-50 rounded-2xl mb-6 overflow-hidden relative shadow-inner border border-green-100 group-hover/item:shadow-lg transition-all">
                       {/* ✅ Image for Progress */}
                       <Image
-                        src="/progress.png"
+                        src="/progress.PNG"
                         alt="Progress Preview"
                         fill
                         className="object-cover"
