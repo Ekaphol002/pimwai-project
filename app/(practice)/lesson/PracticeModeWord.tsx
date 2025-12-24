@@ -79,6 +79,7 @@ export default function PracticeModeWord({
   const [finalTime, setFinalTime] = useState("0:00");
 
   const [earnedXP, setEarnedXP] = useState(0);
+  const [completedQuest, setCompletedQuest] = useState<{ text: string; xp: number } | null>(null);
 
   const playTypeSound = useSound('/type.wav', 0.6);
   const playErrorSound = useSound('/error.mp3', 0.5);
@@ -123,6 +124,7 @@ export default function PracticeModeWord({
       if (data.success) {
           console.log('บันทึกผลสำเร็จ! ได้รับ EXP:', data.earnedXP);
           setEarnedXP(data.earnedXP); 
+          setCompletedQuest(data.completedQuest);
       }
 
     } catch (error) {
@@ -178,6 +180,7 @@ export default function PracticeModeWord({
     setFinalStars(0);
     setFinalTime("0:00");
     setEarnedXP(0); 
+    setCompletedQuest(null);
     window.scrollTo(0, 0);
   };
 
@@ -353,6 +356,7 @@ export default function PracticeModeWord({
           onNextLesson={handleNextLesson}
           isTestMode={isTestMode}
           earnedXP={earnedXP}
+          completedQuest={completedQuest}
         />
       ) : (
         <>

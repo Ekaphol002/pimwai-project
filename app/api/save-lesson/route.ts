@@ -6,9 +6,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 export async function POST(request: Request) {
   try {
-    // 1. ตรวจสอบ Session
     const session = await getServerSession(authOptions);
-
     if (!session || !session.user?.email) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
@@ -16,111 +14,137 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { subLessonId, wpm, accuracy, stars, duration } = body;
 
-    // 2. หา User ตัวจริง
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email }
-    });
-
-    if (!user) {
-      return NextResponse.json({ success: false, error: "User not found" }, { status: 404 });
-    }
+    const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+    if (!user) return NextResponse.json({ success: false, error: "User not found" }, { status: 404 });
 
     const userId = user.id;
 
-    // 3. เริ่ม Transaction
+    // เริ่ม Transaction
     const result = await prisma.$transaction(async (tx) => {
-        // หาประวัติการเล่นเดิม
         const existingProgress = await tx.lessonProgress.findUnique({
             where: { userId_subLessonId: { userId, subLessonId } },
         });
 
-        let expGained = 0;
+        // --- 1. คำนวณ Base XP (จากการเล่นปกติ) ---
+        let baseLessonExp = 0; 
         const starBonus = stars === 3 ? 40 : stars * 10;
-        const baseExp = 20 + starBonus; 
+        const fullExp = 20 + starBonus; 
         let isNewHighScore = false;
         
-        // ✅ [แก้จุดที่ 1]: เช็คว่า "เคยเล่นผ่านจริงไหม" (ไม่ใช่แค่เช็คว่ามี record ไหม)
-        // ถ้าไม่มี record เลย หรือ มี record แต่ดาวเป็น 0 (คือเคยเข้ามาแล้วออก หรือเล่นไม่ผ่าน) ให้ถือว่าเป็น "ครั้งแรก"
         const isFirstClear = !existingProgress || existingProgress.stars === 0;
 
         if (isFirstClear) {
-            // === กรณีเล่นผ่านครั้งแรก (หรือแก้ตัวจากที่เคยได้ 0 ดาว) ===
-            expGained = baseExp; // ได้ EXP เต็ม
+            baseLessonExp = fullExp; 
             isNewHighScore = true;
-
             if (!existingProgress) {
-                // ถ้าไม่เคยมี record เลย -> Create
                 await tx.lessonProgress.create({
                     data: { userId, subLessonId, wpm, accuracy, stars, duration, status: "completed" },
                 });
             } else {
-                // ✅ [แก้จุดที่ 2]: ถ้ามี record (แต่เป็น 0 ดาว) -> ต้อง Update แทน Create
                 await tx.lessonProgress.update({
                     where: { userId_subLessonId: { userId, subLessonId } },
                     data: { wpm, accuracy, stars, duration, status: "completed", updatedAt: new Date() },
                 });
             }
-
         } else {
-            // === กรณีเล่นซ้ำ (เคยได้ดาวมาก่อนแล้ว) ===
-            // เช็คว่าทำลายสถิติไหม
             const isBetterScore = wpm > existingProgress.wpm || stars > existingProgress.stars;
-            
             if (isBetterScore) {
-                expGained = 15; // ได้ EXP น้อยเพราะเล่นซ้ำ
+                baseLessonExp = 15; 
                 isNewHighScore = true;
                 await tx.lessonProgress.update({
                     where: { userId_subLessonId: { userId, subLessonId } },
                     data: { wpm, accuracy, stars, duration, status: "completed", updatedAt: new Date() },
                 });
-            } else {
-                // ถ้าคะแนนไม่ดีขึ้น ไม่ต้องทำอะไรกับ DB แค่คืนค่าเดิมกลับไป
-                // หรืออาจจะแค่อัปเดต Last Played ก็ได้ถ้าต้องการ
             }
         }
 
-        // --- ส่วน Quest Bonus (เหมือนเดิม) ---
+        // --- 2. คำนวณ Quest Bonus (เพิ่มเควส 95% ตรงนี้) ---
         let questBonus = 0;
+        let completedQuestInfo = null; 
         const QUEST_REWARD = 100;
+        
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
+        // ดึงประวัติวันนี้ (รวมอันปัจจุบันที่เพิ่งบันทึกไปตะกี้ด้วย)
         const todaysProgress = await tx.lessonProgress.findMany({
             where: { userId: userId, updatedAt: { gte: today } }
         });
 
-        const dailyTotalLessons = todaysProgress.length;
+        const dailyTotalLessons = todaysProgress.length; 
         const dailyTotalTime = todaysProgress.reduce((sum, p) => sum + p.duration, 0);
         
-        // Quest 1: เล่นครบ 15 นาที
+        let completedQuestsCount = 0; // ตัวนับว่ารอบนี้เสร็จกี่เควส
+        let lastQuestText = "";       // เก็บชื่อเควสล่าสุด
+
+        // ✅ Quest 1: เล่นครบ 15 นาที
         const prevTotalTime = dailyTotalTime - duration;
-        if (dailyTotalTime >= 900 && prevTotalTime < 900) questBonus += QUEST_REWARD;
+        if (dailyTotalTime >= 900 && prevTotalTime < 900) {
+            questBonus += QUEST_REWARD;
+            completedQuestsCount++;
+            lastQuestText = "พิมพ์ครบ 15 นาที";
+        }
         
-        // Quest 2: เล่นครบ 3 ด่าน
-        // ✅ [ปรับ Logic Quest นิดหน่อย]: ให้นับเฉพาะถ้าเล่นผ่านครั้งแรกในวันนี้
-        if (dailyTotalLessons === 3 && isFirstClear) questBonus += QUEST_REWARD;
+        // ✅ Quest 2: เล่นครบ 3 ด่าน (เฉพาะ First Clear)
+        if (dailyTotalLessons === 3 && isFirstClear) {
+             questBonus += QUEST_REWARD;
+             completedQuestsCount++;
+             lastQuestText = "ผ่าน 3 บทเรียน";
+        }
 
-        expGained += questBonus;
-
-        // บังคับแจก 10 XP ขั้นต่ำ
-        if (expGained < 10) expGained = 10;
-
-        // อัปเดต User
-        let updatedUser = user;
-        const currentTotalExp = (user.currentExp || 0) + expGained;
-        const newRank = Math.floor(currentTotalExp / 6000) + 1;
+        // ✅ Quest 3: ความแม่นยำ 95% (เควสใหม่!)
+        // เช็คว่าวันนี้มีกี่ด่านที่ได้ >= 95% (รวมด่านนี้แล้ว)
+        const highAccLessons = todaysProgress.filter(p => p.accuracy >= 95).length;
         
-        let starsToAdd = stars;
-        if (existingProgress) {
-            // ถ้ามีของเก่า ให้บวกเพิ่มแค่ส่วนต่าง (เฉพาะกรณีได้ดาวเยอะขึ้น)
-            if (stars > existingProgress.stars) {
-                starsToAdd = stars - existingProgress.stars;
+        // ถ้าด่านนี้ได้ >= 95% และเป็น "ครั้งแรกของวัน" (count == 1) ให้รางวัล
+        // (ถ้า count > 1 แปลว่าเคยได้รางวัลไปแล้วจากด่านอื่น)
+        if (accuracy >= 95 && highAccLessons === 1) {
+            questBonus += QUEST_REWARD;
+            completedQuestsCount++;
+            lastQuestText = "แม่นยำ 95%!";
+        }
+
+        // --- สรุปข้อความเควส ---
+        if (completedQuestsCount > 0) {
+            if (completedQuestsCount > 1) {
+                completedQuestInfo = { text: "ภารกิจคอมโบ!", xp: questBonus };
             } else {
-                starsToAdd = 0;
+                completedQuestInfo = { text: lastQuestText, xp: questBonus };
             }
         }
 
-        updatedUser = await tx.user.update({
+        // --- 3. อัปเดต User ---
+        let totalExpGained = baseLessonExp + questBonus;
+        if (totalExpGained < 10) totalExpGained = 10;
+
+        const currentTotalExp = (user.currentExp || 0) + totalExpGained;
+        
+        // Logic Rank แบบใหม่ (ตามที่คุณให้มา)
+        // Max Cap = 35000 -> Rank 3 / 5 Stars
+        const MAX_CAP_EXP = 35000;
+        const EXP_PER_RANK = 6000;
+        const EXP_PER_STAR = 1000;
+
+        let newRank = 1;
+        
+        if (currentTotalExp >= MAX_CAP_EXP) {
+            newRank = 3;
+        } else {
+            newRank = Math.floor(currentTotalExp / EXP_PER_RANK) + 1;
+            if (newRank > 3) newRank = 3;
+        }
+        
+        // คำนวณ Stars ที่จะเพิ่ม (Logic เดิมของคุณบวก increment ทีละนิด แต่ถ้าจะเอาเป๊ะตาม Exp ต้องคำนวณใหม่)
+        // เพื่อความปลอดภัย ใช้ Logic เดิมไปก่อน หรือจะ Reset ดาวตาม Rank ใหม่ก็ได้
+        // ตรงนี้ขอคง Logic เดิมไว้ก่อนเพื่อไม่ให้กระทบระบบดาวสะสม
+        let starsToAdd = stars;
+        if (existingProgress && stars > existingProgress.stars) {
+            starsToAdd = stars - existingProgress.stars;
+        } else if (existingProgress) {
+            starsToAdd = 0;
+        }
+
+        const updatedUser = await tx.user.update({
             where: { id: userId },
             data: {
                 currentExp: currentTotalExp,
@@ -129,18 +153,22 @@ export async function POST(request: Request) {
             }
         });
 
-        return { expGained, questBonus, isNewHighScore, updatedUser };
+        return { 
+            baseLessonExp, 
+            questBonus, 
+            completedQuestInfo, 
+            isNewHighScore, 
+            updatedUser 
+        };
     });
 
-    // 4. ส่งค่ากลับไปหน้าบ้าน
     return NextResponse.json({ 
       success: true, 
-      earnedXP: result.expGained, 
-      questBonus: result.questBonus,
+      earnedXP: result.baseLessonExp, 
+      questBonus: result.questBonus, 
+      completedQuest: result.completedQuestInfo, 
       isNewHighScore: result.isNewHighScore,
       totalXP: result.updatedUser?.currentExp || 0,
-      level: result.updatedUser?.rank || 1,
-      stars: result.updatedUser?.stars || 0
     });
 
   } catch (error) {

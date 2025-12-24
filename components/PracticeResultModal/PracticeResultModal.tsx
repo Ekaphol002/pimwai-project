@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Star, ChevronDown, Clock } from 'lucide-react';
+import { Star, ChevronDown, Clock, CheckCircle2, Gift } from 'lucide-react'; // ✅ เพิ่ม Icon สำหรับ Quest
 import StarParticleEffect from '../StarParticleEffect/StarParticleEffect';
 import Keyboard from '@/components/Keyboard/Keyboard';
 
@@ -16,7 +16,12 @@ type Props = {
   onNextLesson: () => void;
   onGoToLessons: () => void;
   isTestMode?: boolean;
-  earnedXP?: number; // รับแค่ค่า XP ที่ได้ในรอบนี้
+  earnedXP?: number; // XP รวมทั้งหมด (Lesson + Quest)
+  // ✅ เพิ่ม Prop รับข้อมูลเควสที่สำเร็จ
+  completedQuest?: {
+    text: string;
+    xp: number;
+  } | null;
 };
 
 function useCountUp(endValue: number, duration: number) {
@@ -51,7 +56,8 @@ export default function PracticeResultModal({
   onNextLesson,
   onGoToLessons,
   isTestMode = false,
-  earnedXP = 0 // Default เป็น 0 ไว้ก่อน
+  earnedXP = 0,
+  completedQuest = null // ✅ Default เป็น null
 }: Props) {
 
   const [isExpanded, setIsExpanded] = useState(false);
@@ -152,15 +158,36 @@ export default function PracticeResultModal({
         )}
 
         {/* ========================================================= */}
-        {/* แถวเครื่องมือ: [ EXP ที่ได้ ] --- [ ปุ่มเพิ่มเติม ] --- [ เวลา ] */}
+        {/* แถวเครื่องมือ: [ EXP ] --- [ ปุ่มเพิ่มเติม ] --- [ เวลา ] */}
         {/* ========================================================= */}
         <div className="relative mt-8 h-16 flex justify-center items-end">
             
-            {/* 1. ซ้ายสุด: แสดงเฉพาะ XP ที่ได้รับ (earnedXP) */}
-            <div className="absolute left-0 bottom-3 flex items-center">
-                 <span className="text-3xl text-yellow-400 font-semibold animate-number-pop">
-                    + {earnedXP} XP
-                 </span>
+            {/* 1. ซ้ายสุด: แสดง XP และ Quest Popup */}
+            <div className="absolute left-0 bottom-1 flex flex-col items-start gap-1">
+                 
+                 {/* ✅ แสดง Popup เมื่อทำภารกิจสำเร็จ (ลอยอยู่เหนือ EXP) */}
+                 {completedQuest && (
+                    <div className="flex flex-col animate-bounce-short mb-2">
+                        <div className="flex items-center gap-2 bg-gradient-to-r from-orange-100 to-yellow-100 px-3 py-1.5 rounded-xl border border-orange-200 shadow-sm">
+                            <span className="text-xs font-bold text-orange-700">ภารกิจสำเร็จ!</span>
+                        </div>
+                        <div className="mt-1 ml-1">
+                            <p className="text-[10px] text-gray-500 font-medium">{completedQuest.text}</p>
+                            <p className="text-xs font-bold text-orange-500">+{completedQuest.xp} XP</p>
+                        </div>
+                    </div>
+                 )}
+
+                 {/* XP รวม (จะแสดงตัวใหญ่ด้านล่างเหมือนเดิม) */}
+                 <div className="flex items-baseline gap-2">
+                    <span className="text-3xl text-yellow-400 font-black animate-number-pop filter drop-shadow-sm">
+                       + {earnedXP} XP
+                    </span>
+                    {/* ถ้ามี Quest ให้แสดงวงเล็บเล็กๆ ว่า (รวมโบนัสแล้ว) เพื่อกันงง */}
+                    {completedQuest && (
+                        <span className="text-[10px] text-gray-400 font-normal">(รวมโบนัส)</span>
+                    )}
+                 </div>
             </div>
 
             {/* 2. ตรงกลาง: ปุ่มเพิ่มเติม */}

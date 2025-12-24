@@ -57,15 +57,16 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
 
   // ✅ เพิ่ม: State สำหรับเก็บ XP ที่ได้รับ
   const [earnedXP, setEarnedXP] = useState(0);
+  const [completedQuest, setCompletedQuest] = useState<{ text: string; xp: number } | null>(null);
 
   const playTypeSound = useSound('/type.wav', 0.6);   // เสียงพิมพ์ (ปรับความดังได้)
   const playErrorSound = useSound('/error.mp3', 0.5); // เสียงผิด
 
   const handleNextLesson = () => {
     if (nextUrl) {
-       window.location.href = nextUrl; 
+      window.location.href = nextUrl;
     } else {
-       router.push('/lessons');
+      router.push('/lessons');
     }
   };
 
@@ -92,13 +93,14 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
           duration
         }),
       });
-      
+
       const data = await res.json(); // แปลงเป็น JSON
 
       if (data.success) {
-         console.log('บันทึกผลสำเร็จ! ได้รับ EXP:', data.earnedXP);
-         // ✅ 2. เอาค่า XP ที่ได้มาใส่ State
-         setEarnedXP(data.earnedXP); 
+        console.log('บันทึกผลสำเร็จ! ได้รับ EXP:', data.earnedXP);
+        // ✅ 2. เอาค่า XP ที่ได้มาใส่ State
+        setEarnedXP(data.earnedXP);
+        setCompletedQuest(data.completedQuest); 
       }
 
     } catch (error) {
@@ -179,7 +181,7 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
       if (isFinished) return;
 
       if (event.repeat) return;
-      
+
       if (!expectedChar || isCurrentCharCorrect !== null) return;
 
       if (event.key === 'Shift') {
@@ -226,6 +228,7 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
             const endTime = Date.now();
             calculateResults(endTime);
             setIsFinished(true);
+            setCompletedQuest(null);
             window.scrollTo(0, 0);
           }
           setIsCurrentCharCorrect(null);
@@ -270,6 +273,8 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
           onNextLesson={handleNextLesson}
           // ✅ 3. ส่งค่า earnedXP ไปให้ Modal แสดงผล (เป็นตัวเลขเฉยๆ)
           earnedXP={earnedXP}
+          completedQuest={completedQuest}
+          
         />
       ) : (
         <>

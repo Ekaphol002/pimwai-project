@@ -290,12 +290,6 @@ export default function AuthPage() {
                 {errors.password && <span className="text-red-500 text-xs ml-1 mt-1 block">{errors.password}</span>}
               </div>
 
-              {isLogin && (
-                <div className="flex justify-end">
-                  <a href="#" className="text-sm text-[#5cb5db] hover:text-[#2563EB] font-medium">Forgot password?</a>
-                </div>
-              )}
-
               <button
                 disabled={loading}
                 className="w-full bg-[#5cb5db] hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] text-white font-bold py-3 px-4 rounded-xl transition-all duration-200 mt-2 disabled:opacity-70 disabled:cursor-not-allowed"

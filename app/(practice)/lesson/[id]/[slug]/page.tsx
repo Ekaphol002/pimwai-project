@@ -4,7 +4,7 @@ import React from 'react';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 // ✅ Import Navbar ตัวใหม่
-import PracticeNavbar from '@/components/PracticeNavbar/PracticeNavbar'; 
+import PracticeNavbar from '@/components/PracticeNavbar/PracticeNavbar';
 import PracticeModeCharacter from '../../PracticeModeCharacter';
 import PracticeModeWord from '../../PracticeModeWord';
 
@@ -12,7 +12,7 @@ import PracticeModeWord from '../../PracticeModeWord';
 import { redirect } from 'next/navigation';
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import type { Metadata, ResolvingMetadata } from 'next'; 
+import type { Metadata, ResolvingMetadata } from 'next';
 
 // บังคับให้เป็น Dynamic Rendering เพราะต้องเช็ค Session และ Params เปลี่ยนตลอด
 export const dynamic = 'force-dynamic';
@@ -27,12 +27,10 @@ interface PageProps {
 // ✅ ส่วนที่เพิ่ม: สร้าง Metadata + ดึง Icon จากตัวแม่มาใช้
 export async function generateMetadata(
   { params }: PageProps,
-  parent: ResolvingMetadata
+  parent: ResolvingMetadata // ✅ รับค่า parent metadata มาด้วย
 ): Promise<Metadata> {
-  // ต้อง await params ก่อน (Next.js 15)
   const { slug } = await params;
   
-  // ดึงข้อมูลเฉพาะส่วนที่จำเป็นสำหรับ SEO
   const subLesson = await prisma.subLesson.findUnique({
     where: { id: slug },
     include: { lesson: true }
@@ -49,18 +47,17 @@ export async function generateMetadata(
     };
   }
 
-  // สร้าง Title และ Description
   const pageTitle = `${subLesson.lesson.title}: ${subLesson.title} | ฝึกพิมพ์ PIMWAI`;
   
   return {
     title: pageTitle,
-    description: `ฝึกพิมพ์ดีดบทเรียน ${subLesson.title} ในโหมด ${subLesson.mode} พัฒนาทักษะการพิมพ์ของคุณให้เร็วและแม่นยำยิ่งขึ้น`,
-    openGraph: {
-      title: pageTitle,
-      description: `มาแข่งพิมพ์บทเรียน "${subLesson.title}" กันเถอะ!`,
-    },
+    description: `ฝึกพิมพ์ดีดบทเรียน ${subLesson.title} ...`,
     // ✅ ยัด Icon ใส่กลับเข้าไป เพื่อให้ Browser รู้ว่าต้องใช้รูปเดิม
-    icons: parentIcons, 
+    icons: {
+      icon: '/icon.png', 
+      shortcut: '/icon.png',
+      apple: '/icon.png',
+    },
   };
 }
 
@@ -86,40 +83,40 @@ export default async function LessonPlayPage({ params }: PageProps) {
         include: {
           subLessons: {
             orderBy: { id: 'asc' },
-            select: { id: true } 
+            select: { id: true }
           }
         }
       }
     }
   });
-  
+
   if (!subLesson) {
     return <div className="p-10 text-center text-red-500">ไม่พบข้อมูลบทเรียน...</div>;
   }
 
   // 4. คำนวณหา Screen X of Y
   const allSubLessons = subLesson.lesson.subLessons;
-  const totalScreens = allSubLessons.length; 
+  const totalScreens = allSubLessons.length;
   const currentIndex = allSubLessons.findIndex(s => s.id === subLesson.id);
   const currentScreen = currentIndex + 1;
 
-  let nextUrl = undefined; 
+  let nextUrl = undefined;
   // กรณี A: ยังมีด่านเหลือในบทเรียนเดิม
   if (currentIndex < allSubLessons.length - 1) {
     const nextSubLessonId = allSubLessons[currentIndex + 1].id;
     nextUrl = `/lesson/${lessonId}/${nextSubLessonId}`;
-  } 
+  }
   // กรณี B: จบบทเรียนนี้แล้ว -> ไปหาบทเรียนถัดไป
   else {
     const nextLesson = await prisma.lesson.findFirst({
       where: {
-        level: subLesson.lesson.level,      
-        order: subLesson.lesson.order + 1   
+        level: subLesson.lesson.level,
+        order: subLesson.lesson.order + 1
       },
       include: {
         subLessons: {
           orderBy: { id: 'asc' },
-          take: 1 
+          take: 1
         }
       }
     });
@@ -139,7 +136,8 @@ export default async function LessonPlayPage({ params }: PageProps) {
     <div className="min-h-screen bg-slate-50 flex flex-col">
 
       {/* Navbar */}
-      <PracticeNavbar 
+      <PracticeNavbar
+        key={`nav-${subLesson.id}`}
         title={`${subLesson.lesson.title} - ${subLesson.title}`}
         currentScreen={currentScreen}
         totalScreens={totalScreens}
@@ -149,9 +147,9 @@ export default async function LessonPlayPage({ params }: PageProps) {
       <main className="flex-1 flex flex-col items-center justify-center p-4 lg:p-10">
         <div className="w-full max-w-5xl">
           {subLesson.mode === 'character' ? (
-            <PracticeModeCharacter {...gameProps} />
+            <PracticeModeCharacter key={subLesson.id} {...gameProps} />
           ) : subLesson.mode === 'word' ? (
-            <PracticeModeWord {...gameProps} />
+            <PracticeModeWord key={subLesson.id} {...gameProps} />
           ) : (
             <div>ไม่พบโหมด: {subLesson.mode}</div>
           )}

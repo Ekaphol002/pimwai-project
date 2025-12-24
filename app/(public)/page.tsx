@@ -110,7 +110,7 @@ export default function LandingPage() {
               </button>
             </Link>
 
-            <Link href="/register" className="flex-1">
+            <Link href="/login" className="flex-1">
               <button className="w-full py-4 rounded-2xl bg-white/10 backdrop-blur-md border-2 border-white/30 text-white text-xl font-bold hover:bg-white/20 transition-all flex items-center justify-center gap-2">
                 สร้างบัญชี
               </button>

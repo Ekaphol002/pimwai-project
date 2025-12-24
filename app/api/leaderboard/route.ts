@@ -1,8 +1,8 @@
 // app/api/leaderboard/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from "next-auth"; // ✅ เพิ่ม
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"; // ✅ ต้อง Import path ให้ถูก
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 export async function GET(request: Request) {
   try {
@@ -17,7 +17,7 @@ export async function GET(request: Request) {
     if (session?.user?.email) {
       const user = await prisma.user.findUnique({
         where: { email: session.user.email },
-        select: { id: true } // ดึงแค่ id ก็พอ
+        select: { id: true }
       });
       if (user) currentUserId = user.id;
     }
@@ -38,7 +38,8 @@ export async function GET(request: Request) {
             ],
             take: 100,
             include: {
-                user: { select: { id: true, username: true, rank: true, currentExp: true, image: true } } // ดึงรูปด้วยถ้ามี
+                // ✅ แก้ที่ 1: เพิ่ม name: true เข้ามาด้วย
+                user: { select: { id: true, username: true, name: true, rank: true, currentExp: true, image: true } } 
             }
         });
 
@@ -47,8 +48,16 @@ export async function GET(request: Request) {
         for (const result of rawResults) {
             if (!uniqueMap.has(result.userId)) {
                 uniqueMap.set(result.userId, true);
+                
+                // ✅ แก้ที่ 2: สร้าง user object ใหม่ โดยเช็คว่าถ้าไม่มี username ให้ใช้ name
+                const displayUser = {
+                    ...result.user,
+                    username: result.user.username || result.user.name || "User" 
+                };
+
                 leaderboard.push({
                     ...result,
+                    user: displayUser, // ใช้อันที่แก้ชื่อแล้ว
                     rankOrder: leaderboard.length + 1,
                     displayVal1: result.wpm,           // WPM
                     displayVal2: result.accuracy,      // Acc
@@ -70,6 +79,11 @@ export async function GET(request: Request) {
                 if (myBest) {
                     myData = { 
                         ...myBest, 
+                        // ✅ แก้ที่ 3: จัดการชื่อของตัวเองด้วย (กรณีไม่ติด Top 50)
+                        user: {
+                            ...myBest.user,
+                            username: myBest.user.username || myBest.user.name || "User"
+                        },
                         rankOrder: null, // ไม่ติด Top 50
                         displayVal1: myBest.wpm,
                         displayVal2: myBest.accuracy,
@@ -90,14 +104,19 @@ export async function GET(request: Request) {
             ],
             take: 50,
             select: {
-                id: true, username: true, rank: true, currentExp: true, image: true // เลือก field ที่จำเป็น
+                // ✅ แก้ที่ 4: เพิ่ม name: true ใน select
+                id: true, username: true, name: true, rank: true, currentExp: true, image: true 
             }
         });
 
         leaderboard = users.map((u, index) => ({
             id: u.id,
             userId: u.id,
-            user: u,
+            // ✅ แก้ที่ 5: จัดการชื่อในโหมด Rank
+            user: {
+                ...u,
+                username: u.username || u.name || "User"
+            },
             rankOrder: index + 1,
             displayVal1: u.rank,       // Rank Level
             displayVal2: u.currentExp, // Total EXP
@@ -113,7 +132,11 @@ export async function GET(request: Request) {
                     myData = {
                         id: myUser.id,
                         userId: myUser.id,
-                        user: myUser,
+                        // ✅ แก้ที่ 6: จัดการชื่อตัวเองในโหมด Rank
+                        user: {
+                            ...myUser,
+                            username: myUser.username || myUser.name || "User"
+                        },
                         rankOrder: null,
                         displayVal1: myUser.rank,
                         displayVal2: myUser.currentExp,
