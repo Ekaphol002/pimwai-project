@@ -1,5 +1,6 @@
 "use client";
 
+import Image from 'next/image';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { MousePointer2, Star, Presentation } from 'lucide-react';
@@ -46,8 +47,8 @@ export default function LandingPage() {
       {/* ================= Sticky Navbar ================= */}
       <nav
         className={`fixed top-0 left-0 w-full px-6 md:px-10 py-3 z-50 flex justify-between items-center transition-all duration-300 ${scrolled
-            ? 'bg-[#0c648b]/90 backdrop-blur-md shadow-md' // เพิ่ม backdrop-blur ให้สวยขึ้น
-            : 'bg-transparent'
+          ? 'bg-[#0c648b]/90 backdrop-blur-md shadow-md' // เพิ่ม backdrop-blur ให้สวยขึ้น
+          : 'bg-transparent'
           }`}
       >
         {/* Logo (กดแล้วกลับไปหน้าแรกเหมือนกัน) */}
@@ -156,7 +157,12 @@ export default function LandingPage() {
                   <div className="flex flex-col items-center text-center group/item">
                     <div className="w-full aspect-[4/3] bg-blue-50 rounded-2xl mb-6 overflow-hidden relative shadow-inner border border-blue-100 group-hover/item:shadow-lg transition-all">
                       {/* ✅ Image for Lessons */}
-                      <img src="/lesson.png" alt="Lesson Preview" className="w-full h-full object-cover" />
+                      <Image
+                        src="/lesson.png"
+                        alt="Lesson Preview"
+                        fill
+                        className="object-cover"
+                      />
                     </div>
                     <h3 className="text-xl font-bold text-gray-800 mb-2">บทเรียนที่ครอบคลุม</h3>
                     <p className="text-gray-500 text-sm leading-relaxed px-4">
@@ -168,7 +174,12 @@ export default function LandingPage() {
                   <div className="flex flex-col items-center text-center group/item">
                     <div className="w-full aspect-[4/3] bg-yellow-50 rounded-2xl mb-6 overflow-hidden relative shadow-inner border border-yellow-100 group-hover/item:shadow-lg transition-all">
                       {/* ✅ Image for Tests */}
-                      <img src="/tests.png" alt="Test Preview" className="w-full h-full object-cover" />
+                      <Image
+                        src="/tests.png"
+                        alt="Test Preview"
+                        fill
+                        className="object-cover"
+                      />
                     </div>
                     <h3 className="text-xl font-bold text-gray-800 mb-2">ทดสอบความเร็ว</h3>
                     <p className="text-gray-500 text-sm leading-relaxed px-4">
@@ -180,7 +191,12 @@ export default function LandingPage() {
                   <div className="flex flex-col items-center text-center group/item">
                     <div className="w-full aspect-[4/3] bg-green-50 rounded-2xl mb-6 overflow-hidden relative shadow-inner border border-green-100 group-hover/item:shadow-lg transition-all">
                       {/* ✅ Image for Progress */}
-                      <img src="/progress.png" alt="Progress Preview" className="w-full h-full object-cover" />
+                      <Image
+                        src="/progress.png"
+                        alt="Progress Preview"
+                        fill
+                        className="object-cover"
+                      />
                     </div>
                     <h3 className="text-xl font-bold text-gray-800 mb-2">ติดตามพัฒนาการ</h3>
                     <p className="text-gray-500 text-sm leading-relaxed px-4">
