@@ -1,21 +1,34 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Trophy, Zap, Target, Clock, Star, Loader2 } from 'lucide-react';
+import { Zap, Target, Clock, Star, Loader2 } from 'lucide-react';
+import dynamic from 'next/dynamic'; // ✅ 1. Import dynamic
 import StickyNavbar from '@/components/StickyNavbar/StickyNavbar';
-import Navbar from '@/components/Navbar/Navbar';
 
-import StatCard from '@/components/ProgressStatCard/ProgressStatCard';
-import LessonList from '@/components/ProgressList/ProgressList';
-import ActivityGraph from '@/components/ActivityGraph/ActivityGraph';
-import RecentActivityWidget from '@/components/RecentActivityWidget/RecentActivityWidget';
+// ✅ 2. เปลี่ยนการ import Component ใหญ่ๆ ให้เป็น dynamic import
+// พร้อมสร้าง "โครง (Skeleton)" ระหว่างที่รอมันโหลด
 
-import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+const StatCard = dynamic(() => import('@/components/ProgressStatCard/ProgressStatCard'), {
+    loading: () => <div className="h-24 bg-white rounded-2xl shadow-sm animate-pulse" />,
+    ssr: false // ส่วนนี้ไม่จำเป็นต้องทำ SEO บน Server
+});
+
+const LessonList = dynamic(() => import('@/components/ProgressList/ProgressList'), {
+    loading: () => <div className="h-96 bg-white rounded-2xl shadow-sm animate-pulse" />,
+    ssr: false
+});
+
+const ActivityGraph = dynamic(() => import('@/components/ActivityGraph/ActivityGraph'), {
+    loading: () => <div className="h-72 bg-white rounded-2xl shadow-sm animate-pulse" />,
+    ssr: false
+});
+
+const RecentActivityWidget = dynamic(() => import('@/components/RecentActivityWidget/RecentActivityWidget'), {
+    loading: () => <div className="h-72 bg-white rounded-2xl shadow-sm animate-pulse" />,
+    ssr: false
+});
 
 export default function ProgressPage() {
-    const { status } = useSession();
-    const router = useRouter();
     const [stats, setStats] = useState({
         totalStars: 0,
         avgSpeed: 0,
@@ -24,31 +37,18 @@ export default function ProgressPage() {
     });
     const [activityDates, setActivityDates] = useState<string[]>([]);
     const [recentActivity, setRecentActivity] = useState<any[]>([]);
-
-    // 1. ✅ เพิ่ม State สำหรับเก็บรายการบทเรียน
     const [courseProgress, setCourseProgress] = useState<any[]>([]);
-
     const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => {
-        if (status === "unauthenticated") {
-            router.push("/login");
-        }
-    }, [status, router]);
-
-    // ✅ Fetch ข้อมูลจริง
     useEffect(() => {
         const fetchData = async () => {
             try {
                 const res = await fetch('/api/progress');
                 const data = await res.json();
-
                 if (data.success) {
                     setStats(data.stats);
                     setActivityDates(data.activityDates);
                     setRecentActivity(data.recentActivity);
-
-                    // 2. ✅ บันทึกข้อมูลบทเรียนลง State
                     setCourseProgress(data.courseProgress);
                 }
             } catch (error) {
@@ -57,7 +57,6 @@ export default function ProgressPage() {
                 setIsLoading(false);
             }
         };
-
         fetchData();
     }, []);
 
@@ -66,7 +65,8 @@ export default function ProgressPage() {
         return value;
     };
 
-    if (status === "loading" || (status === "authenticated" && isLoading)) {
+    // หน้า Loading หลัก (หมุนติ้วๆ กลางจอ)
+    if (isLoading) {
         return (
             <div className="h-[600px] flex flex-col items-center justify-center text-gray-400">
                 <Loader2 size={64} className="animate-spin mb-4 text-[#5cb5db]" />
@@ -89,7 +89,7 @@ export default function ProgressPage() {
                     <p className="text-gray-500 mt-1">ดูพัฒนาการและสถิติทั้งหมดได้ที่นี่</p>
                 </div>
 
-                {/* 1. Stats Grid */}
+                {/* 1. Stats Grid (โหลดแบบ lazy) */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
                     <StatCard
                         icon={<Star className="text-yellow-500 fill-yellow-500" size={40} />}
@@ -123,13 +123,12 @@ export default function ProgressPage() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-                    {/* 2. Left: Lesson Progress */}
+                    {/* 2. Left: Lesson Progress (โหลดแบบ lazy) */}
                     <div className="lg:col-span-2">
-                        {/* 3. ✅ ส่งข้อมูลเข้าไปใน Component */}
                         <LessonList data={courseProgress} />
                     </div>
 
-                    {/* 3. Right: Sidebar */}
+                    {/* 3. Right: Sidebar (โหลดแบบ lazy) */}
                     <div className="space-y-6">
                         <ActivityGraph completedDates={activityDates} />
                         <RecentActivityWidget activities={recentActivity} />

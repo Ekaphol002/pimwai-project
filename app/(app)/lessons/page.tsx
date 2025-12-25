@@ -1,6 +1,4 @@
 // app/lessons/page.tsx
-import React from 'react';
-import { redirect } from 'next/navigation'; // ✅ เพิ่ม redirect
 import { getServerSession } from "next-auth"; // ✅ เพิ่ม getServerSession
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"; // ✅ ต้อง Import authOptions ให้ถูก path
 
@@ -23,23 +21,17 @@ export default async function LessonsPage({ searchParams }: PageProps) {
   // =========================================================
   // ✅ ส่วนที่แก้ไข: ดึง User ID จริงจาก Session
   // =========================================================
-  
+
   // 1. เช็ค Session
   const session = await getServerSession(authOptions);
 
-  // 2. ถ้ายังไม่ล็อกอิน ให้ดีดไปหน้า Login
-  if (!session || !session.user?.email) {
-    redirect('/login');
-  }
-
-  // 3. เอา Email ไปหา User ID ใน Database
+  // 2. เอา Email ไปหา User ID ใน Database
   const user = await prisma.user.findUnique({
-    where: { email: session.user.email }
+    where: { email: session?.user?.email! }
   });
 
-  // ถ้ามี Session แต่หา User ใน DB ไม่เจอ (กรณีแปลกๆ) ให้กลับไป Login ใหม่
   if (!user) {
-    redirect('/login');
+    return <div>ไม่พบข้อมูลผู้ใช้</div>;
   }
 
   // ✅ ได้ ID จริงมาใช้งานแล้ว!
@@ -48,7 +40,7 @@ export default async function LessonsPage({ searchParams }: PageProps) {
   // =========================================================
   // ส่วนคำนวณสถิติ (ปรับปรุงเล็กน้อยเพราะเราได้ตัวแปร user มาแล้วข้างบน)
   // =========================================================
-  
+
   // 2. ดึงสถิติวันนี้
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -175,7 +167,7 @@ export default async function LessonsPage({ searchParams }: PageProps) {
   });
 
   return (
-    <div className="flex flex-col w-full max-w-screen-2xl mx-auto">
+    <div className="flex flex-col w-full max-w-screen-2xl mx-auto mb-10">
 
       <LessonMenuBar
         selectedLevel={selectedLevel}

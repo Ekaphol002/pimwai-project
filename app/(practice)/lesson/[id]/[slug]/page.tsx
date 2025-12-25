@@ -1,33 +1,30 @@
 // app/lesson/[id]/[slug]/page.tsx
 
-import React from 'react';
 import { prisma } from '@/lib/prisma';
-import Link from 'next/link';
-// ✅ Import Navbar ตัวใหม่
 import PracticeNavbar from '@/components/PracticeNavbar/PracticeNavbar';
 import PracticeModeCharacter from '../../PracticeModeCharacter';
 import PracticeModeWord from '../../PracticeModeWord';
 
-// ✅ 1. Import สำหรับ Auth, Redirect และ Metadata
-import { redirect } from 'next/navigation';
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+// ❌ ลบ Import Auth และ Redirect ออก
+// import { redirect } from 'next/navigation';
+// import { getServerSession } from "next-auth";
+// import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
 import type { Metadata, ResolvingMetadata } from 'next';
 
-// บังคับให้เป็น Dynamic Rendering เพราะต้องเช็ค Session และ Params เปลี่ยนตลอด
 export const dynamic = 'force-dynamic';
 
 interface PageProps {
   params: Promise<{
-    id: string;   // ตรงกับชื่อโฟลเดอร์ [id]
-    slug: string; // ตรงกับชื่อโฟลเดอร์ [slug]
+    id: string;
+    slug: string;
   }>;
 }
 
-// ✅ ส่วนที่เพิ่ม: สร้าง Metadata + ดึง Icon จากตัวแม่มาใช้
+// ✅ ส่วน Metadata (เก็บไว้เหมือนเดิม)
 export async function generateMetadata(
   { params }: PageProps,
-  parent: ResolvingMetadata // ✅ รับค่า parent metadata มาด้วย
+  parent: ResolvingMetadata
 ): Promise<Metadata> {
   const { slug } = await params;
   
@@ -36,14 +33,12 @@ export async function generateMetadata(
     include: { lesson: true }
   });
 
-  // 🔥 ดึงการตั้งค่า Icon จาก Layout ตัวแม่ (RootLayout) มาใช้ต่อ
-  // เพื่อแก้ปัญหาโลโก้หายในหน้า Dynamic
   const parentIcons = (await parent).icons || {};
 
   if (!subLesson) {
     return { 
       title: 'ไม่พบเนื้อหา | PIMWAI',
-      icons: parentIcons // ส่ง Icon กลับไปแม้ไม่เจอเนื้อหา
+      icons: parentIcons 
     };
   }
 
@@ -52,7 +47,6 @@ export async function generateMetadata(
   return {
     title: pageTitle,
     description: `ฝึกพิมพ์ดีดบทเรียน ${subLesson.title} ...`,
-    // ✅ ยัด Icon ใส่กลับเข้าไป เพื่อให้ Browser รู้ว่าต้องใช้รูปเดิม
     icons: {
       icon: '/icon.png', 
       shortcut: '/icon.png',
@@ -63,19 +57,20 @@ export async function generateMetadata(
 
 // ✅ ส่วนแสดงผลหลัก (Main Component)
 export default async function LessonPlayPage({ params }: PageProps) {
-  // 1. เช็ค Session ก่อนเป็นอันดับแรก
+  // ❌ ลบส่วนเช็ค Session ออกได้เลย (Middleware กันให้แล้ว)
+  /*
   const session = await getServerSession(authOptions);
-
   if (!session || !session.user) {
-    redirect('/login'); // ถ้าไม่มี Session ดีดไป Login ทันที
+    redirect('/login');
   }
+  */
 
-  // 2. ดึงค่าจาก Params
+  // 1. ดึงค่าจาก Params
   const { id, slug } = await params;
   const lessonId = id;
   const subLessonId = slug;
 
-  // 3. ดึงข้อมูลด่านปัจจุบัน + ดึง "พี่น้อง" ทั้งหมดในบทเดียวกันมาด้วย
+  // 2. ดึงข้อมูลด่านปัจจุบัน + ดึง "พี่น้อง" ทั้งหมดในบทเดียวกันมาด้วย
   const subLesson = await prisma.subLesson.findUnique({
     where: { id: subLessonId },
     include: {
@@ -94,7 +89,7 @@ export default async function LessonPlayPage({ params }: PageProps) {
     return <div className="p-10 text-center text-red-500">ไม่พบข้อมูลบทเรียน...</div>;
   }
 
-  // 4. คำนวณหา Screen X of Y
+  // 3. คำนวณหา Screen X of Y
   const allSubLessons = subLesson.lesson.subLessons;
   const totalScreens = allSubLessons.length;
   const currentIndex = allSubLessons.findIndex(s => s.id === subLesson.id);

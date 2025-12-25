@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useSession } from "next-auth/react";
+// import { useSession } from "next-auth/react"; // 👈 ลบออก ไม่ได้ใช้แล้ว
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import ConveyorBox from '@/components/ConveyorBox/ConveyorBox';
@@ -47,21 +47,13 @@ function chunkTextIntoSmartLines(text: string, limit: number): string[][] {
   return lines;
 }
 
-// ✅ รับ duration ผ่าน Props แทน useParams
 interface TypingTestGameProps {
   durationParam: string;
 }
 
 export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
-  const { status } = useSession();
+  // const { status } = useSession(); // 👈 ลบออก
   const router = useRouter();
-  
-  // ✅ Logic เดิม
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/login");
-    }
-  }, [status, router]);
 
   const timeLimitMinutes = parseInt(durationParam.split('-')[0]) || 1;
   const timeLimitSeconds = timeLimitMinutes * 60;
@@ -91,15 +83,14 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
 
   // Setup Text
   useEffect(() => {
-    if (status !== "authenticated") return;
-
+    // ไม่ต้องเช็ค status แล้ว เพราะ Middleware กันคนนอกให้แล้ว
     setIsLoading(true);
     const text = generateRandomText(Math.max(timeLimitMinutes * 400, 500));
     const chunked = chunkTextIntoSmartLines(text, CHARS_PER_LINE);
     setLines(chunked);
     setStatuses(chunked.map(line => line.map(() => 'pending')));
     setIsLoading(false);
-  }, [timeLimitMinutes, status]);
+  }, [timeLimitMinutes]);
 
   // Timer
   useEffect(() => {
@@ -164,7 +155,8 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isFinished || isLoading || status !== "authenticated") return;
+      // ลบเช็ค status ออก เหลือแค่เช็ค State ของเกม
+      if (isFinished || isLoading) return;
       if (!hasStarted && e.key.length === 1 && e.key !== 'Backspace') setHasStarted(true);
 
       if (!expectedChar || errorEffect !== 'none') { e.preventDefault(); return; }
@@ -201,20 +193,9 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [lines, statuses, currentLineIndex, currentCharIndexInLine, expectedChar, hasStarted, isFinished, isLoading, errorEffect, isShiftRequired, status]);
+  }, [lines, statuses, currentLineIndex, currentCharIndexInLine, expectedChar, hasStarted, isFinished, isLoading, errorEffect, isShiftRequired]);
 
-  if (status === "loading") {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100">
-        <Loader2 size={64} className="animate-spin text-[#5cb5db] mb-4" />
-        <h2 className="text-xl font-bold text-gray-600">กำลังตรวจสอบสิทธิ์...</h2>
-      </div>
-    );
-  }
-
-  if (status === "unauthenticated") {
-    return null;
-  }
+  // ❌ ลบส่วนเช็ค loading / unauthenticated ออก เพราะไม่ต้องใช้แล้ว
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">

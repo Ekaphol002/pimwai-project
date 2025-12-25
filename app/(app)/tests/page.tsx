@@ -13,19 +13,14 @@ export default async function TestMenuPage() {
   // 1. ตรวจสอบ Session (ใครล็อกอินอยู่?)
   const session = await getServerSession(authOptions);
 
-  // ถ้ายังไม่ล็อกอิน ให้ดีดไปหน้า Login
-  if (!session || !session.user?.email) {
-    redirect('/login');
-  }
-
   // 2. ดึง User ตัวจริงจาก Database (เพื่อเอา ID)
   const user = await prisma.user.findUnique({
-    where: { email: session.user.email }
+    where: { email: session?.user?.email! }
   });
 
   // ถ้ามี Session แต่ไม่มี User ใน DB (กันเหนียว)
   if (!user) {
-    redirect('/login');
+    return <div>ไม่พบข้อมูลผู้ใช้</div>;
   }
 
   // 3. ✅ ดึงผลสอบ Speed Test ทั้งหมดของ User คนนี้ (ใช้ user.id จริง)

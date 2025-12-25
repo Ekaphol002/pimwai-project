@@ -1,5 +1,4 @@
 // app/typing-test/[duration]/page.tsx
-import React from 'react';
 import type { Metadata, ResolvingMetadata } from 'next';
 import TypingTestGame from './TypingTestGame'; // Import ตัวเกมที่เราแยกไป
 

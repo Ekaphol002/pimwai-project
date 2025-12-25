@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, Loader2, Star } from 'lucide-react';
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
 
 interface UserWithId {
     id?: string;
@@ -28,7 +27,6 @@ interface LeaderboardItem {
 
 export default function LeaderboardPage() {
     const { data: session, status } = useSession();
-    const router = useRouter();
 
     const userData = session?.user as UserWithId | undefined;
     const currentUserId = userData?.id;
@@ -41,12 +39,6 @@ export default function LeaderboardPage() {
 
     const [isInitialLoading, setIsInitialLoading] = useState(true);
     const [isTableLoading, setIsTableLoading] = useState(false);
-
-    useEffect(() => {
-        if (status === "unauthenticated") {
-            router.push("/login");
-        }
-    }, [status, router]);
 
     const fetchLeaderboard = async (isFirstLoad = false) => {
         if (isFirstLoad) setIsInitialLoading(true);

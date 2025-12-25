@@ -17,7 +17,7 @@ export default function AppLayout({
 
       <StickyNavbar />
       
-      <div className="flex flex-1 w-full max-w-screen-2xl mx-auto pb-20 bg-gray-200 "> {/* (พื้นหลังเทาอ่อน) */}
+      <div className="flex flex-1 w-full max-w-screen-2xl mx-auto bg-gray-200 "> {/* (พื้นหลังเทาอ่อน) */}
 
       <main className="flex-1 overflow-y-auto">
         {children} {/* <-- {children} คือ LessonsPage ของคุณ */}

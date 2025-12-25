@@ -55,12 +55,12 @@ model VerificationToken {
 
 model User {
   id            String    @id @default(cuid())
-  name          String?   // ✅ เพิ่ม: ชื่อจริง (จาก Google)
+  name          String? // ✅ เพิ่ม: ชื่อจริง (จาก Google)
   username      String?   @unique // ปรับเป็น Optional เผื่อยังไม่ได้ตั้ง
   email         String?   @unique
   emailVerified DateTime? // ✅ เพิ่ม: สถานะยืนยันอีเมล
-  image         String?   // รูปโปรไฟล์ (จาก Google)
-  password      String?   // ✅ เพิ่ม: เผื่อทำระบบรหัสผ่านในอนาคต
+  image         String? // รูปโปรไฟล์ (จาก Google)
+  password      String? // ✅ เพิ่ม: เผื่อทำระบบรหัสผ่านในอนาคต
   createdAt     DateTime  @default(now())
 
   // --- NextAuth Relations ---
@@ -76,6 +76,8 @@ model User {
   // --- App Relations ---
   progress    LessonProgress[]
   testResults SpeedTestResult[]
+
+  @@index([email])
 }
 
 // =========================================================
@@ -123,6 +125,7 @@ model LessonProgress {
   updatedAt DateTime @updatedAt
 
   @@unique([userId, subLessonId]) // ห้าม User คนเดิมบันทึกด่านเดิมซ้ำ (ให้ update แทน)
+  @@index([userId])
 }
 
 model SpeedTestResult {
