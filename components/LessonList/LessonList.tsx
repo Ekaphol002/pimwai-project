@@ -15,6 +15,7 @@ export interface SubLesson { // export เพื่อให้ไฟล์อ�
 
 export interface LessonUnit {
   id: number;
+  order: number;
   title: string;
   status: string; // 'completed' | 'resume' | 'start'
   avgSpeed?: string;
@@ -211,7 +212,7 @@ export default function LessonList({ title, lessons }: LessonListProps) {
                     border-2
                     ${unit.status === 'completed' ? 'bg-white text-[#71b16b]' : 'border-gray-300 text-gray-500'}
                   `}>
-                  {unit.id}
+                  {unit.order}
                 </div>
 
                 <div className="flex-1">

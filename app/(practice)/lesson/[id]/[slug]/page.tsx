@@ -77,7 +77,7 @@ export default async function LessonPlayPage({ params }: PageProps) {
       lesson: {
         include: {
           subLessons: {
-            orderBy: { id: 'asc' },
+            orderBy: { order: 'asc' },
             select: { id: true }
           }
         }
@@ -110,7 +110,7 @@ export default async function LessonPlayPage({ params }: PageProps) {
       },
       include: {
         subLessons: {
-          orderBy: { id: 'asc' },
+          orderBy: { order: 'asc' },
           take: 1
         }
       }

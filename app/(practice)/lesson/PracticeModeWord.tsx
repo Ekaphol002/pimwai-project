@@ -14,7 +14,7 @@ import {
 } from '@/lib/keyMaps';
 
 type CharStatus = 'correct' | 'incorrect' | 'pending';
-const CHARS_PER_LINE = 47;
+const CHARS_PER_LINE = 50;
 
 function chunkTextIntoCharLines(text: string): string[][] {
   if (!text) return [[]];
@@ -96,7 +96,7 @@ export default function PracticeModeWord({
   useEffect(() => {
     if (initialText) {
       // สร้าง array ขนาด 4 ช่อง ใส่ text เดิมลงไป แล้ว join ด้วยช่องว่าง
-      const multipliedText = Array(4).fill(initialText).join(' ');
+      const multipliedText = Array(1).fill(initialText).join(' ');
       
       setExpandedText(multipliedText); // เก็บไว้คำนวณคะแนน
       const chunkedLines = chunkTextIntoCharLines(multipliedText); // ตัดบรรทัดจากตัวที่คูณแล้ว

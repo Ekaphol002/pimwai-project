@@ -103,7 +103,7 @@ export default async function LessonsPage({ searchParams }: PageProps) {
     orderBy: { order: 'asc' },
     include: {
       subLessons: {
-        orderBy: { id: 'asc' },
+        orderBy: { order: 'asc' },
         include: {
           userProgress: {
             where: { userId: userId } // ใช้ userId ของจริงที่ได้มา
@@ -157,6 +157,7 @@ export default async function LessonsPage({ searchParams }: PageProps) {
 
     return {
       id: lesson.id,
+      order: lesson.order,
       title: lesson.title,
       status: unitStatus,
       avgSpeed: avgSpeed > 0 ? `${avgSpeed}` : undefined,

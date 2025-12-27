@@ -100,6 +100,7 @@ model SubLesson {
   title   String // ชื่อด่าน (ถ้ามี) หรือใช้ลำดับเอา
   content String // ข้อความที่จะให้พิมพ์ (Text)
   mode    String @default("word")
+  order     Int
 
   lessonId Int
   lesson   Lesson @relation(fields: [lessonId], references: [id])
