@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import CharacterConveyorBox from '@/components/CharacterConveyorBox/CharacterConveyorBox';
 import Keyboard from '@/components/Keyboard/Keyboard';
 import PracticeResultModal from '@/components/PracticeResultModal/PracticeResultModal';
-import useSound from '@/lib/useSound'; // ✅ 1. เพิ่มบรรทัดนี้
 import {
   reverseThaiKeyMap,
   thaiShiftKeyDisplayMap,
@@ -58,9 +57,6 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
   // ✅ เพิ่ม: State สำหรับเก็บ XP ที่ได้รับ
   const [earnedXP, setEarnedXP] = useState(0);
   const [completedQuest, setCompletedQuest] = useState<{ text: string; xp: number } | null>(null);
-
-  const playTypeSound = useSound('/type.wav', 0.6);   // เสียงพิมพ์ (ปรับความดังได้)
-  const playErrorSound = useSound('/error.mp3', 0.5); // เสียงผิด
 
   const handleNextLesson = () => {
     if (nextUrl) {
@@ -200,7 +196,6 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
       const shiftPressed = event.shiftKey;
 
       if (isShiftRequired && !shiftPressed) {
-        playErrorSound();
         setIsCurrentCharCorrect(false);
         setErrorKey(typedKeyCode);
         setErrorCount((count) => count + 1);
@@ -211,7 +206,6 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
       }
 
       if (typedKey === expectedChar) {
-        playTypeSound();
         setIsCurrentCharCorrect(true);
         setErrorKey(null);
 
@@ -235,7 +229,6 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
         }, 100);
 
       } else {
-        playErrorSound();
         setIsCurrentCharCorrect(false);
         setErrorKey(typedKeyCode);
         setErrorCount((count) => count + 1);

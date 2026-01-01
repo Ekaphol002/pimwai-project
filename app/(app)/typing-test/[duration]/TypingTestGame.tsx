@@ -10,7 +10,6 @@ import PracticeNavbar from '@/components/PracticeNavbar/PracticeNavbar';
 // import Keyboard from '@/components/Keyboard/Keyboard'; 
 import { SENTENCES_POOL } from '@/data/sentences';
 import { thaiShiftKeyDisplayMap } from '@/lib/keyMaps';
-import useSound from '@/lib/useSound';
 
 const CHARS_PER_LINE = 45;
 
@@ -79,9 +78,6 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
   const [finalWPM, setFinalWPM] = useState(0);
   const [finalAcc, setFinalAcc] = useState(0);
   const [earnedXP, setEarnedXP] = useState(0);
-
-  const playTypeSound = useSound('/type.wav', 0.6);
-  const playErrorSound = useSound('/error.mp3', 0.5);
   const isSubmittingRef = useRef(false);
 
   // 1. Setup Text & Init Statuses
@@ -234,7 +230,6 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
 
       if (isCorrect) {
         // --- กรณีพิมพ์ถูก ---
-        playTypeSound();
         if (newS[currentLineIndex]) {
             const newLine = [...newS[currentLineIndex]];
             newLine[currentCharIndexInLine] = 'correct';
@@ -245,7 +240,6 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
         moveCursorForward();
       } else {
         // --- กรณีพิมพ์ผิด ---
-        playErrorSound();
         setTotalErrors(p => p + 1);
         setProblemKeys(p => ({ ...p, [expectedChar]: (p[expectedChar] || 0) + 1 }));
 

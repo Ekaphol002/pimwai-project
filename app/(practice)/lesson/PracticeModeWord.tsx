@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import ConveyorBox from '@/components/ConveyorBox/ConveyorBox';
 import Keyboard from '@/components/Keyboard/Keyboard';
 import PracticeResultModal from '@/components/PracticeResultModal/PracticeResultModal';
-import useSound from '@/lib/useSound'; // ✅ 1. เพิ่มบรรทัดนี้
 import {
   reverseThaiKeyMap,
   thaiShiftKeyDisplayMap,
@@ -80,9 +79,6 @@ export default function PracticeModeWord({
 
   const [earnedXP, setEarnedXP] = useState(0);
   const [completedQuest, setCompletedQuest] = useState<{ text: string; xp: number } | null>(null);
-
-  const playTypeSound = useSound('/type.wav', 0.6);
-  const playErrorSound = useSound('/error.mp3', 0.5);
 
   const handleNextLesson = () => {
     if (nextUrl) {
@@ -284,7 +280,6 @@ export default function PracticeModeWord({
       const newStatuses = [...statuses];
 
       if (isCorrect) {
-        playTypeSound();
         if (newStatuses[currentLineIndex]) {
           const newLineStatus = [...newStatuses[currentLineIndex]];
           newLineStatus[currentCharIndexInLine] = 'correct';
@@ -294,7 +289,6 @@ export default function PracticeModeWord({
         setErrorKey(null);
         moveCursorForward();
       } else {
-        playErrorSound();
         setErrorKey(typedKeyCode);
         setTotalErrors((prev) => prev + 1);
         const char = expectedChar;
