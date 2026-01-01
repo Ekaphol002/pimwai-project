@@ -152,7 +152,7 @@ export default function TestPerformanceSection({
             </div>
           </div>
 
-          <div className="z-20 relative transform translate-y-15">
+          <div className="z-20 relative transform translate-y-10">
             <Image
               src="/car.gif"
               alt="Car"
