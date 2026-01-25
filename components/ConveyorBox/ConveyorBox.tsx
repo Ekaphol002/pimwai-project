@@ -1,5 +1,5 @@
 // components/ConveyorBox/ConveyorBox.tsx
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 type ConveyorBoxProps = {
   lines: string[][];
@@ -33,6 +33,50 @@ export default function ConveyorBox({
   const HIDE_TRIGGER_VOWELS = UPPER_VOWELS + TONES + 'ำ';
   const ALL_VOWELS_AND_TONES = HIDE_TRIGGER_VOWELS;
 
+  const [cursorStyle, setCursorStyle] = useState({ left: 0, width: 0, opacity: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const activeCharId = `char-${currentLineIndex}-${currentCharIndexInLine}`;
+    const activeEl = document.getElementById(activeCharId);
+
+    // ดึงตัวอักษรปัจจุบันมาเช็คว่าเป็นประเภทไหน
+    const currentChar = lines[currentLineIndex]?.[currentCharIndexInLine];
+
+    if (activeEl && currentChar) {
+      let targetLeft = activeEl.offsetLeft;
+      let targetWidth = activeEl.offsetWidth;
+
+      const isVowelOrTone = ALL_VOWELS_AND_TONES.includes(currentChar);
+      const isSpace = currentChar === ' ';
+
+      if (isVowelOrTone) {
+        // 🛠️ กรณีสระ/วรรณยุกต์: 
+        // ให้ขีดเส้น "ย้อนกลับไปทางซ้าย" (เหมือน right-full ในโค้ดเก่า)
+        // เพราะสระพวกนี้ใน ConveyorBox มันกว้าง 0px (w-0) และซ้อนอยู่กับตัวหน้า
+        const FIXED_WIDTH = 18; // ประมาณ w-4.5 (4.5 * 4px)
+        targetWidth = FIXED_WIDTH;
+        targetLeft = activeEl.offsetLeft - FIXED_WIDTH; // ขยับซ้ายไปเท่าความกว้าง
+      }
+      else if (isSpace) {
+        // 🛠️ กรณีวรรค:
+        // ให้ขีดเส้น "สั้นๆ ตรงกลาง" (เหมือน w-4 left-1/2)
+        const FIXED_WIDTH = 16; // w-4 (16px)
+        const centerOffset = (activeEl.offsetWidth / 2) - (FIXED_WIDTH / 2);
+        targetWidth = FIXED_WIDTH;
+        targetLeft = activeEl.offsetLeft + centerOffset;
+      }
+      // กรณีปกติ: ใช้ความกว้างเต็มตัวอักษรเลย (ไม่ต้องแก้ค่า)
+
+      // สั่งอัปเดต (Transition จะทำให้มันเลื่อนไปเอง)
+      setCursorStyle({
+        left: targetLeft,
+        width: targetWidth,
+        opacity: 1
+      });
+    }
+  }, [currentLineIndex, currentCharIndexInLine, lines]);
+
   return (
     // --- 2. กรอบนอกสุด (Fixed Size, Hidden Overflow) ---
     <div
@@ -52,11 +96,22 @@ export default function ConveyorBox({
           // --- 4. แต่ละบรรทัด ---
           <div
             key={lineIdx}
-            className="whitespace-nowrap border-b border-gray-200"
+            className="line-container whitespace-nowrap border-b border-gray-200 relative"
             style={{ height: `${lineHeightPx}px`, marginBottom: `${lineGap}px` }}
           >
-            {/* จัดเรียงตัวอักษรในบรรทัด (ชิดล่าง) */}
-            <div className="flex items-end h-full pl-2 pb-2">
+            {lineIdx === currentLineIndex && (
+              <div
+                className="absolute bottom-1 h-0.5 bg-blue-500 rounded-full transition-all duration-150 ease-out z-20 pointer-events-none animate-pulse"
+                style={{
+                  left: `${cursorStyle.left}px`,
+                  width: `${cursorStyle.width}px`,
+                  opacity: cursorStyle.opacity,
+                  // transition-all duration-150 คือตัวทำให้มัน "เลื่อน" ไม่ใช่วาร์ป
+                }}
+              />
+            )}
+
+            <div className="flex items-end h-full pl-2 pb-2 relative z-10">
               {line.map((char, charIdx) => {
                 // ดึงสถานะ (ถูก/ผิด/กำลังพิมพ์)
                 const status = statuses[lineIdx][charIdx];
@@ -145,7 +200,7 @@ export default function ConveyorBox({
                 }
 
                 return (
-                  <span key={charIdx} className={`relative text-3xl ${boxAnimationClass}`}>
+                  <span key={charIdx} id={`char-${lineIdx}-${charIdx}`} className={`relative text-3xl ${boxAnimationClass}`}>
 
                     {/* ตัวกล่องสีพื้นหลัง */}
                     <span className={`
@@ -162,18 +217,6 @@ export default function ConveyorBox({
                       </span>
                     </span>
 
-                    {/* เส้น Cursor สีฟ้ากระพริบ */}
-                    {isCurrent && errorEffect === 'none' && (
-                      isCharVowelOrTone ? (
-                        // กรณี: สระลอย/วรรณยุกต์ (ขีดเล็กๆ ด้านขวา)
-                        <span className="absolute -bottom-1.5 right-full w-4.5 h-0.5 bg-blue-500 rounded-full animate-blink-custom" />
-                      ) : isSpace ? (
-                        <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-blue-500 rounded-full animate-blink-custom" />
-                      ) : (
-                        // กรณี: ตัวอักษรปกติ (ขีดเส้นใต้เต็มตัว)
-                        <span className="absolute -bottom-1.5 left-0 right-0 h-0.5 bg-blue-500 rounded-full animate-blink-custom" />
-                      )
-                    )}
                   </span>
                 );
               })}

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import ConveyorBox from '@/components/ConveyorBox/ConveyorBox';
 import Keyboard from '@/components/Keyboard/Keyboard';
 import PracticeResultModal from '@/components/PracticeResultModal/PracticeResultModal';
+import NewKeyIntro from '@/components/NewKeyIntro/NewKeyIntro'; // Import
 import {
   reverseThaiKeyMap,
   thaiShiftKeyDisplayMap,
@@ -13,7 +14,15 @@ import {
 } from '@/lib/keyMaps';
 
 type CharStatus = 'correct' | 'incorrect' | 'pending';
-const CHARS_PER_LINE = 50;
+const CHARS_PER_LINE = 35;
+
+type XpBreakdown = {
+  base: number;
+  quest: number;
+  wpm: number;
+  grinder: number;
+  firstWin: number;
+};
 
 function chunkTextIntoCharLines(text: string): string[][] {
   if (!text) return [[]];
@@ -54,6 +63,10 @@ export default function PracticeModeWord({
 }: PracticeModeWordProps) {
   const router = useRouter();
 
+  // Intro State
+  const [showIntro, setShowIntro] = useState(true);
+  const [isIntroPhase1Complete, setIsIntroPhase1Complete] = useState(false);
+
   // ✅ 1. เพิ่ม State เก็บข้อความที่ขยายแล้ว (คูณ 4) เพื่อใช้คำนวณ WPM ตอนจบ
   const [expandedText, setExpandedText] = useState('');
 
@@ -79,6 +92,9 @@ export default function PracticeModeWord({
 
   const [earnedXP, setEarnedXP] = useState(0);
   const [completedQuest, setCompletedQuest] = useState<{ text: string; xp: number } | null>(null);
+  const [questText, setQuestText] = useState<string | null>(null);
+  const [xpBreakdown, setXpBreakdown] = useState<XpBreakdown | null>(null);
+  const [totalXP, setTotalXP] = useState(0);
 
   const handleNextLesson = () => {
     if (nextUrl) {
@@ -93,10 +109,10 @@ export default function PracticeModeWord({
     if (initialText) {
       // สร้าง array ขนาด 4 ช่อง ใส่ text เดิมลงไป แล้ว join ด้วยช่องว่าง
       const multipliedText = Array(1).fill(initialText).join(' ');
-      
+
       setExpandedText(multipliedText); // เก็บไว้คำนวณคะแนน
       const chunkedLines = chunkTextIntoCharLines(multipliedText); // ตัดบรรทัดจากตัวที่คูณแล้ว
-      
+
       setLines(chunkedLines);
       resetLesson(chunkedLines);
     }
@@ -115,14 +131,19 @@ export default function PracticeModeWord({
           duration
         }),
       });
-      
-      const data = await res.json(); 
-      if (data.success) {
-          console.log('บันทึกผลสำเร็จ! ได้รับ EXP:', data.earnedXP);
-          setEarnedXP(data.earnedXP); 
-          setCompletedQuest(data.completedQuest);
-      }
 
+      const data = await res.json();
+      if (data.success) {
+        console.log('บันทึกผลสำเร็จ! ได้รับ EXP:', data.earnedXP);
+        setEarnedXP(data.earnedXP);
+        setXpBreakdown(data.xpBreakdown);
+        setTotalXP(data.totalXP);
+        if (data.completedQuest) {
+          setQuestText(data.completedQuest.text);
+        } else {
+          setQuestText(null);
+        }
+      }
     } catch (error) {
       console.error('บันทึกผลล้มเหลว:', error);
     }
@@ -139,11 +160,14 @@ export default function PracticeModeWord({
     const durationInSeconds = Math.round(durationMs / 1000);
     const durationInMinutes = durationMs / 60000;
 
-    // ✅ 3. ใช้ expandedText (ตัวคูณแล้ว) ในการคำนวณ WPM และ Accuracy
-    const totalChars = expandedText.replace(/ /g, '').length; // ใช้ expandedText แทน initialText
-    
+    // ✅ 1. คงตัวหารไว้ที่ 4 (มาตรฐานโลกคือ 5) 
+    // การหาร 4 จะทำให้ WPM ของผู้เล่น "ดูเยอะขึ้น" ประมาณ 20% (จิตวิทยาให้กำลังใจ)
+    const totalChars = expandedText.replace(/ /g, '').length;
+
     const grossWPM = (totalChars / 4) / durationInMinutes;
     const errorPenalty = totalErrors / durationInMinutes;
+
+    // คำนวณ Net WPM ตามปกติ
     const netWPM = Math.round(grossWPM - errorPenalty);
     const calculatedWPM = netWPM < 0 ? 0 : netWPM;
     setFinalWPM(calculatedWPM);
@@ -152,17 +176,25 @@ export default function PracticeModeWord({
     const accuracy = totalKeystrokes > 0 ? Math.round((totalChars / totalKeystrokes) * 100) : 100;
     setFinalAcc(accuracy);
 
+    // ✅ 2. ปรับเกณฑ์ดาวให้ "ง่ายขึ้นมาก"
     let stars = 0;
-    if (accuracy >= 95) stars = 3;
-    else if (accuracy >= 90) stars = 2;
-    else if (accuracy >= 85) stars = 1;
-    setFinalStars(stars);
 
+    if (accuracy >= 90 && calculatedWPM >= 15) {
+      stars = 3;
+    } else if (accuracy >= 80) {
+      stars = 2;
+    } else {
+      stars = 1; // จบด่านได้ ให้ 1 ดาวเสมอ ไม่ให้เป็น 0
+    }
+
+    setFinalStars(stars);
     saveResultToDb(calculatedWPM, accuracy, stars, durationInSeconds);
   };
 
   const resetLesson = (newLines?: string[][]) => {
     setIsFinished(false);
+    setShowIntro(true); // Show intro on reset
+    setIsIntroPhase1Complete(false);
     setCurrentLineIndex(0);
     setCurrentCharIndexInLine(0);
     setErrorEffect('none');
@@ -175,7 +207,7 @@ export default function PracticeModeWord({
     setFinalAcc(0);
     setFinalStars(0);
     setFinalTime("0:00");
-    setEarnedXP(0); 
+    setEarnedXP(0);
     setCompletedQuest(null);
     window.scrollTo(0, 0);
   };
@@ -215,12 +247,12 @@ export default function PracticeModeWord({
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (isFinished) return;
+      if (isFinished || showIntro) return;
 
       if (!expectedChar || errorEffect !== 'none') {
         // อนุญาตให้กดได้เฉพาะกรณีที่ไม่ได้อยู่ในสถานะ error สั่น
         // แต่ถ้าจบเกมแล้ว (expectedChar ไม่มี) ก็ห้ามกด
-        if(!expectedChar) event.preventDefault();
+        if (!expectedChar) event.preventDefault();
         return;
       };
 
@@ -231,10 +263,10 @@ export default function PracticeModeWord({
       const typedKeyCode = event.code;
       const typedKey = event.key;
       setPressedKey(typedKeyCode);
-      
+
       // ป้องกัน Default action เช่น Spacebar เลื่อนหน้าจอ
-      if(typedKey === ' ' || typedKey.length === 1) {
-          event.preventDefault();
+      if (typedKey === ' ' || typedKey.length === 1) {
+        event.preventDefault();
       }
 
       // --- Logic ปุ่ม Backspace ---
@@ -271,7 +303,7 @@ export default function PracticeModeWord({
       if (event.key.length > 1 && event.key !== 'Space') return;
       const shiftPressed = event.shiftKey;
       let isCorrect = typedKey === expectedChar;
-      
+
       // ตรวจสอบ Shift
       if (isShiftRequired && !shiftPressed) isCorrect = false;
       // ถ้าไม่ได้ต้องการ Shift แต่กด Shift (ยกเว้น Spacebar)
@@ -320,7 +352,7 @@ export default function PracticeModeWord({
           setTimeout(() => {
             setErrorEffect('none');
             moveCursorForward();
-          }, 300);
+          }, 200);
         }
       }
     };
@@ -333,7 +365,7 @@ export default function PracticeModeWord({
       window.removeEventListener('keyup', handleKeyUp);
     };
 
-  }, [lines, statuses, currentLineIndex, currentCharIndexInLine, expectedChar, isShiftRequired, errorEffect, startTime, totalErrors, isFinished]); 
+  }, [lines, statuses, currentLineIndex, currentCharIndexInLine, expectedChar, isShiftRequired, errorEffect, startTime, totalErrors, isFinished, showIntro]);
   // เอา initialText ออกจาก dependency array ของ useEffect นี้เพราะไม่ได้ใช้โดยตรง
 
   return (
@@ -350,8 +382,27 @@ export default function PracticeModeWord({
           onNextLesson={handleNextLesson}
           isTestMode={isTestMode}
           earnedXP={earnedXP}
-          completedQuest={completedQuest}
+          xpBreakdown={xpBreakdown}
+          questText={questText}
+          totalXP={totalXP}
         />
+      ) : showIntro ? (
+        // Intro Screen
+        <>
+          <NewKeyIntro
+            targetChar={lines[0][0] || ' '}
+            onComplete={() => setShowIntro(false)}
+            onCorrectPress={() => setIsIntroPhase1Complete(true)}
+          />
+          {/* Show Keyboard during intro highlighting the target key */}
+          <Keyboard
+            pressedKey={pressedKey}
+            errorKey={null}
+            expectedKey={!isIntroPhase1Complete ? (reverseThaiKeyMap[lines[0][0]] || 'Space') : 'Enter'}
+            highlightedShiftKey={null}
+            useBlueBlink={!isIntroPhase1Complete}
+          />
+        </>
       ) : (
         <>
           <ConveyorBox

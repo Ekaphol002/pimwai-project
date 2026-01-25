@@ -6,44 +6,84 @@ import { Loader2 } from 'lucide-react';
 import ConveyorBox from '@/components/ConveyorBox/ConveyorBox';
 import PracticeResultModal from '@/components/PracticeResultModal/PracticeResultModal';
 import PracticeNavbar from '@/components/PracticeNavbar/PracticeNavbar';
-// ❌ ไม่ต้องใช้ Keyboard ในโหมดทดสอบ (หรือถ้าอยากใส่ก็ uncomment ได้)
-// import Keyboard from '@/components/Keyboard/Keyboard'; 
 import { SENTENCES_POOL } from '@/data/sentences';
 import { thaiShiftKeyDisplayMap } from '@/lib/keyMaps';
 
-const CHARS_PER_LINE = 45;
+// ลดจำนวนตัวอักษรต่อบรรทัดลงเล็กน้อยเพื่อให้ตัดคำภาษาไทยสวยขึ้น
+const CHARS_PER_LINE = 45; 
 
+// --- Helper 1: สุ่มประโยคแบบไม่ซ้ำ (Shuffle) ---
 function generateRandomText(minLength: number): string {
   let text = "";
+  // สับตำแหน่งประโยคใน Pool (Fisher-Yates Shuffle แบบย่อ)
+  let pool = [...SENTENCES_POOL].sort(() => 0.5 - Math.random());
+  let poolIndex = 0;
+
   while (text.length < minLength) {
-    const randomIndex = Math.floor(Math.random() * SENTENCES_POOL.length);
-    text += (text ? " " : "") + SENTENCES_POOL[randomIndex];
+    // ถ้าใช้ประโยคหมด Pool แล้ว ให้สับใหม่อีกรอบ
+    if (poolIndex >= pool.length) {
+      pool = [...SENTENCES_POOL].sort(() => 0.5 - Math.random());
+      poolIndex = 0;
+    }
+
+    const sentence = pool[poolIndex];
+    // ถ้ามี Text อยู่แล้วให้เติม Space คั่นก่อนต่อประโยคใหม่
+    text += (text ? " " : "") + sentence;
+    poolIndex++;
   }
   return text;
 }
 
+// --- Helper 2: ตัดคำภาษาไทยและจัดบรรทัด (Smart Line Break) ---
 function chunkTextIntoSmartLines(text: string, limit: number): string[][] {
-  const words = text.split(' ');
   const lines: string[][] = [];
   let currentLineChars: string[] = [];
-  let currentLength = 0;
+  
+  // ใช้ Intl.Segmenter สำหรับตัดคำภาษาไทย (แม่นยำกว่า split space)
+  const segmenter = new Intl.Segmenter('th', { granularity: 'word' });
+  const segments = [...segmenter.segment(text)].map(s => s.segment);
 
-  for (let i = 0; i < words.length; i++) {
-    const word = words[i];
+  for (const word of segments) {
     const wordChars = word.split('');
-    const spaceCost = currentLineChars.length > 0 ? 1 : 0;
-    
-    if (currentLength + spaceCost + wordChars.length > limit) {
-      if (currentLineChars.length > 0) lines.push(currentLineChars);
+
+    // กรณี 1: คำเดียวโดดๆ ยาวเกินบรรทัด (เช่น URL หรือคำมั่วๆ ยาวๆ)
+    // จำเป็นต้องตัดทิ้งดื้อๆ เพื่อไม่ให้ UI พัง
+    if (wordChars.length > limit) {
+        // ถ้าบรรทัดปัจจุบันมีของอยู่ ให้ push เก็บไปก่อน
+        if (currentLineChars.length > 0) {
+            lines.push([...currentLineChars]);
+            currentLineChars = [];
+        }
+        // ทยอยตัดคำยาวๆ ใส่บรรทัดใหม่
+        let remainingChars = [...wordChars];
+        while (remainingChars.length > 0) {
+             const chunk = remainingChars.splice(0, limit);
+             lines.push(chunk);
+        }
+        continue; // ข้ามไปคำต่อไป
+    }
+
+    // กรณี 2: คำปกติ
+    // เช็คว่าถ้าเติมคำนี้ลงไป จะล้นบรรทัดไหม?
+    if (currentLineChars.length + wordChars.length > limit) {
+      // ถ้าล้น -> เอาบรรทัดเก่าเก็บเข้า lines
+      lines.push([...currentLineChars]);
+      // เริ่มบรรทัดใหม่ด้วยคำนี้
       currentLineChars = [...wordChars];
-      currentLength = wordChars.length;
+      
+      // *ทริค*: ถ้าขึ้นบรรทัดใหม่แล้วตัวแรกเป็น "space" ให้ลบทิ้ง (Trim Start)
+      if (currentLineChars.length > 0 && currentLineChars[0] === ' ') {
+          currentLineChars.shift();
+      }
     } else {
-      if (spaceCost > 0) { currentLineChars.push(' '); currentLength++; }
+      // ถ้าไม่ล้น -> ต่อคำเข้าไป
       currentLineChars.push(...wordChars);
-      currentLength += wordChars.length;
     }
   }
+
+  // อย่าลืมเก็บเศษบรรทัดสุดท้าย
   if (currentLineChars.length > 0) lines.push(currentLineChars);
+  
   return lines;
 }
 
@@ -58,7 +98,7 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
 
   // --- Game State ---
   const [lines, setLines] = useState<string[][]>([[]]);
-  const [statuses, setStatuses] = useState<any[][]>([[]]); // เก็บ status 'correct' | 'incorrect' | 'pending'
+  const [statuses, setStatuses] = useState<any[][]>([[]]);
   const [currentLineIndex, setCurrentLineIndex] = useState(0);
   const [currentCharIndexInLine, setCurrentCharIndexInLine] = useState(0);
   
@@ -79,19 +119,32 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
   const [finalAcc, setFinalAcc] = useState(0);
   const [earnedXP, setEarnedXP] = useState(0);
   const isSubmittingRef = useRef(false);
+  const [xpBreakdown, setXpBreakdown] = useState(null);
 
   // 1. Setup Text & Init Statuses
   useEffect(() => {
     setIsLoading(true);
-    // สร้าง Text ให้ยาวพอสำหรับเวลาที่เลือก
-    const text = generateRandomText(Math.max(timeLimitMinutes * 400, 500)); 
+    // สร้าง Text (คำนวณเผื่อไว้: 1 นาทีพิมพ์ได้ประมาณ 300-400 ตัวอักษรสำหรับคนเก่งๆ)
+    const textLength = Math.max(timeLimitMinutes * 500, 600); 
+    const text = generateRandomText(textLength); 
+    
     const chunked = chunkTextIntoSmartLines(text, CHARS_PER_LINE);
     
     setLines(chunked);
-    // สร้าง Status Array ให้ตรงกับ Lines
     setStatuses(chunked.map(line => line.map(() => 'pending')));
     
     setIsLoading(false);
+    
+    // Reset state อื่นๆ เมื่อเปลี่ยนเวลาทดสอบ
+    setHasStarted(false);
+    setIsFinished(false);
+    setTimeLeft(timeLimitMinutes * 60);
+    setCurrentLineIndex(0);
+    setCurrentCharIndexInLine(0);
+    setCorrectCharsCount(0);
+    setTotalErrors(0);
+    isSubmittingRef.current = false;
+
   }, [timeLimitMinutes]);
 
   // 2. Timer Logic
@@ -117,7 +170,6 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
     isSubmittingRef.current = true;
     setIsFinished(true);
 
-    // คำนวณผล
     const grossWPM = (correctCharsCount / 5) / timeLimitMinutes;
     const netWPM = Math.max(0, Math.round(grossWPM));
     const totalKeystrokes = correctCharsCount + totalErrors;
@@ -141,13 +193,13 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
       const data = await res.json();
       if (data.success) {
         setEarnedXP(data.earnedXP);
+        setXpBreakdown(data.xpBreakdown)
       }
     } catch (error) {
       console.error("Save failed:", error);
     }
   };
 
-  // --- Keyboard Logic (Copy from PracticeModeWord) ---
   const expectedChar = lines[currentLineIndex]?.[currentCharIndexInLine];
   const isShiftRequired = Object.values(thaiShiftKeyDisplayMap).includes(expectedChar);
 
@@ -167,30 +219,23 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // 1. เช็คสถานะเกม
       if (isFinished || isLoading) return;
-
-      // ✅ ป้องกันการกดค้าง (Key Hold)
       if (e.repeat) return;
 
-      // เริ่มจับเวลาเมื่อกดปุ่มแรก (ที่ไม่ใช่ Backspace)
+      // เริ่มจับเวลาเมื่อกดปุ่มแรก
       if (!hasStarted && e.key.length === 1 && e.key !== 'Backspace') setHasStarted(true);
 
-      // ถ้าอยู่ในจังหวะสั่น (Error Effect) ห้ามกด
       if (!expectedChar || errorEffect !== 'none') { 
         if(!expectedChar) e.preventDefault();
         return; 
       }
 
       const typedKey = e.key;
-      
-      // ป้องกัน Spacebar เลื่อนหน้าจอ
       if(typedKey === ' ' || typedKey.length === 1) e.preventDefault();
 
-      // --- Logic Backspace (ลบย้อนหลัง) ---
+      // --- Logic Backspace ---
       if (typedKey === 'Backspace') {
-        setErrorEffect('none'); // หยุดสั่นทันทีถ้ากดลบ
-
+        setErrorEffect('none');
         let newC = currentCharIndexInLine, newL = currentLineIndex;
         
         if (newC > 0) {
@@ -199,10 +244,9 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
             newL--; 
             newC = lines[newL].length - 1; 
         } else {
-            return; // อยู่ตัวแรกสุด ลบไม่ได้
+            return; 
         }
 
-        // Reset status ของตัวที่จะลบกลับเป็น pending
         const newS = [...statuses];
         if (newS[newL]) {
             const updatedLine = [...newS[newL]];
@@ -216,20 +260,17 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
         return;
       }
 
-      // กรองปุ่มที่ไม่ใช่ตัวอักษร
       if (e.key.length > 1 && e.key !== 'Space') return;
 
       const shift = e.shiftKey;
       let isCorrect = typedKey === expectedChar;
       
-      // ตรวจสอบ Shift
       if (isShiftRequired && !shift) isCorrect = false;
       if (!isShiftRequired && shift && typedKey !== ' ') isCorrect = false;
 
       const newS = [...statuses];
 
       if (isCorrect) {
-        // --- กรณีพิมพ์ถูก ---
         if (newS[currentLineIndex]) {
             const newLine = [...newS[currentLineIndex]];
             newLine[currentCharIndexInLine] = 'correct';
@@ -239,11 +280,9 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
         setCorrectCharsCount(p => p + 1);
         moveCursorForward();
       } else {
-        // --- กรณีพิมพ์ผิด ---
         setTotalErrors(p => p + 1);
         setProblemKeys(p => ({ ...p, [expectedChar]: (p[expectedChar] || 0) + 1 }));
 
-        // เช็คตัวก่อนหน้าเพื่อเลือก Effect
         let prevCharStatus = null;
         if (currentCharIndexInLine > 0 && statuses[currentLineIndex]) {
             prevCharStatus = statuses[currentLineIndex][currentCharIndexInLine - 1];
@@ -253,22 +292,16 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
         }
 
         if (prevCharStatus === 'incorrect') {
-            // ถ้าตัวก่อนหน้าก็ผิด -> สั่นแค่ตัวอักษร (shake-text)
             setErrorEffect('shake-text');
             setTimeout(() => { setErrorEffect('none'); }, 300);
         } else {
-            // ถ้าเป็นความผิดพลาดใหม่ -> สั่นทั้งกล่อง (shake-box)
             setErrorEffect('shake-box');
-            
-            // Mark เป็น incorrect แล้วข้ามไป (เหมือน Word Mode)
             if (newS[currentLineIndex]) {
                 const newLine = [...newS[currentLineIndex]];
                 newLine[currentCharIndexInLine] = 'incorrect';
                 newS[currentLineIndex] = newLine;
                 setStatuses(newS);
             }
-
-            // รอสั่นเสร็จค่อยเลื่อน Cursor
             setTimeout(() => {
                 setErrorEffect('none');
                 moveCursorForward();
@@ -281,7 +314,6 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [lines, statuses, currentLineIndex, currentCharIndexInLine, expectedChar, hasStarted, isFinished, isLoading, errorEffect, isShiftRequired]);
 
-  // --- Render ---
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
       <PracticeNavbar 
@@ -298,13 +330,14 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
             time={`${timeLimitMinutes}:00`}
             problemKeys={problemKeys}
             onRetry={() => window.location.reload()}
-            onGoToLessons={() => router.push('/tests')} // แก้ Path ตามที่คุณต้องการ
+            onGoToLessons={() => router.push('/tests')}
             onNextLesson={() => router.push('/tests')}
             isTestMode={true}
             earnedXP={earnedXP}
+            xpBreakdown={xpBreakdown}
           />
         ) : isLoading ? (
-          <div className="flex flex-col items-center justify-center py-20 text-gray-400 font-bold text-2xl">
+          <div className="h-screen flex flex-col items-center justify-center py-20 text-gray-400 font-bold text-2xl">
             <Loader2 size={48} className="animate-spin text-[#5cb5db] mb-4" />
             <span>กำลังโหลดบททดสอบ...</span>
           </div>
@@ -316,7 +349,7 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
             currentCharIndexInLine={currentCharIndexInLine}
             lineHeightPx={60}
             errorEffect={errorEffect}
-            visibleLines={7} // ปรับจำนวนบรรทัดที่แสดงได้ตามใจชอบ
+            visibleLines={7}
           />
         )}
       </div>

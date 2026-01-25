@@ -14,6 +14,7 @@ interface KeyboardProps {
   expectedKey: string | null;
   highlightedShiftKey?: string | null;
   heatmapData?: { [key: string]: number }; // <-- ใช้ในหน้าสรุปผล เพื่อระบายสีปุ่มผิด
+  useBlueBlink?: boolean; // New prop for Intro
 }
 
 const Keyboard = ({
@@ -21,7 +22,8 @@ const Keyboard = ({
   errorKey,
   expectedKey,
   highlightedShiftKey,
-  heatmapData
+  heatmapData,
+  useBlueBlink = false
 }: KeyboardProps) => {
 
   const maxErrors = heatmapData
@@ -79,7 +81,7 @@ const Keyboard = ({
             } else {
               keyStyle += ' bg-white text-gray-400';
             }
-          } 
+          }
           // --- สิ้นสุด Heatmap ---
 
           else {
@@ -87,7 +89,11 @@ const Keyboard = ({
             if (isPressed && isError) {
               keyStyle += ' bg-red-500 text-white transform scale-95 shadow-inner';
             } else if ((isExpected || isShiftHighlight) && !isPressed) {
-              keyStyle += ' bg-blue-500 text-white animate-pulse';
+              if (useBlueBlink) {
+                keyStyle += ' bg-blue-500 animate-blink-blue'; // Use new blink animation
+              } else {
+                keyStyle += ' bg-blue-500 text-white animate-pulse';
+              }
             } else if (isPressed) {
               keyStyle += ' bg-white text-gray-700 transform scale-95 shadow-inner';
             } else {

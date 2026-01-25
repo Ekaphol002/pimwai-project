@@ -216,7 +216,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-16">
 
           {/* Left: Text Description */}
-          <div className="flex-1 space-y-8">
+          <div className="flex-1 space-y-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-[#5cb5db] text-xs font-bold uppercase tracking-wider">
               <Presentation size={16} /> Website Presentation
             </div>
@@ -232,7 +232,7 @@ export default function LandingPage() {
               พบกับประสบการณ์การฝึกพิมพ์ที่ไม่เหมือนใคร ด้วยอินเตอร์เฟสที่ทันสมัย บทเรียนที่เข้าใจง่าย และระบบวิเคราะห์ผลแบบเรียลไทม์ที่จะช่วยให้คุณพิมพ์ได้เร็วขึ้นภายใน 1 สัปดาห์
             </p>
 
-            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {[
                 "บทเรียนไล่ระดับ (Beginner - Expert)",
                 "เกมฝึกพิมพ์ที่สนุกและท้าทาย",

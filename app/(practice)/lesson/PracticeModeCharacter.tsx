@@ -1,11 +1,12 @@
 // components/PracticeModeCharacter.tsx
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import CharacterConveyorBox from '@/components/CharacterConveyorBox/CharacterConveyorBox';
 import Keyboard from '@/components/Keyboard/Keyboard';
 import PracticeResultModal from '@/components/PracticeResultModal/PracticeResultModal';
+import NewKeyIntro from '@/components/NewKeyIntro/NewKeyIntro'; // Import
 import {
   reverseThaiKeyMap,
   thaiShiftKeyDisplayMap,
@@ -25,6 +26,14 @@ function chunkTextIntoCharLines(text: string): string[][] {
   return lines;
 }
 
+type XpBreakdown = {
+  base: number;
+  quest: number;
+  wpm: number;
+  grinder: number;
+  firstWin: number;
+};
+
 interface PracticeModeCharacterProps {
   initialText: string;
   subLessonId: string;
@@ -33,6 +42,10 @@ interface PracticeModeCharacterProps {
 
 export default function PracticeModeCharacter({ initialText, subLessonId, nextUrl }: PracticeModeCharacterProps) {
   const router = useRouter();
+
+  // Intro State
+  const [showIntro, setShowIntro] = useState(true); // Default show intro for now
+  const [isIntroPhase1Complete, setIsIntroPhase1Complete] = useState(false);
 
   const [lines, setLines] = useState<string[][]>([[]]);
   const [currentLineIndex, setCurrentLineIndex] = useState(0);
@@ -54,9 +67,14 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
   const [finalStars, setFinalStars] = useState(0);
   const [finalTime, setFinalTime] = useState("0:00");
 
-  // ✅ เพิ่ม: State สำหรับเก็บ XP ที่ได้รับ
   const [earnedXP, setEarnedXP] = useState(0);
   const [completedQuest, setCompletedQuest] = useState<{ text: string; xp: number } | null>(null);
+  const [xpBreakdown, setXpBreakdown] = useState<XpBreakdown | null>(null);
+  const [questText, setQuestText] = useState<string | null>(null);
+  const [totalXP, setTotalXP] = useState(0);
+
+  // ใช้ Ref เพื่อป้องกันการส่งข้อมูลซ้ำ (Double Submit)
+  const isSubmittingRef = useRef(false);
 
   const handleNextLesson = () => {
     if (nextUrl) {
@@ -76,8 +94,10 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
 
   // --- ฟังก์ชันบันทึกผลลง Database ---
   const saveResultToDb = async (wpm: number, accuracy: number, stars: number, duration: number) => {
+    if (isSubmittingRef.current) return; // ป้องกันส่งซ้ำ
+    isSubmittingRef.current = true;
+
     try {
-      // ✅ 1. รับค่า Response จาก API
       const res = await fetch('/api/save-lesson', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -90,13 +110,18 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
         }),
       });
 
-      const data = await res.json(); // แปลงเป็น JSON
+      const data = await res.json();
 
       if (data.success) {
         console.log('บันทึกผลสำเร็จ! ได้รับ EXP:', data.earnedXP);
-        // ✅ 2. เอาค่า XP ที่ได้มาใส่ State
         setEarnedXP(data.earnedXP);
-        setCompletedQuest(data.completedQuest); 
+        setXpBreakdown(data.xpBreakdown);
+        setTotalXP(data.totalXP);
+        if (data.completedQuest) {
+          setQuestText(data.completedQuest.text);
+        } else {
+          setQuestText(null);
+        }
       }
 
     } catch (error) {
@@ -143,6 +168,10 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
   // -----------------------------
   const resetLesson = (newLines?: string[][]) => {
     setIsFinished(false);
+    setIsFinished(false);
+    setShowIntro(true); // Show intro on reset
+    setIsIntroPhase1Complete(false);
+    isSubmittingRef.current = false;
     setCurrentLineIndex(0);
     setCurrentCharInLineIndex(0);
     setIsCurrentCharCorrect(null);
@@ -155,7 +184,7 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
     setFinalAcc(0);
     setFinalStars(0);
     setFinalTime("0:00");
-    setEarnedXP(0); // Reset XP ด้วย
+    setEarnedXP(0);
     window.scrollTo(0, 0);
   };
 
@@ -174,11 +203,11 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
 
-      if (isFinished) return;
+      if (isFinished || showIntro) return; // Disable game input during intro
+      if (event.repeat) return; // ป้องกันการกดแช่
 
-      if (event.repeat) return;
-
-      if (!expectedChar || isCurrentCharCorrect !== null) return;
+      // ❌ ลบเงื่อนไขที่บล็อกการพิมพ์ออก (isCurrentCharCorrect !== null) เพื่อให้พิมพ์ต่อเนื่องได้ทันที
+      if (!expectedChar) return;
 
       if (event.key === 'Shift') {
         setPressedKey(event.code);
@@ -195,40 +224,49 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
       event.preventDefault();
       const shiftPressed = event.shiftKey;
 
+      // ------------------------------------
+      // Logic ตรวจคำ (เหมือนเดิม 100%)
+      // ------------------------------------
       if (isShiftRequired && !shiftPressed) {
+        // กรณีต้องกด Shift แต่ไม่กด -> ผิด
         setIsCurrentCharCorrect(false);
         setErrorKey(typedKeyCode);
         setErrorCount((count) => count + 1);
         setTotalErrors(prev => prev + 1);
         setProblemKeys((prev) => ({ ...prev, [expectedChar]: (prev[expectedChar] || 0) + 1 }));
-        setTimeout(() => { setIsCurrentCharCorrect(null); }, 300);
+        setTimeout(() => { setIsCurrentCharCorrect(null); }, 300); // Shake effect ยังคงไว้
         return;
       }
 
       if (typedKey === expectedChar) {
-        setIsCurrentCharCorrect(true);
+        // ✅ กรณีพิมพ์ถูก: ขยับทันที ไม่ต้องรอ setTimeout
+        setIsCurrentCharCorrect(true); // เซ็ตเพื่อให้สีเขียวขึ้นแป๊บเดียว หรือ Conveyor ขยับ
         setErrorKey(null);
 
         const isLastCharOfLine = currentCharInLineIndex === lines[currentLineIndex].length - 1;
         const isLastLine = currentLineIndex === lines.length - 1;
 
-        setTimeout(() => {
-          if (isLastCharOfLine && !isLastLine) {
-            setCurrentLineIndex(prev => prev + 1);
-            setCurrentCharInLineIndex(0);
-          } else if (!isLastCharOfLine) {
-            setCurrentCharInLineIndex(prev => prev + 1);
-          } else if (isLastLine) {
-            const endTime = Date.now();
-            calculateResults(endTime);
-            setIsFinished(true);
-            setCompletedQuest(null);
-            window.scrollTo(0, 0);
-          }
-          setIsCurrentCharCorrect(null);
-        }, 100);
+        // ขยับ Cursor ทันที
+        if (isLastCharOfLine && !isLastLine) {
+          setCurrentLineIndex(prev => prev + 1);
+          setCurrentCharInLineIndex(0);
+        } else if (!isLastCharOfLine) {
+          setCurrentCharInLineIndex(prev => prev + 1);
+        } else if (isLastLine) {
+          // จบเกม
+          const endTime = Date.now();
+          calculateResults(endTime);
+          setIsFinished(true);
+          setCompletedQuest(null);
+          window.scrollTo(0, 0);
+        }
+
+        // Reset สถานะกลับเป็นปกติทันทีเพื่อให้พร้อมรับตัวต่อไป
+        // ไม่ต้องรอ 100ms
+        setIsCurrentCharCorrect(null);
 
       } else {
+        // กรณีพิมพ์ผิดทั่วไป
         setIsCurrentCharCorrect(false);
         setErrorKey(typedKeyCode);
         setErrorCount((count) => count + 1);
@@ -250,7 +288,7 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
       window.removeEventListener('keyup', handleKeyUp);
     };
 
-  }, [lines, currentLineIndex, currentCharInLineIndex, expectedChar, isShiftRequired, initialText, startTime, totalErrors, problemKeys, isCurrentCharCorrect, isFinished]);
+  }, [lines, currentLineIndex, currentCharInLineIndex, expectedChar, isShiftRequired, initialText, startTime, totalErrors, problemKeys, isFinished, showIntro]); // Added showIntro
 
   return (
     <div className="pt-4 pb-10 flex flex-col items-center gap-8">
@@ -264,11 +302,28 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
           onRetry={() => resetLesson(lines)}
           onGoToLessons={goToLessonsPage}
           onNextLesson={handleNextLesson}
-          // ✅ 3. ส่งค่า earnedXP ไปให้ Modal แสดงผล (เป็นตัวเลขเฉยๆ)
           earnedXP={earnedXP}
-          completedQuest={completedQuest}
-          
+          xpBreakdown={xpBreakdown}
+          questText={questText}
+          totalXP={totalXP}
         />
+      ) : showIntro ? (
+        // Intro Screen
+        <>
+          <NewKeyIntro
+            targetChar={lines[0][0] || ' '}
+            onComplete={() => setShowIntro(false)}
+            onCorrectPress={() => setIsIntroPhase1Complete(true)} // Stop blinking when correct
+          />
+          {/* Show Keyboard during intro highlighting the target key */}
+          <Keyboard
+            pressedKey={pressedKey} // Still show press effect? Maybe
+            errorKey={null}
+            expectedKey={!isIntroPhase1Complete ? (reverseThaiKeyMap[lines[0][0]] || 'Space') : 'Enter'}
+            highlightedShiftKey={null} // Simplify for intro for now
+            useBlueBlink={!isIntroPhase1Complete} // Blink only in Phase 1
+          />
+        </>
       ) : (
         <>
           <CharacterConveyorBox

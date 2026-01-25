@@ -12,19 +12,21 @@ type Props = {
   timer?: string;        // เวลา (สำหรับโหมด Test)
   currentScreen?: number; // ด่านปัจจุบัน (ลำดับที่)
   totalScreens?: number;  // จำนวนด่านทั้งหมดในบทนี้
+  backHref?: string;      // ✅ เพิ่ม: ลิงก์ย้อนกลับ (Optional)
 };
 
-export default function PracticeNavbar({ 
-  title, 
-  timer, 
-  currentScreen = 1, // ค่า default ถ้าไม่ส่งมา
-  totalScreens = 1   // ค่า default ถ้าไม่ส่งมา
+export default function PracticeNavbar({
+  title,
+  timer,
+  currentScreen = 1,
+  totalScreens = 1,
+  backHref
 }: Props) {
   const [isMuted, setIsMuted] = useState(false);
   const pathname = usePathname();
 
   // ❌ ลบ Logic การเดาเลขด่านทิ้งไปเลยครับ เราจะรับค่าที่ถูกต้องมาจาก Props แทน
-  
+
   const displayTitle = title || "แบบฝึกหัดพิมพ์ดีด";
 
   const handleRestart = () => {
@@ -35,12 +37,15 @@ export default function PracticeNavbar({
     setIsMuted(!isMuted);
   };
 
+  // ✅ Logic ปุ่มย้อนกลับ: ถ้ามี backHref ให้ใช้ก่อน, ถ้าไม่มีค่อย Check Path
+  const backLink = backHref || (pathname?.includes('test') ? "/tests" : "/lessons");
+
   return (
     <nav className="w-full h-14 bg-[#3498db] text-white flex items-center justify-between px-4 shadow-sm z-40 relative">
 
       {/* ฝั่งซ้าย: ปุ่มย้อนกลับ */}
       <div className="flex-1 flex items-center gap-3">
-        <Link href={pathname?.includes('test') ? "/tests" : "/lessons"} className="p-1 rounded-md hover:bg-black/10 transition-colors">
+        <Link href={backLink} className="p-1 rounded-md hover:bg-black/10 transition-colors">
           <ArrowLeft className="w-6 h-6" />
         </Link>
         <span className="font-bold text-xl logo-font">PIMWAI</span>
@@ -49,27 +54,27 @@ export default function PracticeNavbar({
       {/* ตรงกลาง: ชื่อบทเรียน และ ตัวนับด่าน */}
       <div className="flex-1 flex flex-col items-center justify-center text-center">
         <span className="text-sm font-semibold line-clamp-1 px-2">{displayTitle}</span>
-        
+
         {/* ✅ แสดง Screen X of Y ตามข้อมูลจริงจาก DB */}
         {!timer && (
-           <span className="text-xs text-white/80">
-             Screen {currentScreen} of {totalScreens}
-           </span>
+          <span className="text-xs text-white/80">
+            Screen {currentScreen} of {totalScreens}
+          </span>
         )}
       </div>
 
       {/* ฝั่งขวา: จับเวลา & ปุ่มเครื่องมือ */}
       <div className="flex-1 flex items-center justify-end gap-3">
         {timer && (
-            <div className="flex items-center gap-2 px-3 py-1 rounded-lg mr-2 text-[20px] font-bold bg-white/10">
-                <span>{timer}</span>
-            </div>
+          <div className="flex items-center gap-2 px-3 py-1 rounded-lg mr-2 text-[20px] font-bold bg-white/10">
+            <span>{timer}</span>
+          </div>
         )}
 
         <button onClick={handleRestart} className="p-2 rounded-md hover:bg-black/10 transition-colors" title="Restart">
           <RotateCcw className="w-5 h-5" />
         </button>
-        
+
         <button onClick={handleMute} className="p-2 rounded-md hover:bg-black/10 transition-colors" title={isMuted ? "Unmute" : "Mute"}>
           {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
         </button>

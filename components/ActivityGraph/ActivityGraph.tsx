@@ -4,40 +4,11 @@ import { Flame, ChevronLeft, ChevronRight } from 'lucide-react';
 
 // --- 1. Helper Functions ---
 
-// ✅ แก้ไข: ใช้ Local Time เพื่อไม่ให้วันที่เพี้ยน (ของเดิมใช้ toISOString จะเป็น UTC ทำให้วันที่ถอยหลังไป 1 วันถ้าอยู่โซนเอเชีย)
-const toDateKey = (date: Date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
+import { toDateKey, calculateCurrentStreak } from '@/lib/streakUtils';
 
-const calculateCurrentStreak = (activityDates: string[]) => {
-  const today = new Date();
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
+// --- 1. Helper Functions ---
+// (Moved to lib/streakUtils.ts)
 
-  const todayKey = toDateKey(today);
-  const yesterdayKey = toDateKey(yesterday);
-  const activitySet = new Set(activityDates);
-
-  // ถ้าวันนี้และเมื่อวานไม่ได้ทำเลย streak เป็น 0
-  if (!activitySet.has(todayKey) && !activitySet.has(yesterdayKey)) return 0;
-
-  let streak = 0;
-  // เริ่มนับจากวันนี้ ถ้าวันนี้ไม่มีก็เริ่มนับจากเมื่อวาน
-  let checkDate = activitySet.has(todayKey) ? today : yesterday;
-
-  while (true) {
-    if (activitySet.has(toDateKey(checkDate))) {
-      streak++;
-      checkDate.setDate(checkDate.getDate() - 1); // ถอยหลังไปเรื่อยๆ
-    } else {
-      break; // หยุดเมื่อเจอวันว่าง
-    }
-  }
-  return streak;
-};
 
 const THAI_MONTHS = [
   "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
@@ -64,7 +35,7 @@ export default function StreakCalendar({ completedDates = [] }: StreakCalendarPr
     const daysInMonth = new Date(year, month + 1, 0).getDate();
 
     const days = [];
-    
+
     // ช่องว่างก่อนวันที่ 1
     for (let i = 0; i < firstDayOfMonth; i++) {
       days.push({ type: 'empty', key: `empty-${i}` });
@@ -74,9 +45,9 @@ export default function StreakCalendar({ completedDates = [] }: StreakCalendarPr
     for (let i = 1; i <= daysInMonth; i++) {
       const dateObj = new Date(year, month, i);
       const dateKey = toDateKey(dateObj); // "YYYY-MM-DD"
-      
+
       // ✅ Logic นี้ถูกต้องแล้ว: เช็คว่าวันนี้มีใน list ไหม ถ้ามีก็ true (แสดงสีส้ม)
-      const isCompleted = completedDates.includes(dateKey); 
+      const isCompleted = completedDates.includes(dateKey);
       const isToday = dateKey === toDateKey(new Date());
 
       days.push({
@@ -146,7 +117,7 @@ export default function StreakCalendar({ completedDates = [] }: StreakCalendarPr
               );
             })}
           </div>
-          
+
           <div className="bg-orange-400 rounded-2xl mt-3 p-2 shadow-sm flex items-center justify-between">
 
             <div className="text-white font-bold text-base ml-4">

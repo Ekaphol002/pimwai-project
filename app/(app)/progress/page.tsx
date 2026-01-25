@@ -68,7 +68,7 @@ export default function ProgressPage() {
     // หน้า Loading หลัก (หมุนติ้วๆ กลางจอ)
     if (isLoading) {
         return (
-            <div className="h-[600px] flex flex-col items-center justify-center text-gray-400">
+            <div className="h-screen flex flex-col items-center justify-center text-gray-400">
                 <Loader2 size={64} className="animate-spin mb-4 text-[#5cb5db]" />
                 <p className="text-xl font-bold">กำลังโหลดข้อมูล...</p>
             </div>

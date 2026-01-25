@@ -27,7 +27,7 @@ export async function generateMetadata(
   parent: ResolvingMetadata
 ): Promise<Metadata> {
   const { slug } = await params;
-  
+
   const subLesson = await prisma.subLesson.findUnique({
     where: { id: slug },
     include: { lesson: true }
@@ -36,19 +36,19 @@ export async function generateMetadata(
   const parentIcons = (await parent).icons || {};
 
   if (!subLesson) {
-    return { 
+    return {
       title: 'ไม่พบเนื้อหา | PIMWAI',
-      icons: parentIcons 
+      icons: parentIcons
     };
   }
 
   const pageTitle = `${subLesson.lesson.title}: ${subLesson.title} | ฝึกพิมพ์ PIMWAI`;
-  
+
   return {
     title: pageTitle,
     description: `ฝึกพิมพ์ดีดบทเรียน ${subLesson.title} ...`,
     icons: {
-      icon: '/icon.png', 
+      icon: '/icon.png',
       shortcut: '/icon.png',
       apple: '/icon.png',
     },
@@ -136,6 +136,7 @@ export default async function LessonPlayPage({ params }: PageProps) {
         title={`${subLesson.lesson.title} - ${subLesson.title}`}
         currentScreen={currentScreen}
         totalScreens={totalScreens}
+        backHref="/lessons" // ✅ Fix: บังคับให้กด Back แล้วกลับไปหน้า Lessons
       />
 
       {/* Main Content */}

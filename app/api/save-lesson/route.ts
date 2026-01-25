@@ -4,175 +4,277 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
-export async function POST(request: Request) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user?.email) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+// Config ค่า EXP และโบนัสต่างๆ
+const EXP_CONFIG = {
+    BASE_CLEAR: 20,
+    PER_STAR: 10,
+    BONUS_3_STARS: 40,
+    REPLAY_SCORE: 15,
+    PERFECT_BONUS: 10,
+    QUEST_REWARD: 80,
+
+    // 🌟 โบนัสใหม่
+    FIRST_WIN_REWARD: 50,    // ประเดิมชัยชนะแรก
+    WPM_MILESTONES: {        // รางวัลเจ้าความเร็ว
+        FAST: 30,   // > 30 WPM ได้ +5
+        FASTER: 40, // > 50 WPM ได้ +10
+        FASTEST: 50 // > 80 WPM ได้ +20
+    },
+    WPM_BONUS: {
+        FAST: 5,
+        FASTER: 10,
+        FASTEST: 20
+    },
+    GRINDER_MILESTONES: {    // โบนัสคนขยัน (เล่นครบกี่ด่าน)
+        LEVEL_1: 5,  // ครบ 5 ด่าน +20
+        LEVEL_2: 10, // ครบ 10 ด่าน +50
+        LEVEL_3: 20  // ครบ 20 ด่าน +100
+    },
+    GRINDER_BONUS: {
+        LEVEL_1: 20,
+        LEVEL_2: 50,
+        LEVEL_3: 100
+    },
+
+    MULTIPLIER: {
+        beginner: 1.0,
+        intermediate: 1.2,
+        advanced: 1.5
     }
+};
 
-    const body = await request.json();
-    const { subLessonId, wpm, accuracy, stars, duration } = body;
+export async function POST(request: Request) {
+    try {
+        const session = await getServerSession(authOptions);
+        if (!session || !session.user?.email) {
+            return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+        }
 
-    const user = await prisma.user.findUnique({ where: { email: session.user.email } });
-    if (!user) return NextResponse.json({ success: false, error: "User not found" }, { status: 404 });
+        const body = await request.json();
+        const { subLessonId, wpm, accuracy, stars, duration } = body;
 
-    const userId = user.id;
+        // 🚨 1. Validation & Anti-Cheat
+        if (stars < 0 || stars > 3) return NextResponse.json({ error: "Invalid stars" }, { status: 400 });
+        if (accuracy > 100 || accuracy < 0) return NextResponse.json({ error: "Invalid accuracy" }, { status: 400 });
+        if (wpm > 300 || (wpm > 50 && duration < 2)) {
+            return NextResponse.json({ error: "Suspicious activity detected" }, { status: 400 });
+        }
 
-    // เริ่ม Transaction
-    const result = await prisma.$transaction(async (tx) => {
-        const existingProgress = await tx.lessonProgress.findUnique({
-            where: { userId_subLessonId: { userId, subLessonId } },
+        const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+        if (!user) return NextResponse.json({ success: false, error: "User not found" }, { status: 404 });
+
+        const userId = user.id;
+
+        // ดึงข้อมูล Lesson แม่
+        const subLessonInfo = await prisma.subLesson.findUnique({
+            where: { id: subLessonId },
+            include: { lesson: true }
         });
 
-        // --- 1. คำนวณ Base XP (จากการเล่นปกติ) ---
-        let baseLessonExp = 0; 
-        const starBonus = stars === 3 ? 40 : stars * 10;
-        const fullExp = 20 + starBonus; 
-        let isNewHighScore = false;
-        
-        const isFirstClear = !existingProgress || existingProgress.stars === 0;
+        let difficultyMultiplier = 1.0;
+        if (subLessonInfo?.lesson?.level) {
+            difficultyMultiplier = EXP_CONFIG.MULTIPLIER[subLessonInfo.lesson.level as keyof typeof EXP_CONFIG.MULTIPLIER] || 1.0;
+        }
 
-        if (isFirstClear) {
-            baseLessonExp = fullExp; 
-            isNewHighScore = true;
-            if (!existingProgress) {
-                await tx.lessonProgress.create({
-                    data: { userId, subLessonId, wpm, accuracy, stars, duration, status: "completed" },
-                });
-            } else {
-                await tx.lessonProgress.update({
-                    where: { userId_subLessonId: { userId, subLessonId } },
-                    data: { wpm, accuracy, stars, duration, status: "completed", updatedAt: new Date() },
-                });
-            }
-        } else {
-            const isBetterScore = wpm > existingProgress.wpm || stars > existingProgress.stars;
-            if (isBetterScore) {
-                baseLessonExp = 15; 
+        const result = await prisma.$transaction(async (tx) => {
+            const existingProgress = await tx.lessonProgress.findUnique({
+                where: { userId_subLessonId: { userId, subLessonId } },
+            });
+
+            // --- 2. คำนวณ Base XP ---
+            let baseLessonExp = 0;
+            const isFirstClear = !existingProgress || existingProgress.stars === 0;
+            let isNewHighScore = false;
+
+            if (isFirstClear) {
+                const starBonus = stars === 3 ? EXP_CONFIG.BONUS_3_STARS : stars * EXP_CONFIG.PER_STAR;
+                let rawExp = EXP_CONFIG.BASE_CLEAR + starBonus;
+                rawExp = Math.round(rawExp * difficultyMultiplier);
+                if (accuracy === 100) rawExp += EXP_CONFIG.PERFECT_BONUS;
+
+                baseLessonExp = rawExp;
                 isNewHighScore = true;
-                await tx.lessonProgress.update({
-                    where: { userId_subLessonId: { userId, subLessonId } },
-                    data: { wpm, accuracy, stars, duration, status: "completed", updatedAt: new Date() },
-                });
-            }
-        }
 
-        // --- 2. คำนวณ Quest Bonus (เพิ่มเควส 95% ตรงนี้) ---
-        let questBonus = 0;
-        let completedQuestInfo = null; 
-        const QUEST_REWARD = 100;
-        
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        // ดึงประวัติวันนี้ (รวมอันปัจจุบันที่เพิ่งบันทึกไปตะกี้ด้วย)
-        const todaysProgress = await tx.lessonProgress.findMany({
-            where: { userId: userId, updatedAt: { gte: today } }
-        });
-
-        const dailyTotalLessons = todaysProgress.length; 
-        const dailyTotalTime = todaysProgress.reduce((sum, p) => sum + p.duration, 0);
-        
-        let completedQuestsCount = 0; // ตัวนับว่ารอบนี้เสร็จกี่เควส
-        let lastQuestText = "";       // เก็บชื่อเควสล่าสุด
-
-        // ✅ Quest 1: เล่นครบ 15 นาที
-        const prevTotalTime = dailyTotalTime - duration;
-        if (dailyTotalTime >= 900 && prevTotalTime < 900) {
-            questBonus += QUEST_REWARD;
-            completedQuestsCount++;
-            lastQuestText = "พิมพ์ครบ 15 นาที";
-        }
-        
-        // ✅ Quest 2: เล่นครบ 3 ด่าน (เฉพาะ First Clear)
-        if (dailyTotalLessons === 3 && isFirstClear) {
-             questBonus += QUEST_REWARD;
-             completedQuestsCount++;
-             lastQuestText = "ผ่าน 3 บทเรียน";
-        }
-
-        // ✅ Quest 3: ความแม่นยำ 95% (เควสใหม่!)
-        // เช็คว่าวันนี้มีกี่ด่านที่ได้ >= 95% (รวมด่านนี้แล้ว)
-        const highAccLessons = todaysProgress.filter(p => p.accuracy >= 95).length;
-        
-        // ถ้าด่านนี้ได้ >= 95% และเป็น "ครั้งแรกของวัน" (count == 1) ให้รางวัล
-        // (ถ้า count > 1 แปลว่าเคยได้รางวัลไปแล้วจากด่านอื่น)
-        if (accuracy >= 95 && highAccLessons === 1) {
-            questBonus += QUEST_REWARD;
-            completedQuestsCount++;
-            lastQuestText = "แม่นยำ 95%!";
-        }
-
-        // --- สรุปข้อความเควส ---
-        if (completedQuestsCount > 0) {
-            if (completedQuestsCount > 1) {
-                completedQuestInfo = { text: "ภารกิจคอมโบ!", xp: questBonus };
+                if (!existingProgress) {
+                    await tx.lessonProgress.create({
+                        data: { userId, subLessonId, wpm, accuracy, stars, duration, status: "completed" },
+                    });
+                } else {
+                    await tx.lessonProgress.update({
+                        where: { userId_subLessonId: { userId, subLessonId } },
+                        data: { wpm, accuracy, stars, duration, status: "completed", updatedAt: new Date() },
+                    });
+                }
             } else {
-                completedQuestInfo = { text: lastQuestText, xp: questBonus };
+                // Replay Mode
+                const isBetterScore = wpm > existingProgress.wpm || stars > existingProgress.stars;
+                if (isBetterScore) {
+                    baseLessonExp = EXP_CONFIG.REPLAY_SCORE;
+                    isNewHighScore = true;
+                    await tx.lessonProgress.update({
+                        where: { userId_subLessonId: { userId, subLessonId } },
+                        data: {
+                            wpm: Math.max(wpm, existingProgress.wpm),
+                            accuracy: Math.max(accuracy, existingProgress.accuracy),
+                            stars: Math.max(stars, existingProgress.stars),
+                            status: "completed",
+                            updatedAt: new Date()
+                        },
+                    });
+                }
             }
-        }
 
-        // --- 3. อัปเดต User ---
-        let totalExpGained = baseLessonExp + questBonus;
-        if (totalExpGained < 10) totalExpGained = 10;
+            // --- 3. คำนวณโบนัสต่างๆ (Quest, WPM, Grinder, First Win) ---
 
-        const currentTotalExp = (user.currentExp || 0) + totalExpGained;
-        
-        // Logic Rank แบบใหม่ (ตามที่คุณให้มา)
-        // Max Cap = 35000 -> Rank 3 / 5 Stars
-        const MAX_CAP_EXP = 35000;
-        const EXP_PER_RANK = 6000;
-        const EXP_PER_STAR = 1000;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
 
-        let newRank = 1;
-        
-        if (currentTotalExp >= MAX_CAP_EXP) {
-            newRank = 3;
-        } else {
-            newRank = Math.floor(currentTotalExp / EXP_PER_RANK) + 1;
-            if (newRank > 3) newRank = 3;
-        }
-        
-        // คำนวณ Stars ที่จะเพิ่ม (Logic เดิมของคุณบวก increment ทีละนิด แต่ถ้าจะเอาเป๊ะตาม Exp ต้องคำนวณใหม่)
-        // เพื่อความปลอดภัย ใช้ Logic เดิมไปก่อน หรือจะ Reset ดาวตาม Rank ใหม่ก็ได้
-        // ตรงนี้ขอคง Logic เดิมไว้ก่อนเพื่อไม่ให้กระทบระบบดาวสะสม
-        let starsToAdd = stars;
-        if (existingProgress && stars > existingProgress.stars) {
-            starsToAdd = stars - existingProgress.stars;
-        } else if (existingProgress) {
-            starsToAdd = 0;
-        }
+            // ดึงสถิติวันนี้
+            const dailyStats = await tx.lessonProgress.aggregate({
+                where: { userId: userId, updatedAt: { gte: today } },
+                _count: { subLessonId: true },
+                _sum: { duration: true }
+            });
 
-        const updatedUser = await tx.user.update({
-            where: { id: userId },
-            data: {
-                currentExp: currentTotalExp,
-                rank: newRank,
-                stars: { increment: starsToAdd }
+            const dailyTotalLessons = dailyStats._count.subLessonId;
+            const dailyTotalTime = dailyStats._sum.duration || 0;
+
+            let questBonus = 0;
+            let completedQuestInfo: { text: string; xp: number } | null = null;
+            let completedQuestsCount = 0;
+
+            // ✅ 1. เปลี่ยนจาก string เป็น array เพื่อเก็บชื่อหลายเควส
+            let completedQuestNames = [];
+
+            // Quest 1: เวลาเล่นรวม
+            const prevTotalTime = dailyTotalTime - duration;
+            if (dailyTotalTime >= 300 && prevTotalTime < 300) {
+                questBonus += EXP_CONFIG.QUEST_REWARD;
+                completedQuestsCount++;
+                completedQuestNames.push("เควสพิมพ์ครบ 5 นาที"); // ✅ เก็บชื่อเข้า Array
             }
+
+            // Quest 2: ผ่าน 3 บทเรียน
+            if (dailyTotalLessons === 3) {
+                questBonus += EXP_CONFIG.QUEST_REWARD;
+                completedQuestsCount++;
+                completedQuestNames.push("เควสผ่าน 3 บทเรียน"); // ✅ เก็บชื่อเข้า Array
+            }
+
+            // Quest 3: แม่นยำ 95%
+            const highAccCount = await tx.lessonProgress.count({
+                where: { userId: userId, updatedAt: { gte: today }, accuracy: { gte: 95 } }
+            });
+
+            // เช็คว่า accuracy ผ่านเกณฑ์ และเป็นครั้งแรกของวัน (highAccCount === 1)
+            if (accuracy >= 95 && highAccCount === 1) {
+                questBonus += EXP_CONFIG.QUEST_REWARD;
+                completedQuestsCount++;
+                completedQuestNames.push("เควสแม่นยำ 95%!"); // ✅ เก็บชื่อเข้า Array
+
+                // ⚠️ สั่งบันทึกลง DB (อันนี้อาจจะทำงานอยู่แล้ว หรือหน้าบ้านเช็คจาก lessonProgress เอง)
+            }
+
+            // ✅ 2. รวมชื่อเควสทั้งหมดมาแสดง (เช่น "แม่นยำ 95%! + ผ่าน 3 บทเรียน")
+            if (completedQuestsCount > 0) {
+                completedQuestInfo = {
+                    text: completedQuestNames.join(" + "), // เอาชื่อมาต่อกัน
+                    xp: questBonus
+                };
+            }
+
+            // --- 🌟 NEW BONUSES ---
+
+            // A. 🏎️ WPM Milestone Bonus
+            let wpmBonus = 0;
+            if (accuracy >= 90) { // ต้องแม่นด้วยถึงจะได้โบนัสความเร็ว
+                if (wpm >= EXP_CONFIG.WPM_MILESTONES.FASTEST) wpmBonus = EXP_CONFIG.WPM_BONUS.FASTEST;
+                else if (wpm >= EXP_CONFIG.WPM_MILESTONES.FASTER) wpmBonus = EXP_CONFIG.WPM_BONUS.FASTER;
+                else if (wpm >= EXP_CONFIG.WPM_MILESTONES.FAST) wpmBonus = EXP_CONFIG.WPM_BONUS.FAST;
+            }
+
+            // B. 🏋️ Grinder Bonus (โบนัสคนขยัน)
+            let grinderBonus = 0;
+            if (dailyTotalLessons === EXP_CONFIG.GRINDER_MILESTONES.LEVEL_1) grinderBonus = EXP_CONFIG.GRINDER_BONUS.LEVEL_1;
+            else if (dailyTotalLessons === EXP_CONFIG.GRINDER_MILESTONES.LEVEL_2) grinderBonus = EXP_CONFIG.GRINDER_BONUS.LEVEL_2;
+            else if (dailyTotalLessons === EXP_CONFIG.GRINDER_MILESTONES.LEVEL_3) grinderBonus = EXP_CONFIG.GRINDER_BONUS.LEVEL_3;
+
+            // C. 🌅 First Win of the Day
+            let firstWinBonus = 0;
+            const lastPlayed = user.lastPlayedAt ? new Date(user.lastPlayedAt) : null;
+            if (lastPlayed) lastPlayed.setHours(0, 0, 0, 0);
+
+            // ถ้าไม่เคยเล่น หรือ เล่นครั้งล่าสุดคือก่อนวันนี้
+            if (!lastPlayed || lastPlayed.getTime() < today.getTime()) {
+                firstWinBonus = EXP_CONFIG.FIRST_WIN_REWARD;
+            }
+
+            // --- 4. รวม XP และอัปเดต User ---
+            const totalExpGained = baseLessonExp + questBonus + wpmBonus + grinderBonus + firstWinBonus;
+
+            const currentTotalExp = (user.currentExp || 0) + totalExpGained;
+            const MAX_CAP_EXP = 35000;
+            const EXP_PER_RANK = 6000;
+            let newRank = 1;
+
+            if (currentTotalExp >= MAX_CAP_EXP) {
+                newRank = 3;
+            } else {
+                newRank = Math.floor(currentTotalExp / EXP_PER_RANK) + 1;
+                if (newRank > 3) newRank = 3;
+            }
+
+            let starsToAdd = 0;
+            if (isFirstClear) {
+                starsToAdd = stars;
+            } else if (stars > (existingProgress?.stars || 0)) {
+                starsToAdd = stars - (existingProgress?.stars || 0);
+            }
+
+            const updatedUser = await tx.user.update({
+                where: { id: userId },
+                data: {
+                    currentExp: currentTotalExp,
+                    rank: newRank,
+                    stars: { increment: starsToAdd },
+                    lastPlayedAt: new Date()
+                }
+            });
+
+            // คืนค่าทั้งหมดแยกตามประเภท เพื่อให้ Frontend นำไปแสดงผลได้
+            return {
+                baseLessonExp,
+                questBonus,
+                completedQuestInfo,
+                wpmBonus,      // 🌟 ส่งกลับ
+                grinderBonus,  // 🌟 ส่งกลับ
+                firstWinBonus, // 🌟 ส่งกลับ
+                isNewHighScore,
+                updatedUser
+            };
         });
 
-        return { 
-            baseLessonExp, 
-            questBonus, 
-            completedQuestInfo, 
-            isNewHighScore, 
-            updatedUser 
-        };
-    });
+        return NextResponse.json({
+            success: true,
+            earnedXP: result.baseLessonExp + result.questBonus + result.wpmBonus + result.grinderBonus + result.firstWinBonus, // รวม XP ที่โชว์ตัวใหญ่
 
-    return NextResponse.json({ 
-      success: true, 
-      earnedXP: result.baseLessonExp, 
-      questBonus: result.questBonus, 
-      completedQuest: result.completedQuestInfo, 
-      isNewHighScore: result.isNewHighScore,
-      totalXP: result.updatedUser?.currentExp || 0,
-    });
+            // ✅ ส่ง Breakdown ไปให้หน้าจบเกมแสดงผล
+            xpBreakdown: {
+                base: result.baseLessonExp,
+                quest: result.questBonus,
+                wpm: result.wpmBonus,
+                grinder: result.grinderBonus,
+                firstWin: result.firstWinBonus
+            },
 
-  } catch (error) {
-    console.error('Error saving lesson:', error);
-    return NextResponse.json({ success: false, error: 'Failed' }, { status: 500 });
-  }
+            completedQuest: result.completedQuestInfo,
+            isNewHighScore: result.isNewHighScore,
+            totalXP: result.updatedUser.currentExp,
+            rank: result.updatedUser.rank
+        });
+
+    } catch (error) {
+        console.error('Error saving lesson:', error);
+        return NextResponse.json({ success: false, error: 'Failed' }, { status: 500 });
+    }
 }

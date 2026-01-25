@@ -69,11 +69,11 @@ export default async function LessonsPage({ searchParams }: PageProps) {
   const quests = [
     {
       id: 1,
-      text: 'พิมพ์ให้ครบ 15 นาที',
+      text: 'พิมพ์ให้ครบ 5 นาที',
       current: m,
-      target: 15,
+      target: 5,
       unit: 'นาที',
-      isCompleted: m >= 15
+      isCompleted: m >= 5
     },
     {
       id: 2,

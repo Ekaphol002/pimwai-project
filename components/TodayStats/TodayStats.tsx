@@ -34,87 +34,77 @@ export default function TodayStats({
   completedQuestsCount = 0
 }: TodayStatsProps) {
 
-  // --- Logic คำนวณ EXP/Rank ---
-  const EXP_PER_STAR = 1000;
-  const EXP_PER_RANK = 6000;
-  const MAX_CAP_EXP = 35000; // จุดที่ตัน Rank 3 / 5 ดาว
+  // ==========================================
+  // 🧠 Logic ใหม่: ปรับความยากง่ายตามระดับ (Balancing)
+  // ==========================================
+  
+  // กำหนดเพดาน EXP ของแต่ละ Rank (จบ Rank นี้ต้องใช้ EXP รวมเท่าไหร่)
+  const RANK_1_CAP = 2500;  // จบ Beginner ที่ 2,500 XP (เดิมต้อง 6,000)
+  const RANK_2_CAP = 8500;  // จบ Intermediate ที่ 8,500 XP
+  // Rank 3 ไปเรื่อยๆ
 
   let calculatedRank = 1;
   let currentStars = 0;
   let currentBarExp = 0;
-  let maxBarExp = EXP_PER_STAR; // ปกติเต็มหลอดที่ 1000
+  let maxBarExp = 500; // ค่า Default เริ่มต้น (ดาวละ 500)
 
-  if (exp >= MAX_CAP_EXP) {
-    // === กรณี EXP เกิน 35,000 (Max Level) ===
-    calculatedRank = 3; // ล็อคที่ Rank 3 (Advanced)
-    currentStars = 5;   // ล็อคที่ 5 ดาว
+  if (exp < RANK_1_CAP) {
+    // === RANK 1: BEGINNER (โหมด Easy) ===
+    // เป้าหมาย: ให้มือใหม่อัปดาวไวๆ จะได้มีกำลังใจ
+    calculatedRank = 1;
+    const expPerStar = 500; // ดาวละ 500 XP (เล่นประมาณ 4-5 ด่านก็ได้ดาวแล้ว)
     
-    // XP ที่เหลือให้สะสมในหลอดไปเรื่อยๆ
-    // สมมติ: ให้หลอดแสดงส่วนที่เกินมาจาก 35,000
-    // หรือจะให้หลอดเต็มตลอดเวลา? -> โจทย์บอก "สะสมไปเรื่อยๆ" 
-    // แปลว่าอาจจะอยากเห็นตัวเลขเพิ่มขึ้นในหลอด เช่น 500 / 1000 (วนลูป) หรือ 1500 / Infinity
-    
-    // แบบที่ 1: วนลูปทุกๆ 1000 XP เหมือนเดิม แต่ Rank/Star ไม่ขยับ
-    currentBarExp = (exp - MAX_CAP_EXP) % EXP_PER_STAR;
-    
-    // แบบที่ 2 (แนะนำ): แสดง XP ที่เกินมาทั้งหมดในหลอด (และขยาย Max หลอดให้ดูเยอะๆ หรือไม่มีเพดาน)
-    // แต่ ExpBar component มักต้องการ maxExp ที่แน่นอน
-    // ขอใช้แบบ "วนลูป" เพื่อให้หลอดมีการขยับครับ
-    // แต่ถ้าอยากโชว์ตัวเลขดิบๆ ว่าเกินมาเท่าไหร่ ให้แก้ตรง ExpBar prop
-    
+    currentStars = Math.floor(exp / expPerStar);
+    currentBarExp = exp % expPerStar;
+    maxBarExp = expPerStar;
+
+  } else if (exp < RANK_2_CAP) {
+    // === RANK 2: INTERMEDIATE (โหมด Normal) ===
+    calculatedRank = 2;
+    const expInRank = exp - RANK_1_CAP; // นับ EXP เริ่มต้นใหม่จาก 0 ของแรงค์นี้
+    const rankRange = RANK_2_CAP - RANK_1_CAP; // ระยะห่าง (6,000 XP)
+    const expPerStar = 1200; // ดาวละ 1,200 XP (เริ่มยากขึ้น)
+
+    currentStars = Math.floor(expInRank / expPerStar);
+    currentBarExp = expInRank % expPerStar;
+    maxBarExp = expPerStar;
+
   } else {
-    // === กรณีปกติ (ยังไม่ถึง 35,000) ===
-    calculatedRank = Math.floor(exp / EXP_PER_RANK) + 1;
-    
-    // ถ้าคำนวณแล้วเกิน Rank 3 ให้ตบกลับมา Rank 3 (เพราะเรามีรูปแค่ 3 Rank)
-    if (calculatedRank > 3) calculatedRank = 3;
+    // === RANK 3: ADVANCED (โหมด Hard/Endgame) ===
+    calculatedRank = 3;
+    const expInRank = exp - RANK_2_CAP;
+    const expPerStar = 2000; // ดาวละ 2,000 XP (ต้องเก่งจริงถึงจะได้)
 
-    const expInCurrentRank = exp % EXP_PER_RANK;
+    currentStars = Math.floor(expInRank / expPerStar);
     
-    // คำนวณดาว (0-5)
-    currentStars = Math.floor(expInCurrentRank / EXP_PER_STAR);
-    
-    // ถ้า Rank 3 แล้วดาวคำนวณได้เกิน 5 (เช่น exp 20,000) ให้ตันที่ 5
-    if (calculatedRank === 3 && currentStars > 5) {
-        currentStars = 5;
-    }
-
-    // คำนวณ EXP ในหลอด
-    currentBarExp = expInCurrentRank % EXP_PER_STAR;
-  }
-
-  // ** Override พิเศษ ** // เพื่อให้แน่ใจว่าถ้า exp >= 35000 จะเป็น Rank 3 ดาว 5 เสมอ
-  if (exp >= MAX_CAP_EXP) {
-      calculatedRank = 3;
+    // ตันที่ 5 ดาว
+    if (currentStars > 5) {
       currentStars = 5;
-      // ให้หลอด Exp แสดงส่วนเกินจาก 35,000 แบบ Infinity (เช่น 150 / 1000)
-      // ผู้ใช้จะเห็นหลอดเต็มแล้ววนใหม่ หรือเห็นตัวเลขเพิ่มขึ้นเรื่อยๆ
-      currentBarExp = (exp - MAX_CAP_EXP); 
-      // เพื่อให้หลอดไม่เต็มแล้วเด้งกลับเป็น 0 ตลอดเวลา เราอาจจะปรับ maxExp ให้เป็น infinity หรือค่าสูงๆ 
-      // แต่ ExpBar เดิมน่าจะ fix max ไว้
-      
-      // ปรับจูน: ให้ส่วนเกินโชว์ในหลอด โดยหลอดเต็มที่ 10000 หรือค่าเยอะๆ แทน
-      maxBarExp = 10000; // ขยายเพดานหลอดช่วง End Game
-      currentBarExp = exp - MAX_CAP_EXP; 
-      
-      // ถ้าเกิน maxBarExp อีก ก็ให้มันเต็มค้างไว้ หรือขยายต่อก็ได้
-      if (currentBarExp > maxBarExp) {
-        maxBarExp = currentBarExp + 5000; // ขยายอัตโนมัติ
-      }
+      // ถ้าตันแล้ว ให้หลอดโชว์ EXP ที่เกินมาแบบเท่ๆ (วนลูปทุก 5000)
+      maxBarExp = 5000;
+      currentBarExp = expInRank % 5000; 
+    } else {
+      currentBarExp = expInRank % expPerStar;
+      maxBarExp = expPerStar;
+    }
   }
 
+  // ฟังก์ชันชื่อ Rank (เหมือนเดิม)
   const getRankName = (r: number) => {
     switch (r) {
       case 1: return "Beginner";
       case 2: return "Intermediate";
       case 3: return "Advanced";
-      default: return "Advanced"; // เปลี่ยน Master เป็น Advanced เพราะตันที่ 3
+      default: return "Advanced";
     }
   };
 
+  // ==========================================
+  // 🎨 UI ส่วนแสดงผล (เหมือนเดิม 100%)
+  // ==========================================
   return (
     <div className="w-full rounded-lg p-3 flex flex-col items-center">
-      {/* ... ส่วน Rank Section ... */}
+      
       <h2 className="text-3xl font-bold text-gray-700 mb-2">แรงค์ของคุณ</h2>
       <div className="relative w-full flex flex-col items-center mb-4">
 
@@ -136,6 +126,7 @@ export default function TodayStats({
 
         <div className="relative h-14 w-full flex justify-center items-start z-20 gap-5">
           {[1, 2, 3, 4, 5].map((starNum) => {
+            // Logic การวางดาวแบบโค้ง (Arc) เหมือนเดิม
             const index = starNum;
             const distance = Math.abs(index - 3);
             const yOffset = -1 * (distance * distance) * 3;
@@ -150,21 +141,16 @@ export default function TodayStats({
         </div>
 
         <div className="w-full z-20 px-4">
-          {/* ส่ง maxExp แบบ Dynamic ไปให้ ExpBar */}
+          {/* ส่งค่าที่คำนวณใหม่ไปให้ ExpBar */}
           <ExpBar currentExp={currentBarExp} maxExp={maxBarExp} />
-          {/* Optional: แสดงข้อความเมื่อ Max Level */}
-          {exp >= MAX_CAP_EXP && (
-             <div className="text-center text-xs text-gray-500 mt-1 font-bold">
-                Max Rank Reached! (Overlimit XP: +{currentBarExp.toLocaleString()})
-             </div>
-          )}
+          
+          {/* Debug: อยากเห็นตัวเลขจริงก็ uncomment บรรทัดล่างได้ครับ */}
+          {/* <div className="text-center text-xs text-gray-400 mt-1">EXP: {exp} | {currentBarExp}/{maxBarExp}</div> */}
         </div>
       </div>
 
-      {/* ... ส่วนสถิติวันนี้ (เหมือนเดิม) ... */}
       <h3 className="text-xl font-bold text-gray-700 mt-3 mb-3">สถิติในวันนี้</h3>
       <div className="w-full grid grid-cols-3 gap-3">
-        {/* ... (Code เดิม) ... */}
          <div className="bg-[#5cb5db] rounded-2xl p-2 shadow-md">
            <h4 className="text-center text-sm text-white font-bold my-1">ความเร็ว</h4>
            <div className="bg-white rounded-xl py-5 px-3 flex items-center justify-between">

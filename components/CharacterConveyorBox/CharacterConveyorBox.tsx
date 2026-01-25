@@ -61,7 +61,7 @@ export default function CharacterConveyorBox({
                 if (charState === 'typed') {
                   boxStyle += "bg-[#cef7b5] text-green-600"; // (สีเขียว)
                 } else if (charState === 'upcoming') {
-                  boxStyle += "bg-white border-2 border-gray-300 text-gray-500"; // (สีขาวเทา)
+                  boxStyle += "bg-white border-1 border-gray-300 text-gray-500"; // (สีขาวเทา)
                 } else {
                   boxStyle += "text-white font-bold shadow-inner ";
                   // (9. เช็คว่า พิมพ์ผิดหรือไม่ จาก 'isCurrentCharCorrect')
