@@ -84,7 +84,7 @@ export default function NewKeyIntro({ targetChar, onComplete, onCorrectPress }: 
                     <span className="mb-2">พิมพ์ปุ่ม</span>
                     <span
                         className={`
-                            px-3 py-5 border-1 rounded-sm transition-all duration-300 flex items-center justify-center
+                            ${/[ัิีึืฺุู็่้๊๋์ํ]/.test(targetChar) ? 'w-15 pl-5' : 'px-3'} py-5 border-1 rounded-sm transition-all duration-300 flex items-center justify-center
                             ${getKeyStyles()}
                         `}
                     >
@@ -98,8 +98,8 @@ export default function NewKeyIntro({ targetChar, onComplete, onCorrectPress }: 
             <div
                 className={`
                     w-full px-12 flex flex-col items-center justify-center
-                    transition-all duration-400
-                    ${phase === 2 ? 'opacity-100 translate-y-0 mt-8 mb-6' : 'opacity-0 translate-y-50 h-0 overflow-hidden'}
+                    transition-all duration-200
+                    ${phase === 2 ? 'opacity-100 translate-y-0 mt-8 mb-6' : 'opacity-0 translate-y-[-20] h-0 overflow-hidden'}
                 `}
             >
                 {/* Separator Line */}
@@ -107,7 +107,7 @@ export default function NewKeyIntro({ targetChar, onComplete, onCorrectPress }: 
 
                 <div className="w-full text-center">
                     <p className="text-base text-slate-500 font-medium leading-relaxed">
-                        จำตำแหน่งของปุ่ม <span className="px-2 py-1 border-1 rounded-sm items-center justify-center">{displayChar}</span> นี้ไว้ให้ดี เพราะเรากำลังจะเริ่มบทฝึกสอนจริงแล้ว!
+                        จำตำแหน่งของปุ่ม <span className={`inline-flex items-center justify-center border-1 rounded-sm py-1 ${/[ัิีึืฺุู็่้๊๋์ํ]/.test(targetChar) ? 'w-7 pl-2' : 'px-2'}`}>{displayChar}</span> นี้ไว้ให้ดี เพราะเรากำลังจะเริ่มบทฝึกสอนจริงแล้ว!
                     </p>
                 </div>
 

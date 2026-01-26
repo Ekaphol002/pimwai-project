@@ -53,18 +53,21 @@ interface PracticeModeWordProps {
   subLessonId: string;
   isTestMode?: boolean;
   nextUrl?: string;
+  newKeys?: string[];
 }
 
 export default function PracticeModeWord({
   initialText,
   subLessonId,
   isTestMode = false,
-  nextUrl
+  nextUrl,
+  newKeys = []
 }: PracticeModeWordProps) {
   const router = useRouter();
 
-  // Intro State
-  const [showIntro, setShowIntro] = useState(true);
+  // Intro State - แสดงเฉพาะเมื่อมี newKeys
+  const hasNewKeys = newKeys && newKeys.length > 0;
+  const [showIntro, setShowIntro] = useState(hasNewKeys);
   const [isIntroPhase1Complete, setIsIntroPhase1Complete] = useState(false);
 
   // ✅ 1. เพิ่ม State เก็บข้อความที่ขยายแล้ว (คูณ 4) เพื่อใช้คำนวณ WPM ตอนจบ
@@ -193,7 +196,7 @@ export default function PracticeModeWord({
 
   const resetLesson = (newLines?: string[][]) => {
     setIsFinished(false);
-    setShowIntro(true); // Show intro on reset
+    setShowIntro(hasNewKeys); // Show intro on reset เฉพาะเมื่อมี newKeys
     setIsIntroPhase1Complete(false);
     setCurrentLineIndex(0);
     setCurrentCharIndexInLine(0);
@@ -386,11 +389,11 @@ export default function PracticeModeWord({
           questText={questText}
           totalXP={totalXP}
         />
-      ) : showIntro ? (
-        // Intro Screen
+      ) : showIntro && hasNewKeys ? (
+        // Intro Screen - แสดงเฉพาะเมื่อมี newKeys
         <>
           <NewKeyIntro
-            targetChar={lines[0][0] || ' '}
+            targetChar={newKeys[0] || lines[0][0] || ' '}
             onComplete={() => setShowIntro(false)}
             onCorrectPress={() => setIsIntroPhase1Complete(true)}
           />

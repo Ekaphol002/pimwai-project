@@ -182,7 +182,7 @@ export default function ConveyorBox({
                 const isTone = TONES.includes(char);
                 const prevChar = charIdx > 0 ? line[charIdx - 1] : '';
                 const isPrevUpperVowel = UPPER_VOWELS.includes(prevChar) || prevChar === 'ำ';
-                const shouldLift = (isTone && isPrevUpperVowel) || (isTone && nextChar === 'ำ');
+                const shouldLift = (isTone && isPrevUpperVowel) || (isTone && nextChar === 'ำ') || (isTone && prevChar === char);
 
                 // --- 9. Logic จัดขนาดกล่อง (Layout) ---
                 const isFloatingChar = UPPER_VOWELS.includes(char) || TONES.includes(char);

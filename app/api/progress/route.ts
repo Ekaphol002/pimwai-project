@@ -45,8 +45,8 @@ export async function GET() {
 
     // C. ดึงโครงสร้างบทเรียนทั้งหมด
     const allLessons = await prisma.lesson.findMany({
-        include: { subLessons: true },
-        orderBy: { order: 'asc' }
+      include: { subLessons: true },
+      orderBy: { order: 'asc' }
     });
 
     // =========================================================
@@ -55,20 +55,20 @@ export async function GET() {
 
     // คำนวณเฉพาะจาก "บทเรียน" (ไม่รวม Speed Test)
     const totalLessonItems = lessonProgress.length;
-    
+
     const totalStars = lessonProgress.reduce((sum, item) => sum + item.stars, 0);
-    
+
     // ✅ คำนวณเวลาเฉพาะที่เล่นบทเรียน
     const totalDurationSeconds = lessonProgress.reduce((sum, item) => sum + item.duration, 0);
-    
+
     // ✅ คำนวณความเร็วเฉลี่ยเฉพาะบทเรียน
-    const avgSpeed = totalLessonItems > 0 
-      ? Math.round(lessonProgress.reduce((sum, item) => sum + item.wpm, 0) / totalLessonItems) 
+    const avgSpeed = totalLessonItems > 0
+      ? Math.round(lessonProgress.reduce((sum, item) => sum + item.wpm, 0) / totalLessonItems)
       : 0;
-      
+
     // ✅ คำนวณความแม่นยำเฉลี่ยเฉพาะบทเรียน
-    const avgAccuracy = totalLessonItems > 0 
-      ? Math.round(lessonProgress.reduce((sum, item) => sum + item.accuracy, 0) / totalLessonItems) 
+    const avgAccuracy = totalLessonItems > 0
+      ? Math.round(lessonProgress.reduce((sum, item) => sum + item.accuracy, 0) / totalLessonItems)
       : 0;
 
     // แปลงเวลาเป็น String (เช่น "12h 45m")
@@ -91,67 +91,67 @@ export async function GET() {
 
     // วันที่ที่มีกิจกรรม (สำหรับ Activity Graph)
     const activityDates = allActivities.map(item => new Date(item.date).toISOString().split('T')[0]);
-    
+
     // 5 รายการล่าสุด (สำหรับ Recent Activity Widget)
     const recentActivity = allActivities.slice(0, 5).map(item => {
-        let title = "";
-        if (item.type === 'lesson') {
-            // @ts-ignore
-            title = `${item.subLesson.lesson.title} - ${item.subLesson.title}`;
-        } else {
-            // @ts-ignore
-            title = `Speed Test (${Math.ceil(item.duration / 60)} min)`;
-        }
-        return {
-            id: item.id,
-            type: item.type,
-            title: title,
-            wpm: item.wpm,
-            accuracy: item.accuracy,
-            stars: item.stars,
-            date: item.date
-        };
+      let title = "";
+      if (item.type === 'lesson') {
+        // @ts-ignore
+        title = `${item.subLesson.lesson.title} - ${item.subLesson.title}`;
+      } else {
+        // @ts-ignore
+        title = `Speed Test (${Math.ceil(item.duration / 60)} min)`;
+      }
+      return {
+        id: item.id,
+        type: item.type,
+        title: title,
+        wpm: item.wpm,
+        accuracy: item.accuracy,
+        stars: item.stars,
+        date: item.date
+      };
     });
 
     // =========================================================
     // 4. คำนวณ Course Progress (สำหรับ LessonList)
     // =========================================================
-    
+
     const completedSubLessonIds = new Set(lessonProgress.map(p => p.subLessonId));
 
     const courseProgress = allLessons.map(lesson => {
-        const relevantProgress = lessonProgress.filter(p => 
-            lesson.subLessons.some(sub => sub.id === p.subLessonId)
-        );
+      const relevantProgress = lessonProgress.filter(p =>
+        lesson.subLessons.some(sub => sub.id === p.subLessonId)
+      );
 
-        const totalSubLessons = lesson.subLessons.length;
-        const completedCount = lesson.subLessons.filter(sub => completedSubLessonIds.has(sub.id)).length;
-        
-        let totalLessonWpm = 0;
-        let totalLessonAcc = 0;
-        let totalLessonTime = 0;
+      const totalSubLessons = lesson.subLessons.length;
+      const completedCount = lesson.subLessons.filter(sub => completedSubLessonIds.has(sub.id)).length;
 
-        if (relevantProgress.length > 0) {
-            totalLessonWpm = relevantProgress.reduce((sum, p) => sum + p.wpm, 0);
-            totalLessonAcc = relevantProgress.reduce((sum, p) => sum + p.accuracy, 0);
-            totalLessonTime = relevantProgress.reduce((sum, p) => sum + p.duration, 0);
-        }
+      let totalLessonWpm = 0;
+      let totalLessonAcc = 0;
+      let totalLessonTime = 0;
 
-        const avgLessonSpeed = relevantProgress.length > 0 ? Math.round(totalLessonWpm / relevantProgress.length) : 0;
-        const avgLessonAcc = relevantProgress.length > 0 ? Math.round(totalLessonAcc / relevantProgress.length) : 0;
-        const totalLessonStars = relevantProgress.reduce((sum, p) => sum + p.stars, 0);
+      if (relevantProgress.length > 0) {
+        totalLessonWpm = relevantProgress.reduce((sum, p) => sum + p.wpm, 0);
+        totalLessonAcc = relevantProgress.reduce((sum, p) => sum + p.accuracy, 0);
+        totalLessonTime = relevantProgress.reduce((sum, p) => sum + p.duration, 0);
+      }
 
-        return {
-            id: lesson.id,
-            title: lesson.title,
-            level: lesson.level, 
-            completedCount,
-            totalSubLessons,
-            avgSpeed: avgLessonSpeed,
-            avgAcc: avgLessonAcc,
-            time: totalLessonTime, 
-            stars: totalLessonStars
-        };
+      const avgLessonSpeed = relevantProgress.length > 0 ? Math.round(totalLessonWpm / relevantProgress.length) : 0;
+      const avgLessonAcc = relevantProgress.length > 0 ? Math.round(totalLessonAcc / relevantProgress.length) : 0;
+      const totalLessonStars = relevantProgress.reduce((sum, p) => sum + p.stars, 0);
+
+      return {
+        id: lesson.id,
+        title: lesson.title,
+        level: lesson.level,
+        completedCount,
+        totalSubLessons,
+        avgSpeed: avgLessonSpeed,
+        avgAcc: avgLessonAcc,
+        time: totalLessonTime,
+        stars: totalLessonStars
+      };
     });
 
     // =========================================================
