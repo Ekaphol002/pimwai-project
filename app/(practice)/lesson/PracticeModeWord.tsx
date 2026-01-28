@@ -70,6 +70,10 @@ export default function PracticeModeWord({
   const [showIntro, setShowIntro] = useState(hasNewKeys);
   const [isIntroPhase1Complete, setIsIntroPhase1Complete] = useState(false);
 
+  // Intro variables - คำนวณที่ component level
+  const introTargetChar = newKeys[0] || ' ';
+  const introExpectedKey = reverseThaiKeyMap[introTargetChar] || 'Space';
+
   // ✅ 1. เพิ่ม State เก็บข้อความที่ขยายแล้ว (คูณ 4) เพื่อใช้คำนวณ WPM ตอนจบ
   const [expandedText, setExpandedText] = useState('');
 
@@ -393,7 +397,7 @@ export default function PracticeModeWord({
         // Intro Screen - แสดงเฉพาะเมื่อมี newKeys
         <>
           <NewKeyIntro
-            targetChar={newKeys[0] || lines[0][0] || ' '}
+            targetChar={introTargetChar}
             onComplete={() => setShowIntro(false)}
             onCorrectPress={() => setIsIntroPhase1Complete(true)}
           />
@@ -401,7 +405,7 @@ export default function PracticeModeWord({
           <Keyboard
             pressedKey={pressedKey}
             errorKey={null}
-            expectedKey={!isIntroPhase1Complete ? (reverseThaiKeyMap[lines[0][0]] || 'Space') : 'Enter'}
+            expectedKey={!isIntroPhase1Complete ? introExpectedKey : 'Enter'}
             highlightedShiftKey={null}
             useBlueBlink={!isIntroPhase1Complete}
           />

@@ -49,6 +49,10 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
   const [showIntro, setShowIntro] = useState(hasNewKeys);
   const [isIntroPhase1Complete, setIsIntroPhase1Complete] = useState(false);
 
+  // Intro variables - คำนวณที่ component level
+  const introTargetChar = newKeys[0] || ' ';
+  const introExpectedKey = reverseThaiKeyMap[introTargetChar] || 'Space';
+
   const [lines, setLines] = useState<string[][]>([[]]);
   const [currentLineIndex, setCurrentLineIndex] = useState(0);
   const [currentCharInLineIndex, setCurrentCharInLineIndex] = useState(0);
@@ -313,17 +317,16 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
         // Intro Screen - แสดงเฉพาะเมื่อมี newKeys
         <>
           <NewKeyIntro
-            targetChar={newKeys[0] || lines[0][0] || ' '}
+            targetChar={introTargetChar}
             onComplete={() => setShowIntro(false)}
-            onCorrectPress={() => setIsIntroPhase1Complete(true)} // Stop blinking when correct
+            onCorrectPress={() => setIsIntroPhase1Complete(true)}
           />
-          {/* Show Keyboard during intro highlighting the target key */}
           <Keyboard
-            pressedKey={pressedKey} // Still show press effect? Maybe
+            pressedKey={pressedKey}
             errorKey={null}
-            expectedKey={!isIntroPhase1Complete ? (reverseThaiKeyMap[lines[0][0]] || 'Space') : 'Enter'}
-            highlightedShiftKey={null} // Simplify for intro for now
-            useBlueBlink={!isIntroPhase1Complete} // Blink only in Phase 1
+            expectedKey={!isIntroPhase1Complete ? introExpectedKey : 'Enter'}
+            highlightedShiftKey={null}
+            useBlueBlink={!isIntroPhase1Complete}
           />
         </>
       ) : (

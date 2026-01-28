@@ -28,8 +28,14 @@ export default function ConveyorBox({
   const boxHeight = lineHeightPx * visibleLines; // ความสูงรวมของกล่องใหญ่
   const lineGap = 11; // ช่องว่างระหว่างบรรทัด
 
-  const UPPER_VOWELS = 'ิีึืุูั็';
-  const TONES = '่้๊๋์็';
+  const REAL_UPPER_VOWELS = 'ิีึืั็'; // สระที่อยู่ด้านบน
+  const LOWER_VOWELS = 'ฺุู'; // สระที่อยู่ด้านล่าง
+  const HIGH_VOWELS_BASE = 'ิีึืั'; // สระบนที่ยอมให้มีวรรณยุกต์ขี่
+  const UPPER_VOWELS = 'ิีึืุูั็'; // Keep original definition for layout sizing logic
+  const TONES = '่้๊๋์';
+
+  // Let's stick to the overlap fix: Lift MORE.
+
   const HIDE_TRIGGER_VOWELS = UPPER_VOWELS + TONES + 'ำ';
   const ALL_VOWELS_AND_TONES = HIDE_TRIGGER_VOWELS;
 
@@ -178,11 +184,29 @@ export default function ConveyorBox({
                 const paddingClass = isSpace ? 'px-1' : '';
                 const isCharVowelOrTone = ALL_VOWELS_AND_TONES.includes(char);
 
-                // --- 8. Logic ดันวรรณยุกต์ขึ้น (หลบสระล่าง/สระอำ) ---
+
+                // --- 8. Logic ดันวรรณยุกต์/สระขึ้น (หลบสระที่อยู่ข้างหน้า) ---
                 const isTone = TONES.includes(char);
+                const isUpperVowel = UPPER_VOWELS.includes(char);
                 const prevChar = charIdx > 0 ? line[charIdx - 1] : '';
-                const isPrevUpperVowel = UPPER_VOWELS.includes(prevChar) || prevChar === 'ำ';
-                const shouldLift = (isTone && isPrevUpperVowel) || (isTone && nextChar === 'ำ') || (isTone && prevChar === char);
+                const isPrevUpperVowel = UPPER_VOWELS.includes(prevChar);
+
+                // Check strictly for high vowels that push tones/vowels up
+                const isPrevExtremeHigh = 'ิีึื'.includes(prevChar); // สระสูงมาก (ต้องยกเยอะ)
+                const isPrevModerateHigh = 'ั็'.includes(prevChar) || prevChar === 'ำ'; // สระปานกลาง
+
+                let charTop = 0;
+
+                // Logic ยก Tone ขึ้น
+                if (isTone) {
+                  if (isPrevExtremeHigh) charTop = -12;
+                  else if (isPrevModerateHigh) charTop = -12;
+                }
+
+                // Logic ยก Upper Vowel ขึ้น (กรณีมีสระบนตามหลังสระบน เช่น ั + ื)
+                if (isUpperVowel && isPrevUpperVowel) {
+                  charTop = -15; // ยกสระตัวที่สองขึ้นเพื่อไม่ให้ทับตัวแรก
+                }
 
                 // --- 9. Logic จัดขนาดกล่อง (Layout) ---
                 const isFloatingChar = UPPER_VOWELS.includes(char) || TONES.includes(char);
@@ -211,7 +235,7 @@ export default function ConveyorBox({
                       {/* ตัวอักษร (ดันขึ้นถ้าจำเป็น) */}
                       <span
                         className="relative"
-                        style={{ top: shouldLift ? '-12px' : '0px' }}
+                        style={{ top: charTop ? `${charTop}px` : '0px' }}
                       >
                         {displayChar}
                       </span>
