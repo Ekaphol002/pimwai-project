@@ -28,7 +28,7 @@ export default function ParticleField({
     const mouseRef = useRef({ x: -1000, y: -1000 });
     const animationRef = useRef<number | null>(null);
 
-    // Initialize particles in a grid pattern
+    // Initialize particles in a grid pattern with exclusion zone
     const initParticles = useCallback((width: number, height: number) => {
         const particles: Particle[] = [];
         const cols = Math.ceil(Math.sqrt(particleCount * (width / height)));
@@ -36,11 +36,29 @@ export default function ParticleField({
         const spacingX = width / cols;
         const spacingY = height / rows;
 
+        // Define exclusion zone (smaller, tighter around text)
+        const exclusionZone = {
+            x: width * 0.25,        // 25% from left
+            y: height * 0.10,       // 10% from top
+            width: width * 0.50,    // 50% width (centered)
+            height: height * 0.12   // 12% height (just the text area)
+        };
+
         for (let row = 0; row < rows; row++) {
             for (let col = 0; col < cols; col++) {
                 if (particles.length >= particleCount) break;
                 const x = spacingX / 2 + col * spacingX;
                 const y = spacingY / 2 + row * spacingY;
+
+                // Skip particles inside the exclusion zone
+                const inExclusionZone =
+                    x >= exclusionZone.x &&
+                    x <= exclusionZone.x + exclusionZone.width &&
+                    y >= exclusionZone.y &&
+                    y <= exclusionZone.y + exclusionZone.height;
+
+                if (inExclusionZone) continue;
+
                 particles.push({
                     x,
                     y,

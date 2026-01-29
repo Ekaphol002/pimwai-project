@@ -216,95 +216,98 @@ export default function LandingPage() {
       </section>
 
       {/* ================= Website Presentation Section ================= */}
-      <section id="presentation" className="py-32 bg-[#f8fafc] px-6 relative overflow-hidden">
+      <section id="presentation" className="py-32 bg-white px-6 relative overflow-hidden">
         {/* Decorative Background Elements */}
-        <div className="absolute top-1/2 right-0 -translate-y-1/2 w-[800px] h-[800px] bg-blue-100/40 rounded-full blur-[120px] -z-10 translate-x-1/4 pointer-events-none"></div>
+        <div className="absolute top-1/2 left-0 -translate-y-1/2 w-[800px] h-[800px] bg-blue-100/40 rounded-full blur-[120px] -z-10 -translate-x-1/4 pointer-events-none"></div>
 
-        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-20">
+        {/* Section Header */}
+        <div className="text-center mb-16">
+          <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">ทำไมต้องเลือกฝึกพิมพ์กับ PIMWAI?</h2>
+          <p className="text-gray-500 max-w-2xl mx-auto">แพลตฟอร์มฝึกพิมพ์ที่ดีที่สุดสำหรับคนไทย</p>
+        </div>
 
-          {/* Left: Text Description */}
-          <div className="flex-1 space-y-8">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-blue-100 shadow-sm text-blue-600 text-xs font-bold uppercase tracking-widest">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-              </span>
-              Next Gen Typing
+        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
+
+          {/* Left: Presentation Visual (Bubble System) */}
+          <div className="flex-1 w-full relative perspective-1000 order-2 lg:order-1">
+            {/* Central Image Container */}
+            <div className="relative z-10 w-[90%] md:w-[85%] mx-auto">
+              <div className="relative rounded-xl overflow-hidden bg-white">
+                <div className="relative aspect-[16/10]">
+                  <img
+                    src="/Demo.gif"
+                    alt="Platform Demo"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              </div>
+
             </div>
 
-            <h2 className="text-4xl lg:text-6xl font-black text-gray-900 leading-[1.1]">
-              ยกระดับงานพิมพ์ <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#0c648b] via-[#2d8ab5] to-[#5cb5db] pb-3">
-                สู่มืออาชีพ
-              </span>
+            {/* Decorative Elements */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-blue-500/5 blur-3xl rounded-full -z-10"></div>
+          </div>
+
+          {/* Right: Text Description */}
+          <div className="flex-1 space-y-6 text-left order-1 lg:order-2 self-center">
+            <h2 className="text-4xl lg:text-5xl font-semibold text-[#5cb5db] leading-[1.1]">
+              PIMWAI <br />
+              <span className="text-gray-900">ระบบฝึกพิมพ์ดีด</span> <br />
+              <span className="text-4xl lg:text-5xl font-semibold text-[#5cb5db] leading-[1.1]">แบบออนไลน์</span>
             </h2>
 
-            <p className="text-lg text-gray-500 leading-relaxed border-l-4 border-blue-200 pl-6">
-              สัมผัสประสบการณ์ใหม่ของการฝึกพิมพ์ที่ดีไซน์มาเพื่อคุณโดยเฉพาะ ด้วยเทคโนโลยีที่ทันสมัย วิเคราะห์จุดอ่อนแม่นยำ และระบบ Gamification ที่จะทำให้คุณไม่อยากหยุดพิมพ์
+            <p className="text-lg text-gray-500 leading-relaxed max-w-lg">
+              มีการพัฒนา และอัปเดตระบบตลอดอายุการใช้งาน พร้อมฟีเจอร์ใหม่ๆ ที่จะช่วยให้การฝึกพิมพ์ของคุณเป็นเรื่องง่าย และสนุกกว่าที่เคย
+            </p>
+          </div>
+
+        </div>
+      </section>
+
+      {/* ================= Rank System Section ================= */}
+      <section id="ranking" className="py-10 bg-white px-6 relative overflow-hidden">
+        {/* Decorative Background Elements */}
+        <div className="absolute top-1/2 right-0 -translate-y-1/2 w-[800px] h-[800px] rounded-full -z-10 translate-x-1/4 pointer-events-none"></div>
+
+        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-5 lg:gap-5">
+
+          {/* Left: Text Description */}
+          <div className="flex-1 space-y-6 text-left self-center ml-12">
+            <h2 className="text-4xl lg:text-5xl font-semibold leading-[1.1]">
+              ระบบแรงค์ <br />
+              <span className="text-gray-900">ไต่อันดับ ท้าทายตัวเอง</span>
+            </h2>
+
+            <p className="text-lg text-gray-500 leading-relaxed max-w-lg">
+              พิสูจน์ความสามารถของคุณด้วยระบบแรงค์สุดเข้มข้น ตั้งแต่ Bronze จนถึง Grandmaster ยิ่งฝึกมาก ยิ่งเก่งเร็ว และแน่นอน... ยิ่งได้โชว์แรงค์สวยๆ ให้เพื่อนอิจฉา!
             </p>
 
-            {/* Premium Feature Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 mt-8">
-              {[
-                { icon: <GraduationCap size={20} />, title: "บทเรียนอัจฉริยะ", desc: "ปรับระดับตามผู้เรียนอัตโนมัติ" },
-                { icon: <Gamepad2 size={20} />, title: "เกมวัดความเร็ว", desc: "ท้าทายเพื่อนและไต่อันดับโลก" },
-                { icon: <LineChart size={20} />, title: "วิเคราะห์เชิงลึก", desc: "รู้จุดผิดพลาดรายตัวอักษร" },
-                { icon: <Trophy size={20} />, title: "ระบบรางวัล & XP", desc: "ยิ่งฝึกยิ่งได้ ยิ่งเก่งยิ่งรวย XP" }
-              ].map((item, index) => (
-                <div key={index} className="flex items-start gap-4 p-4 rounded-2xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-shadow group">
-                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#0c648b] flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300">
-                    {item.icon}
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-gray-900">{item.title}</h4>
-                    <p className="text-sm text-gray-500 mt-1">{item.desc}</p>
-                  </div>
-                </div>
+            <div className="flex flex-wrap gap-3">
+              {['Bronze', 'Gold', 'Diamond'].map((rank) => (
+                <span key={rank} className="px-4 py-1.5 rounded-full bg-white border border-gray-200 text-sm font-medium text-gray-600">
+                  {rank}
+                </span>
               ))}
             </div>
           </div>
 
-          {/* Right: Presentation Image Container (Premium Browser Style) */}
-          <div className="flex-1 w-full perspective-1000">
-            {/* Main Floating Card */}
-            <div className="relative rounded-2xl p-3 bg-white shadow-2xl ring-1 ring-black/5 transform rotate-y-[-5deg] rotate-x-[5deg] hover:rotate-0 transition-transform duration-700 ease-out">
-
-              {/* Browser Header */}
-              <div className="flex items-center gap-2 mb-3 px-2">
-                <div className="flex gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-[#FF5F56]"></div>
-                  <div className="w-2.5 h-2.5 rounded-full bg-[#FFBD2E]"></div>
-                  <div className="w-2.5 h-2.5 rounded-full bg-[#27C93F]"></div>
-                </div>
-                <div className="flex-1 text-center">
-                  <div className="mx-auto w-32 h-5 bg-gray-100 rounded-md flex items-center justify-center text-[10px] text-gray-400 font-mono">
-                    pimwai.com/pro
-                  </div>
+          {/* Right: Rank Visual */}
+          <div className="flex-1 w-full relative perspective-1000">
+            {/* Central Image Container */}
+            <div className="relative z-10 w-[90%] md:w-[85%] mx-auto">
+              <div className="relative rounded-xl overflow-hidden bg-white">
+                <div className="relative aspect-[16/10]">
+                  <img
+                    src="/rank.png"
+                    alt="Rank System Preview"
+                    className="w-full h-full object-cover"
+                  />
                 </div>
               </div>
-
-              {/* Content Area */}
-              <div className="relative aspect-[16/10] bg-gray-50 rounded-lg overflow-hidden border border-gray-100 group">
-                <img
-                  src="/Demo.gif"
-                  alt="Platform Demo"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                />
-
-                {/* Floating Badge (Example) */}
-                <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur shadow-lg py-2 px-4 rounded-lg flex items-center gap-3 animate-float-slow">
-                  <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-bold text-xs">A+</div>
-                  <div>
-                    <div className="text-[10px] text-gray-400 font-bold uppercase">Accuracy</div>
-                    <div className="text-sm font-black text-gray-800">98.5%</div>
-                  </div>
-                </div>
-              </div>
-
             </div>
 
-            {/* Back Glow */}
-            <div className="absolute top-10 inset-0 bg-blue-500 blur-3xl opacity-20 -z-10 rounded-full transform translate-y-10"></div>
+            {/* Decorative Elements */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-yellow-500/5 blur-3xl rounded-full -z-10"></div>
           </div>
 
         </div>
