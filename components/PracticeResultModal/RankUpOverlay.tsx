@@ -12,18 +12,33 @@ interface RankUpOverlayProps {
 
 export default function RankUpOverlay({ prevRank, currentRank, currentRankName, onClose }: RankUpOverlayProps) {
     const [showNewRank, setShowNewRank] = useState(false);
+    const [isNewRankLoaded, setIsNewRankLoaded] = useState(false);
 
     useEffect(() => {
-        // หลังจาก Rank เก่าหายไป (rank-out 0.6s) ให้ Rank ใหม่โผล่มา
-        const timer = setTimeout(() => setShowNewRank(true), 600);
-        return () => clearTimeout(timer);
-    }, []);
+        // รอจนกว่ารูป New Rank จะโหลดเสร็จ + หมดเวลา animation rank-out
+        if (isNewRankLoaded) {
+            const timer = setTimeout(() => setShowNewRank(true), 600);
+            return () => clearTimeout(timer);
+        }
+    }, [isNewRankLoaded]);
 
     return (
         <div className="fixed inset-0 z-[9999] bg-black/95 flex flex-col items-center justify-center overflow-hidden" onClick={onClose}>
 
             {/* Background Light Burst */}
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-900/40 via-black to-black animate-pulse"></div>
+
+            {/* Preload New Rank Image (Hidden) */}
+            <div className="absolute opacity-0 pointer-events-none">
+                <Image
+                    src={`/Rank${currentRank}.png`}
+                    width={700}
+                    height={700}
+                    alt=""
+                    priority
+                    onLoad={() => setIsNewRankLoaded(true)}
+                />
+            </div>
 
             <div className="relative z-10 flex flex-col items-center">
 
@@ -41,6 +56,7 @@ export default function RankUpOverlay({ prevRank, currentRank, currentRankName, 
                                 width={300}
                                 height={300}
                                 alt="Old Rank"
+                                priority
                                 className="object-contain filter grayscale opacity-50"
                             />
                         </div>
@@ -55,6 +71,7 @@ export default function RankUpOverlay({ prevRank, currentRank, currentRankName, 
                                 width={700}
                                 height={700}
                                 alt="New Rank"
+                                priority
                                 className="object-contain drop-shadow-[0_0_30px_rgba(255,255,255,0.6)]"
                             />
                         </div>

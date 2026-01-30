@@ -298,7 +298,7 @@ export default function LandingPage() {
               <div className="relative rounded-xl overflow-hidden bg-white">
                 <div className="relative aspect-[16/10]">
                   <img
-                    src="/rank.png"
+                    src="/rank.PNG"
                     alt="Rank System Preview"
                     className="w-full h-full object-cover"
                   />

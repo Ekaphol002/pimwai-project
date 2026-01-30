@@ -162,7 +162,7 @@ const beginnerLessons = [
   // Anchors: ด (Home L), ่ (Home R)
   // =======================================================
   {
-    title: "บทที่ 1: จุดเริ่มต้น",
+    title: "ก้าวแรกนิ้วชี้ (ด ไม้เอก พ)",
     subLessons: [
       {
         slug: "home-row-left-index-middle",
@@ -228,7 +228,7 @@ const beginnerLessons = [
   // Anchors: ่ (Home Index R -> ี), ก (Home Middle L), ก (Home Middle L -> ำ)
   // =======================================================
   {
-    title: "บทที่ 2: มือขวาและวรรณยุกต์",
+    title: "สระบนและสระอำ (สระอี ก สระอำ)",
     subLessons: [
       {
         slug: "home-row-left-ring-pinky",
@@ -294,7 +294,7 @@ const beginnerLessons = [
   // Anchors: า (Home R), า (Home R -> ร), ห (Home L)
   // =======================================================
   {
-    title: "บทที่ 3: ปิดจบแป้นเหย้า",
+    title: "พิชิตแป้นเหย้า (า ร ห)",
     subLessons: [
       {
         slug: "home-row-center-reach",
@@ -360,7 +360,7 @@ const beginnerLessons = [
   // Anchors: ส (Home R), ส (Home R -> น), ห (Home L -> ไ)
   // =======================================================
   {
-    title: "บทที่ 4: บุกแถวบนซ้าย",
+    title: "ขึ้นแถวบนซ้าย (ส น ไ)",
     subLessons: [
       {
         slug: "upper-row-left-index",
@@ -426,7 +426,7 @@ const beginnerLessons = [
   // Anchors: ฟ (Home L), ว (Home R), ว (Home R -> ย)
   // =======================================================
   {
-    title: "บทที่ 5: บุกแถวบนขวา",
+    title: "พิชิตแถวบนขวา (ฟ ว ย)",
     subLessons: [
       {
         slug: "upper-row-left-middle-ring",
@@ -492,7 +492,7 @@ const beginnerLessons = [
   // Anchors: ด(ะ), ่(ั), ด(เ)
   // =======================================================
   {
-    title: "บทที่ 6: สระลอยฟ้า",
+    title: "สระเปิดปิด (สระะ ไม้หัน สระเ)",
     subLessons: [
       {
         slug: "upper-row-right-pinky-reach",
@@ -558,7 +558,7 @@ const beginnerLessons = [
   // Anchors: ่(้), ด(ิ), ่(ื)
   // =======================================================
   {
-    title: "บทที่ 7: นิ้วก้อยพิฆาต",
+    title: "วรรณยุกต์และสระลอย (ไม้โท สระอิ สระอือ)",
     subLessons: [
       {
         slug: "review-home-row-speed",
@@ -629,7 +629,7 @@ const intermediateLessons = [
   // Anchors: ด(อ) ด(ิ) ่(ื)
   // ============================================================
   {
-    title: "นิ้วชี้ล่างซ้ายขวา",
+    title: "ลุยแถวล่างนิ้วชี้ (อ สระอิ สระอือ)",
     subLessons: [
       {
         slug: "bottom-row-left-pinky-ring",
@@ -702,7 +702,7 @@ const intermediateLessons = [
   // Anchors: ่(ุ) ่(ึ) า(ค) *ค ใช้นิ้วกลางแต่มากับชุดนี้
   // ============================================================
   {
-    title: "แถวบนซ้าย",
+    title: "สระอุ สระอึ และ ค",
     subLessons: [
       {
         slug: "bottom-row-right-reach-vowel",
@@ -775,7 +775,7 @@ const intermediateLessons = [
   // Anchors: ่(ท) า(ม) ส(ใ)
   // ============================================================
   {
-    title: "แถวล่างขวา",
+    title: "ท ม ใ แถวล่าง",
     subLessons: [
       {
         slug: "top-row-left-index-basic",
@@ -848,7 +848,7 @@ const intermediateLessons = [
   // Anchors: ว(ฝ) ด(ภ) ด(ถ)
   // ============================================================
   {
-    title: "เชื่อมต่อบนล่าง",
+    title: "ฝ ภ ถ เชื่อมบนล่าง",
     subLessons: [
       {
         slug: "top-row-right-index-middle",
@@ -921,7 +921,7 @@ const intermediateLessons = [
   // Anchors: ฟ(ผ) ห(ป) ก(แ)
   // ============================================================
   {
-    title: "แถวล่างซ้าย",
+    title: "ผ ป แ นิ้วก้อย",
     subLessons: [
       {
         slug: "review-bottom-row-drill",
@@ -994,7 +994,7 @@ const intermediateLessons = [
   // Anchors: ส(ต) ว(จ) ว(ข)
   // ============================================================
   {
-    title: "แถวบนขวา",
+    title: "ต จ ข แถวบนขวา",
     subLessons: [
       {
         slug: "review-top-row-drill",
@@ -1067,7 +1067,7 @@ const intermediateLessons = [
   // Anchors: ว(ช)
   // ============================================================
   {
-    title: "ตัวสุดท้ายและทบทวน",
+    title: "ช ตัวสุดท้าย และทบทวน",
     subLessons: [
       {
         slug: "intermediate-final-bottom-drill",

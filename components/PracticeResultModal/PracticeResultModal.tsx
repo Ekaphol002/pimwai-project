@@ -288,17 +288,6 @@ export default function PracticeResultModal({
 
         {!isExpanded && <hr className="my-6 border-gray-300" />}
 
-        {/* Rank & EXP Progress Box */}
-        {totalXP > 0 && !isTestMode && (
-          <div className="mb-6">
-            <RankProgressBox
-              totalExp={totalXP}
-              earnedExp={earnedXP}
-              shouldAnimate={startExpAnimation}
-            />
-          </div>
-        )}
-
         {/* Expanded Details */}
         <div className={`grid transition-all duration-500 ease-in-out ${isExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
           <div className="overflow-hidden">
@@ -327,6 +316,17 @@ export default function PracticeResultModal({
             </div>
           </div>
         </div>
+
+        {/* Rank & EXP Progress Box (อยู่ด้านล่าง เพิ่มเติม และถูกดันลงเมื่อกด expand) */}
+        {totalXP > 0 && !isTestMode && (
+          <div className="mb-6">
+            <RankProgressBox
+              totalExp={totalXP}
+              earnedExp={earnedXP}
+              shouldAnimate={startExpAnimation}
+            />
+          </div>
+        )}
 
         {/* Buttons */}
         <div className="flex justify-between items-center">

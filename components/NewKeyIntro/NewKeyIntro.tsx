@@ -27,9 +27,13 @@ export default function NewKeyIntro({ targetChar, onComplete, onCorrectPress }: 
                 let expectedCode = reverseThaiKeyMap[targetChar];
                 if (targetChar === ' ') expectedCode = 'Space';
 
-                // Check if correct key pressed (using Code for layout independence)
-                // Also check event.key as fallback in case map is missing something
-                const isCorrect = (expectedCode && event.code === expectedCode) || event.key === targetChar;
+                // ต้องเช็คว่าพิมพ์ออกมาเป็นตัวไทยจริงๆ (ไม่ใช่แค่ตรงตำแหน่งปุ่มกายภาพ)
+                const isThaiChar = /[\u0E00-\u0E7F]/.test(event.key) || event.key === ' ';
+
+                // Check if correct key pressed:
+                // 1. ต้องเป็นตัวอักษรไทย (หรือ Space)
+                // 2. ตรงตำแหน่งปุ่มกายภาพ หรือ ตรงตัวอักษร
+                const isCorrect = isThaiChar && ((expectedCode && event.code === expectedCode) || event.key === targetChar);
 
                 if (isCorrect) {
                     setInputStatus('correct');
