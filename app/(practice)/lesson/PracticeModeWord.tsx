@@ -24,6 +24,59 @@ type XpBreakdown = {
   firstWin: number;
 };
 
+// ฟังก์ชันจัดลำดับตัวอักษรไทย: สระล่าง (อุ/อู) ต้องมาก่อนสระบนและวรรณยุกต์
+function reorderThaiChars(chars: string[]): string[] {
+  const LOWER_VOWELS = 'ฺุู'; // สระล่าง
+  const UPPER_VOWELS = 'ิีึืั็'; // สระบน
+  const TONES = '่้๊๋์'; // วรรณยุกต์
+
+  const result: string[] = [];
+  let i = 0;
+
+  while (i < chars.length) {
+    const char = chars[i];
+
+    // ถ้าเป็นพยัญชนะหรือตัวอักษรปกติ
+    if (!LOWER_VOWELS.includes(char) && !UPPER_VOWELS.includes(char) && !TONES.includes(char)) {
+      result.push(char);
+      i++;
+
+      // เก็บสระบนและวรรณยุกต์ที่ตามมา (ก่อน reorder)
+      const upperVowels: string[] = [];
+      const lowerVowels: string[] = [];
+      const tones: string[] = [];
+
+      // ดูตัวถัดไปว่าเป็นสระ/วรรณยุกต์ไหม
+      while (i < chars.length) {
+        const nextChar = chars[i];
+        if (LOWER_VOWELS.includes(nextChar)) {
+          lowerVowels.push(nextChar);
+          i++;
+        } else if (UPPER_VOWELS.includes(nextChar)) {
+          upperVowels.push(nextChar);
+          i++;
+        } else if (TONES.includes(nextChar)) {
+          tones.push(nextChar);
+          i++;
+        } else {
+          break;
+        }
+      }
+
+      // จัดลำดับใหม่: สระล่าง -> สระบน -> วรรณยุกต์
+      result.push(...lowerVowels);
+      result.push(...upperVowels);
+      result.push(...tones);
+    } else {
+      // กรณีพิเศษ: สระ/วรรณยุกต์โดดๆ (ไม่ควรเกิดขึ้น แต่ป้องกันไว้)
+      result.push(char);
+      i++;
+    }
+  }
+
+  return result;
+}
+
 function chunkTextIntoCharLines(text: string): string[][] {
   if (!text) return [[]];
   const words = text.split(' ');
@@ -32,7 +85,8 @@ function chunkTextIntoCharLines(text: string): string[][] {
 
   for (let i = 0; i < words.length; i++) {
     const word = words[i];
-    let wordChars = word.split('');
+    // จัดลำดับตัวอักษรไทยใหม่: สระล่างมาก่อนสระบนและวรรณยุกต์
+    let wordChars = reorderThaiChars(word.split(''));
     if (i < words.length - 1) {
       wordChars.push(' ');
     }

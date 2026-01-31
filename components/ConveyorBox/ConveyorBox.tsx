@@ -31,12 +31,13 @@ export default function ConveyorBox({
   const REAL_UPPER_VOWELS = 'ิีึืั็'; // สระที่อยู่ด้านบน
   const LOWER_VOWELS = 'ฺุู'; // สระที่อยู่ด้านล่าง
   const HIGH_VOWELS_BASE = 'ิีึืั'; // สระบนที่ยอมให้มีวรรณยุกต์ขี่
-  const UPPER_VOWELS = 'ิีึืุูั็'; // Keep original definition for layout sizing logic
+  const UPPER_VOWELS = 'ิีึืั็'; // สระบนเท่านั้น (ไม่รวมอุ/อู)
   const TONES = '่้๊๋์';
+  const FLOATING_CHARS = UPPER_VOWELS + TONES; // ตัวลอยด้านบน (สระบน + วรรณยุกต์)
 
   // Let's stick to the overlap fix: Lift MORE.
 
-  const HIDE_TRIGGER_VOWELS = UPPER_VOWELS + TONES + 'ำ';
+  const HIDE_TRIGGER_VOWELS = UPPER_VOWELS + LOWER_VOWELS + TONES + 'ำ';
   const ALL_VOWELS_AND_TONES = HIDE_TRIGGER_VOWELS;
 
   const [cursorStyle, setCursorStyle] = useState({ left: 0, width: 0, opacity: 0 });
@@ -228,12 +229,13 @@ export default function ConveyorBox({
 
                 // --- 9. Logic จัดขนาดกล่อง (Layout) ---
                 const isFloatingChar = UPPER_VOWELS.includes(char) || TONES.includes(char);
-                const hasFloatingFollower = nextChar && (UPPER_VOWELS.includes(nextChar) || TONES.includes(nextChar));
+                const isLowerVowel = LOWER_VOWELS.includes(char); // สระล่าง อุ/อู
+                const hasFloatingFollower = nextChar && (UPPER_VOWELS.includes(nextChar) || TONES.includes(nextChar) || LOWER_VOWELS.includes(nextChar));
 
                 let layoutClass = 'w-auto h-12 min-w-[10px]'; // (ปกติ)
 
-                if (isFloatingChar) {
-                  // (วรรณยุกต์) หุบกล่องเล็ก ดึงกลับมาซ้อนตัวหน้า พื้นหลังใส
+                if (isFloatingChar || isLowerVowel) {
+                  // (สระบน/ล่าง/วรรณยุกต์) หุบกล่องเล็ก ดึงกลับมาซ้อนตัวหน้า พื้นหลังใส
                   layoutClass = 'w-0 h-12 -ml-[0.1em] overflow-visible z-10';
                   bgClass = 'bg-transparent';
                 } else if (hasFloatingFollower) {
