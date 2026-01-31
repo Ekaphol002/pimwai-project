@@ -44,13 +44,25 @@ export const authOptions: AuthOptions = {
   session: {
     strategy: "jwt",
   },
+  cookies: {
+    sessionToken: {
+      name: `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+        // ไม่ตั้ง maxAge = session cookie → หมดอายุเมื่อปิดเบราว์เซอร์
+      },
+    },
+  },
   callbacks: {
     async session({ session, token }) {
-        if (session.user && token.sub) {
-            // @ts-ignore
-            session.user.id = token.sub;
-        }
-        return session;
+      if (session.user && token.sub) {
+        // @ts-ignore
+        session.user.id = token.sub;
+      }
+      return session;
     }
   },
   secret: process.env.NEXTAUTH_SECRET,
