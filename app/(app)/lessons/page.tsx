@@ -5,6 +5,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route"; // ✅ ต้�
 import LessonMenuBar from '@/components/LessonMenuBar/LessonMenuBar';
 import LessonList from '@/components/LessonList/LessonList';
 import TodayStats from '@/components/TodayStats/TodayStats';
+import WelcomeModal from '@/components/WelcomeModal/WelcomeModal';
 import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
@@ -167,8 +168,28 @@ export default async function LessonsPage({ searchParams }: PageProps) {
     };
   });
 
+  // =========================================================
+  // ✅ ตรวจสอบว่าเป็น user ใหม่หรือไม่ (ไม่เคยเล่นเลย)
+  // =========================================================
+  const isNewUser = user.lastPlayedAt === null;
+
+  // หา URL ด่านแรก (beginner lesson 1, sub-lesson แรก)
+  const firstLesson = rawLessons[0];
+  const firstSubLesson = firstLesson?.subLessons[0];
+  const firstLessonUrl = firstSubLesson
+    ? `/lesson/${firstLesson.id}/${firstSubLesson.id}`
+    : '/lessons';
+
   return (
     <div className="flex flex-col w-full max-w-screen-2xl mx-auto mb-10">
+
+      {/* Welcome Modal สำหรับ user ใหม่ */}
+      {isNewUser && (
+        <WelcomeModal
+          userName={user.name || undefined}
+          firstLessonUrl={firstLessonUrl}
+        />
+      )}
 
       <LessonMenuBar
         selectedLevel={selectedLevel}
