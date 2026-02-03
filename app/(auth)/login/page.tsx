@@ -131,6 +131,8 @@ export default function AuthPage() {
             setErrors(prev => ({ ...prev, username: data.message }));
           } else if (data.message?.includes('อีเมล')) {
             setErrors(prev => ({ ...prev, email: data.message }));
+          } else if (data.message?.includes('รหัสผ่าน')) {
+            setErrors(prev => ({ ...prev, password: data.message }));
           } else {
             setErrors(prev => ({ ...prev, general: data.message }));
           }

@@ -44,56 +44,24 @@ export const authOptions: AuthOptions = {
   session: {
     strategy: "jwt",
   },
-  cookies: {
-    sessionToken: {
-      name: `next-auth.session-token`,
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        secure: process.env.NODE_ENV === "production",
-        maxAge: 2 * 60 * 60, // 2 ชั่วโมง
-      },
-    },
-  },
+  // cookies: {
+  //   sessionToken: {
+  //     name: `next-auth.session-token`,
+  //     options: {
+  //       httpOnly: true,
+  //       sameSite: "lax",
+  //       path: "/",
+  //       secure: process.env.NODE_ENV === "production",
+  //       maxAge: 2 * 60 * 60, // 2 ชั่วโมง
+  //     },
+  //   },
+  // },
   callbacks: {
     async signIn({ user, account }) {
-      // อนุญาตให้ login ด้วย Google แม้ email เคยลงทะเบียนด้วย credentials
-      if (account?.provider === "google" && user.email) {
-        const existingUser = await prisma.user.findUnique({
-          where: { email: user.email },
-          include: { accounts: true }
-        });
-
-        if (existingUser) {
-          // ตรวจสอบว่า Google account ถูก link แล้วหรือยัง
-          const googleAccount = existingUser.accounts.find(
-            (acc) => acc.provider === "google"
-          );
-
-          if (!googleAccount) {
-            // Link Google account เข้ากับ user ที่มีอยู่แล้ว
-            await prisma.account.create({
-              data: {
-                userId: existingUser.id,
-                type: account.type,
-                provider: account.provider,
-                providerAccountId: account.providerAccountId,
-                access_token: account.access_token,
-                expires_at: account.expires_at,
-                token_type: account.token_type,
-                scope: account.scope,
-                id_token: account.id_token,
-              }
-            });
-          }
-        }
-      }
       return true;
     },
     async session({ session, token }) {
       if (session.user && token.sub) {
-        // @ts-ignore
         session.user.id = token.sub;
       }
       return session;

@@ -607,6 +607,13 @@ html {
   }
 }
 
+
 .animate-blink-blue {
   animation: blink-blue-white 1s ease-in-out infinite;
+}
+
+/* ✅ ซ่อนตารหัสผ่านของ Browser (Edge/IE) */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
 }

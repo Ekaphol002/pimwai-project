@@ -13,7 +13,7 @@ const sarabun = Sarabun({
 
 const nunito = Nunito({
   subsets: ["latin"],
-  weight: ["400", "700"], 
+  weight: ["400", "700"],
   variable: "--font-nunito",
 });
 
@@ -21,8 +21,8 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://pimwai.vercel.app'), // ⚠️ เปลี่ยนเป็นโดเมนจริงของคุณเมื่อ Deploy
   description: "เว็บไซต์ฝึกพิมพ์ดีดและพิมพ์สัมผัสที่ดีที่สุด เรียนรู้วิธีวางนิ้วที่ถูกต้อง ผ่านเกมสนุกๆ และบทเรียนฟรี ทดสอบความเร็ว WPM พร้อมระบบเก็บสถิติพัฒนาการ",
   keywords: [
-    "ฝึกพิมพ์ดีด", "พิมพ์สัมผัส", "พิมพ์ดีดออนไลน์", "เกมฝึกพิมพ์", 
-    "เรียนพิมพ์ดีด", "พิมพ์เร็ว", "Typing Practice", "Touch Typing Thai", 
+    "ฝึกพิมพ์ดีด", "พิมพ์สัมผัส", "พิมพ์ดีดออนไลน์", "เกมฝึกพิมพ์",
+    "เรียนพิมพ์ดีด", "พิมพ์เร็ว", "Typing Practice", "Touch Typing Thai",
     "ทดสอบความเร็วพิมพ์", "ฝึกวางนิ้ว", "PIMWAI"
   ],
   authors: [{ name: "PIMWAI Team" }],
@@ -43,7 +43,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-return (
+  return (
     <html lang="en">
       <body className={sarabun.className}>
         {/* ✅ 2. ครอบ Providers ไว้ตรงนี้ */}
