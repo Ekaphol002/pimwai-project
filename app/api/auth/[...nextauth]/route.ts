@@ -43,19 +43,17 @@ export const authOptions: AuthOptions = {
   ],
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 วัน
   },
-  useSecureCookies: process.env.NODE_ENV === "production",
   cookies: {
     sessionToken: {
-      name: process.env.NODE_ENV === "production"
-        ? `__Secure-next-auth.session-token`
-        : `next-auth.session-token`,
+      name: `next-auth.session-token`,
       options: {
         httpOnly: true,
         sameSite: "lax",
         path: "/",
-        secure: process.env.NODE_ENV === "production",
+        // ✅ ปรับแก้: เช็คว่าถ้าเป็น Production แต่ไม่ได้ใช้ HTTPS (เช่นรันบน LAN) ไม่ต้องบังคับ Secure
+        secure: process.env.NODE_ENV === "production" && process.env.NEXTAUTH_URL?.startsWith("https"),
+        maxAge: 30 * 24 * 60 * 60, // 30 วัน
       },
     },
   },

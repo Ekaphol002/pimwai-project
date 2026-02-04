@@ -1,16 +1,27 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FcGoogle } from 'react-icons/fc';
 import { Home } from 'lucide-react';
 // ✅ 1. เพิ่มไอคอนลูกตา (FaEye, FaEyeSlash)
 import { FaUser, FaEnvelope, FaLock, FaEye, FaEyeSlash } from 'react-icons/fa';
-import { signIn } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { signIn, useSession } from 'next-auth/react'; // ✅ เพิ่ม useSession
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 export default function AuthPage() {
   const router = useRouter();
+
+  const { status } = useSession(); // ✅ ตรวจสอบสถานะ User
+
+  useEffect(() => {
+    if (status === 'authenticated') {
+      router.replace('/lessons');
+    }
+  }, [status, router]);
+
+  const searchParams = useSearchParams();
+  const errorParam = searchParams.get('error');
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
 
@@ -213,6 +224,15 @@ export default function AuthPage() {
                   <span className="flex-shrink-0 mx-4 text-gray-400 text-xs uppercase tracking-wider">or continue with</span>
                   <div className="flex-grow border-t border-gray-200"></div>
                 </div>
+              </div>
+            )}
+
+            {/* ✅ แสดง Error จาก URL (เช่น OAuthAccountNotLinked) */}
+            {errorParam && (
+              <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm text-center font-medium">
+                {errorParam === "OAuthAccountNotLinked"
+                  ? "อีเมลนี้ถูกใช้งานด้วยวิธีอื่นแล้ว (กรุณาล็อกอินด้วยรหัสผ่าน)"
+                  : "เกิดข้อผิดพลาดในการเข้าสู่ระบบ"}
               </div>
             )}
 

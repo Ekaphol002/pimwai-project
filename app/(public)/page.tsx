@@ -3,6 +3,8 @@
 import Image from 'next/image';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react'; // ✅ เพิ่ม import
+import { useRouter } from 'next/navigation'; // ✅ เพิ่ม import
 import { MousePointer2, Star, Presentation, GraduationCap, Gamepad2, LineChart, Trophy } from 'lucide-react';
 import ParticleField from '@/components/ParticleField/ParticleField';
 
@@ -32,6 +34,16 @@ const Typewriter = ({ text, delay = 100, infinite = true }: { text: string; dela
 
 export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
+
+  // ✅ เพิ่ม: เช็คว่าถ้ามี Session (เคย Login ค้างไว้) ให้เด้งไปหน้า lessons เลย
+  const { status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === 'authenticated') {
+      router.replace('/lessons');
+    }
+  }, [status, router]);
 
   // ดักจับการเลื่อนหน้าจอ เพื่อเปลี่ยนสี Navbar
   useEffect(() => {
