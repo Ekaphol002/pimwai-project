@@ -254,7 +254,7 @@ export default function AuthPage() {
                       name="username"
                       value={formData.username}
                       onChange={handleChange}
-                      className={`w-full pl-10 pr-4 py-3 bg-gray-50 border rounded-xl focus:bg-white focus:outline-none focus:ring-4 transition-all
+                      className={`w-full pl-10 pr-4 py-3 bg-gray-50 border rounded-xl focus:bg-white focus:outline-none focus:ring-4 transition-all text-gray-900 placeholder:text-gray-500
                         ${errors.username ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-200 focus:border-[#4585FF] focus:ring-[#4585FF]/20'}`}
                       type="text"
                       placeholder="Username"
@@ -273,7 +273,7 @@ export default function AuthPage() {
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
-                    className={`w-full pl-10 pr-4 py-3 bg-gray-50 border rounded-xl focus:bg-white focus:outline-none focus:ring-4 transition-all
+                    className={`w-full pl-10 pr-4 py-3 bg-gray-50 border rounded-xl focus:bg-white focus:outline-none focus:ring-4 transition-all text-gray-900 placeholder:text-gray-500
                       ${errors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-200 focus:border-[#4585FF] focus:ring-[#4585FF]/20'}`}
                     type="email"
                     placeholder="Email Address"
@@ -296,7 +296,7 @@ export default function AuthPage() {
                     onChange={handleChange}
                     // ✅ สลับ type ตาม state
                     type={showPassword ? "text" : "password"}
-                    className={`w-full pl-10 pr-10 py-3 bg-gray-50 border rounded-xl focus:bg-white focus:outline-none focus:ring-4 transition-all
+                    className={`w-full pl-10 pr-10 py-3 bg-gray-50 border rounded-xl focus:bg-white focus:outline-none focus:ring-4 transition-all text-gray-900 placeholder:text-gray-500
                       ${errors.password ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-200 focus:border-[#4585FF] focus:ring-[#4585FF]/20'}`}
                     placeholder="Password"
                   />

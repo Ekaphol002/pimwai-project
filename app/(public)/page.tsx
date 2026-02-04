@@ -285,7 +285,7 @@ export default function LandingPage() {
 
           {/* Left: Text Description */}
           <div className="flex-1 space-y-6 text-left self-center ml-12">
-            <h2 className="text-4xl lg:text-5xl font-semibold leading-[1.1]">
+            <h2 className="text-4xl lg:text-5xl font-semibold leading-[1.1] text-gray-900">
               ระบบแรงค์ <br />
               <span className="text-gray-900">ไต่อันดับ ท้าทายตัวเอง</span>
             </h2>
