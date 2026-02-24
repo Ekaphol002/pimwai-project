@@ -113,7 +113,8 @@ export default function LandingPage() {
             <h2 className="text-xl md:text-2xl text-blue-100 font-medium mb-4 uppercase tracking-widest opacity-90">
               The Ultimate Typing Platform
             </h2>
-            <h1 className="text-5xl md:text-7xl font-black text-white  drop-shadow-lg leading-tight">
+            <h1 className="text-5xl md:text-7xl font-black text-white drop-shadow-lg leading-tight">
+              <span className="sr-only">ฝึกพิมพ์ดีดออนไลน์ฟรี ทดสอบความเร็ว WPM พิมพ์สัมผัส </span>
               <Typewriter text="สวัสดี PIMWAI ยินดีต้อนรับ" delay={100} />
             </h1>
           </div>
@@ -175,7 +176,7 @@ export default function LandingPage() {
                       {/* ✅ Image for Lessons */}
                       <Image
                         src="/lesson.PNG"
-                        alt="Lesson Preview"
+                        alt="บทเรียนฝึกพิมพ์ดีดออนไลน์ฟรี พิมพ์สัมผัส PIMWAI"
                         fill
                         className="object-cover"
                       />
@@ -192,7 +193,7 @@ export default function LandingPage() {
                       {/* ✅ Image for Tests */}
                       <Image
                         src="/tests.PNG"
-                        alt="Test Preview"
+                        alt="ทดสอบความเร็วพิมพ์ดีด ฝึกพิมพ์เร็ว ทดสอบ WPM ภาษาไทยและอังกฤษ PIMWAI"
                         fill
                         className="object-cover"
                       />
@@ -209,7 +210,7 @@ export default function LandingPage() {
                       {/* ✅ Image for Progress */}
                       <Image
                         src="/progress.PNG"
-                        alt="Progress Preview"
+                        alt="สถิติความเร็วพิมพ์ดีด ติดตามพัฒนาการการพิมพ์สัมผัส PIMWAI"
                         fill
                         className="object-cover"
                       />
@@ -248,7 +249,7 @@ export default function LandingPage() {
                 <div className="relative aspect-[16/10]">
                   <img
                     src="/Demo.gif"
-                    alt="Platform Demo"
+                    alt="ตัวอย่างการฝึกพิมพ์ดีดและทดสอบความเร็วบนเว็บ PIMWAI"
                     className="w-full h-full object-cover"
                   />
                 </div>
@@ -311,7 +312,7 @@ export default function LandingPage() {
                 <div className="relative aspect-[16/10]">
                   <img
                     src="/rank.PNG"
-                    alt="Rank System Preview"
+                    alt="ระบบจัดอันดับ แรงค์ความเร็วพิมพ์ดีดแข่งกับเพื่อน PIMWAI"
                     className="w-full h-full object-cover"
                   />
                 </div>
