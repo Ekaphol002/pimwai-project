@@ -62,6 +62,8 @@ export const metadata: Metadata = {
   },
 };
 
+import GlobalAudioPlayer from "@/components/GlobalAudioPlayer/GlobalAudioPlayer";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -73,6 +75,7 @@ export default function RootLayout({
         {/* ✅ 2. ครอบ Providers ไว้ตรงนี้ */}
         <Providers>
           {children}
+          <GlobalAudioPlayer />
         </Providers>
       </body>
     </html>
