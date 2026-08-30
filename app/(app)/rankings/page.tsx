@@ -56,7 +56,9 @@ export default function LeaderboardPage() {
         else setIsTableLoading(true);
 
         try {
-            const res = await fetch(`/api/leaderboard?mode=${mode}&duration=${selectedTime}`);
+            const res = await fetch(`/api/leaderboard?mode=${mode}&duration=${selectedTime}`, {
+                cache: 'no-store'
+            });
             const data = await res.json();
             if (data.success) {
                 setLeaderboardData(data.leaderboard || []);

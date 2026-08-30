@@ -63,11 +63,33 @@ export const authOptions: AuthOptions = {
   //   },
   // },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
         token.email = user.email;
         token.name = user.name;
+      }
+      if (trigger === "update" && session?.name) {
+        token.name = session.name;
+      }
+      // ดึงชื่อล่าสุดจาก Database เสมอเพื่อป้องกันข้อมูลค้าง
+      if (token.email || token.id) {
+        try {
+          const dbUser = await prisma.user.findFirst({
+            where: {
+              OR: [
+                ...(token.id ? [{ id: token.id as string }] : []),
+                ...(token.email ? [{ email: token.email as string }] : [])
+              ]
+            },
+            select: { username: true, name: true }
+          });
+          if (dbUser) {
+            token.name = dbUser.username || dbUser.name || token.name;
+          }
+        } catch (e) {
+          // ignore error
+        }
       }
       return token;
     },
@@ -75,6 +97,7 @@ export const authOptions: AuthOptions = {
       if (session.user) {
         session.user.id = (token.id as string) || (token.sub as string);
         if (token.email) session.user.email = token.email as string;
+        if (token.name) session.user.name = token.name as string;
       }
       return session;
     }

@@ -32,6 +32,10 @@ export async function GET() {
                 currentExp: true,
                 createdAt: true,
                 password: true,
+                lastNameChangedAt: true,
+                showInLeaderboard: true,
+                keyboardSound: true,
+                isAvatarLocked: true,
                 accounts: {
                     select: {
                         provider: true

@@ -7,38 +7,38 @@ export default function sitemap(): MetadataRoute.Sitemap {
         {
             url: `${baseUrl}`,
             lastModified: new Date(),
-            changeFrequency: 'yearly',
-            priority: 1,
-        },
-        {
-            url: `${baseUrl}/login`,
-            lastModified: new Date(),
-            changeFrequency: 'monthly',
-            priority: 0.8,
+            changeFrequency: 'daily',
+            priority: 1.0,
         },
         {
             url: `${baseUrl}/lessons`,
             lastModified: new Date(),
-            changeFrequency: 'weekly',
+            changeFrequency: 'daily',
             priority: 0.9,
         },
         {
             url: `${baseUrl}/tests`,
             lastModified: new Date(),
-            changeFrequency: 'weekly',
+            changeFrequency: 'daily',
             priority: 0.9,
-        },
-        {
-            url: `${baseUrl}/progress`,
-            lastModified: new Date(),
-            changeFrequency: 'monthly',
-            priority: 0.7,
         },
         {
             url: `${baseUrl}/rankings`,
             lastModified: new Date(),
             changeFrequency: 'always',
+            priority: 0.9,
+        },
+        {
+            url: `${baseUrl}/progress`,
+            lastModified: new Date(),
+            changeFrequency: 'weekly',
             priority: 0.8,
+        },
+        {
+            url: `${baseUrl}/login`,
+            lastModified: new Date(),
+            changeFrequency: 'monthly',
+            priority: 0.6,
         }
     ]
 }

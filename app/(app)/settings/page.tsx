@@ -223,8 +223,10 @@ export default function SettingsPage() {
             if (data.success) {
                 toast.success('เปลี่ยนชื่อผู้ใช้เรียบร้อยแล้ว');
                 setIsEditingName(false);
-                await updateSession();
+                await updateSession({ name: trimmed });
                 fetchProfile();
+                // รีโหลดเพื่อให้ Navbar และหน้าอื่นๆ อัปเดตชื่อทันที
+                window.location.reload();
             } else {
                 toast.error(data.error || 'เกิดข้อผิดพลาดในการเปลี่ยนชื่อ');
             }
@@ -471,7 +473,7 @@ export default function SettingsPage() {
                                             <Pencil size={18} />
                                         </button>
                                     ) : (
-                                        <div className="flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 px-3 py-1.5 rounded-full border border-amber-200/80 font-bold logo-font">
+                                        <div className="flex items-center gap-1.5 text-xs text-white bg-[#5cb5db] px-3 py-1.5 rounded-full font-bold logo-font">
                                             <Clock size={14} />
                                             <span>เปลี่ยนได้อีกใน {daysLeft} วัน</span>
                                         </div>
