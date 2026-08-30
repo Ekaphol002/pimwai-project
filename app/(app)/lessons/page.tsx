@@ -7,6 +7,7 @@ import LessonList from '@/components/LessonList/LessonList';
 import TodayStats from '@/components/TodayStats/TodayStats';
 import WelcomeModal from '@/components/WelcomeModal/WelcomeModal';
 import { prisma } from '@/lib/prisma';
+import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,13 +27,17 @@ export default async function LessonsPage({ searchParams }: PageProps) {
   // 1. เช็ค Session
   const session = await getServerSession(authOptions);
 
+  if (!session?.user?.email) {
+    redirect('/login');
+  }
+
   // 2. เอา Email ไปหา User ID ใน Database
   const user = await prisma.user.findUnique({
-    where: { email: session?.user?.email! }
+    where: { email: session.user.email }
   });
 
   if (!user) {
-    return <div>ไม่พบข้อมูลผู้ใช้</div>;
+    redirect('/login');
   }
 
   // ✅ ได้ ID จริงมาใช้งานแล้ว!

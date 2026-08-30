@@ -29,20 +29,7 @@ const getSubLesson = cache(async (slug: string) => {
   return subLesson;
 });
 
-// ✅ 2. Implement generateStaticParams เพื่อทำ SSG (สร้างหน้าเว็บรอไว้เลย)
-export async function generateStaticParams() {
-  const subLessons = await prisma.subLesson.findMany({
-    select: {
-      id: true,
-      lessonId: true,
-    },
-  });
-
-  return subLessons.map((sub) => ({
-    id: sub.lessonId.toString(),
-    slug: sub.id,
-  }));
-}
+// Dynamic SSR page (no generateStaticParams to avoid build-time connection pool exhaustion)
 
 interface PageProps {
   params: Promise<{
