@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from '@/lib/prisma';
-import { writeFile, mkdir } from 'fs/promises';
-import path from 'path';
 
 export async function POST(request: Request) {
     try {
@@ -25,9 +23,9 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: false, error: 'รองรับเฉพาะไฟล์รูปภาพ (JPG, PNG, WEBP, GIF)' }, { status: 400 });
         }
 
-        // ตรวจสอบขนาดไฟล์ (ไม่เกิน 5MB)
-        if (file.size > 5 * 1024 * 1024) {
-            return NextResponse.json({ success: false, error: 'ขนาดรูปภาพต้องไม่เกิน 5MB' }, { status: 400 });
+        // ตรวจสอบขนาดไฟล์ (ไม่เกิน 2MB เพื่อความเร็วในการโหลด)
+        if (file.size > 2 * 1024 * 1024) {
+            return NextResponse.json({ success: false, error: 'ขนาดรูปภาพต้องไม่เกิน 2MB' }, { status: 400 });
         }
 
         const user = await prisma.user.findFirst({
@@ -51,26 +49,16 @@ export async function POST(request: Request) {
             }, { status: 403 });
         }
 
+        // แปลงไฟล์เป็น Base64 Data URL ที่ปลอดภัยและทำงานได้บน Serverless (Vercel) 100%
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
-
-        // หา extension
-        const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
-        const fileName = `avatar-${user.id}-${Date.now()}.${ext}`;
-
-        // บันทึกไฟล์ลงใน public/uploads/avatars
-        const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'avatars');
-        await mkdir(uploadDir, { recursive: true });
-
-        const filePath = path.join(uploadDir, fileName);
-        await writeFile(filePath, buffer);
-
-        const imageUrl = `/uploads/avatars/${fileName}`;
+        const base64String = buffer.toString('base64');
+        const dataUrl = `data:${file.type};base64,${base64String}`;
 
         // อัปเดตรูปใน User
         const updatedUser = await prisma.user.update({
             where: { id: user.id },
-            data: { image: imageUrl }
+            data: { image: dataUrl }
         });
 
         return NextResponse.json({

@@ -6,8 +6,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // =========================================================
@@ -59,7 +60,7 @@ model User {
   username          String?   @unique // ปรับเป็น Optional เผื่อยังไม่ได้ตั้ง
   email             String?   @unique
   emailVerified     DateTime? // ✅ เพิ่ม: สถานะยืนยันอีเมล
-  image             String? // รูปโปรไฟล์ (จาก Google)
+  image             String?   @db.Text // รูปโปรไฟล์ (จาก Google หรือ Base64 Data URL)
   password          String? // ✅ เพิ่ม: เผื่อทำระบบรหัสผ่านในอนาคต
   createdAt         DateTime  @default(now())
   lastPlayedAt      DateTime?
