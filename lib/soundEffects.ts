@@ -33,7 +33,7 @@ class SoundManager {
     private bgmAudio: HTMLAudioElement | null = null;
     private currentTrackIndex = 0;
     private selectedTracks: string[] = ['bgm1', 'bgm2', 'bgm3'];
-    private bgmVolume = 0.4;
+    private bgmVolume = 0.5;
     private sfxVolume = 0.7;
     private isBgmPlaying = false;
     private currentKeyboardSound = 'kb1';
@@ -84,7 +84,12 @@ class SoundManager {
             if (savedBgmVol !== null) this.bgmVolume = parseFloat(savedBgmVol);
 
             const savedTracks = localStorage.getItem('pimwai_selected_bgm');
-            if (savedTracks) this.selectedTracks = JSON.parse(savedTracks);
+            if (savedTracks) {
+                const parsed = JSON.parse(savedTracks);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    this.selectedTracks = parsed;
+                }
+            }
         } catch (e) {
             console.error('Error loading sound settings:', e);
         }
@@ -130,17 +135,13 @@ class SoundManager {
     }
 
     public setSelectedTracks(trackIds: string[]) {
-        this.selectedTracks = trackIds;
+        this.selectedTracks = trackIds.length > 0 ? trackIds : ['bgm1', 'bgm2', 'bgm3'];
         if (typeof window !== 'undefined') {
-            localStorage.setItem('pimwai_selected_bgm', JSON.stringify(trackIds));
+            localStorage.setItem('pimwai_selected_bgm', JSON.stringify(this.selectedTracks));
         }
 
         if (this.isBgmPlaying && !this.previewingTrackId) {
-            if (this.selectedTracks.length === 0) {
-                this.stopBgm();
-            } else {
-                this.playNextTrack();
-            }
+            this.playNextTrack();
         }
         this.notify();
     }
@@ -198,7 +199,9 @@ class SoundManager {
 
     // เริ่มเล่น Playlist วนลูป (สุ่มเพลง)
     public startBgm() {
-        if (this.selectedTracks.length === 0) return;
+        if (this.selectedTracks.length === 0) {
+            this.selectedTracks = ['bgm1', 'bgm2', 'bgm3'];
+        }
         this.previewingTrackId = null;
         this.isBgmPlaying = true;
         if (typeof window !== 'undefined') {
@@ -269,8 +272,7 @@ class SoundManager {
 
     private playNextTrack() {
         if (this.selectedTracks.length === 0) {
-            this.stopBgm();
-            return;
+            this.selectedTracks = ['bgm1', 'bgm2', 'bgm3'];
         }
 
         if (this.selectedTracks.length === 1) {
@@ -298,13 +300,17 @@ class SoundManager {
             this.bgmAudio.removeEventListener('ended', this.onTrackEnded);
         }
 
-        this.bgmAudio = new Audio(track.file);
-        this.bgmAudio.volume = this.bgmVolume;
-        this.bgmAudio.addEventListener('ended', this.onTrackEnded);
+        const audio = new Audio(track.file);
+        audio.volume = this.bgmVolume;
+        audio.addEventListener('ended', this.onTrackEnded);
+        this.bgmAudio = audio;
 
-        this.bgmAudio.play().catch(e => {
-            console.log('Autoplay blocked or audio play error:', e);
-        });
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+            playPromise.catch(e => {
+                console.log('Autoplay blocked, waiting for user click:', e);
+            });
+        }
     }
 
     private onTrackEnded = () => {

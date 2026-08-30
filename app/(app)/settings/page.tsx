@@ -335,7 +335,9 @@ export default function SettingsPage() {
         );
     }
 
-    const currentImage = profile?.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile?.displayName || 'User')}&background=e2f1f8&color=3a90b5&bold=true`;
+    const currentImage = (profile?.image && profile.image !== '/default-avatar.png')
+        ? profile.image
+        : `https://ui-avatars.com/api/?name=${encodeURIComponent(profile?.displayName || 'User')}&background=e2f1f8&color=3a90b5&bold=true`;
     const userIsAdmin = isAdmin(session?.user?.email);
 
     return (
@@ -585,7 +587,10 @@ export default function SettingsPage() {
                                         onChange={(e) => handleSfxVolumeChange(Number(e.target.value))}
                                         onMouseUp={handleSfxVolumeCommit}
                                         onTouchEnd={handleSfxVolumeCommit}
-                                        className="flex-1 accent-[#5cb5db] cursor-pointer h-2 bg-gray-200 rounded-lg"
+                                        className="flex-1 accent-[#5cb5db] cursor-pointer h-2 bg-gray-200 rounded-lg appearance-none"
+                                        style={{
+                                            background: `linear-gradient(to right, #5cb5db 0%, #5cb5db ${sfxVolume}%, #e5e7eb ${sfxVolume}%, #e5e7eb 100%)`
+                                        }}
                                     />
                                     <span className="text-xs font-bold text-gray-700 w-10 text-right logo-font">{sfxVolume}%</span>
                                 </div>
@@ -666,7 +671,10 @@ export default function SettingsPage() {
                                     max="100"
                                     value={bgmVolume}
                                     onChange={(e) => handleBgmVolumeChange(Number(e.target.value))}
-                                    className="flex-1 accent-[#5cb5db] cursor-pointer h-2 bg-gray-200 rounded-lg"
+                                    className="flex-1 accent-[#5cb5db] cursor-pointer h-2 bg-gray-200 rounded-lg appearance-none"
+                                    style={{
+                                        background: `linear-gradient(to right, #5cb5db 0%, #5cb5db ${bgmVolume}%, #e5e7eb ${bgmVolume}%, #e5e7eb 100%)`
+                                    }}
                                 />
                                 <span className="text-xs font-bold text-gray-700 w-10 text-right logo-font">{bgmVolume}%</span>
                             </div>

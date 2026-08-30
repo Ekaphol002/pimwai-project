@@ -223,10 +223,6 @@ export default function AdminDashboardPage() {
                     >
                         <AlertTriangle size={16} />
                         <span>รายงานผู้ใช้ (Reports)</span>
-                        <span className={`px-2 py-0.5 rounded-full text-[11px] font-black ${activeTab === 'reports' ? 'bg-white/20 text-white' : 'bg-red-100 text-red-600'
-                            }`}>
-                            {reports.filter(r => r.status === 'pending').length}
-                        </span>
                     </button>
 
                     <button
@@ -238,10 +234,6 @@ export default function AdminDashboardPage() {
                     >
                         <MessageSquare size={16} />
                         <span>ข้อเสนอแนะ (Feedbacks)</span>
-                        <span className={`px-2 py-0.5 rounded-full text-[11px] font-black ${activeTab === 'feedbacks' ? 'bg-white/20 text-white' : 'bg-blue-100 text-[#5cb5db]'
-                            }`}>
-                            {feedbacks.filter(f => f.status === 'pending').length}
-                        </span>
                     </button>
                 </div>
 

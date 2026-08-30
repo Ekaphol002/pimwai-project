@@ -1,47 +1,44 @@
 "use client";
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { soundManager } from '@/lib/soundEffects';
 
 export default function GlobalAudioPlayer() {
     const { status } = useSession();
+    const hasTriggeredRef = useRef(false);
 
-    // เล่นเพลงทันทีเมื่อผู้ใช้ล็อกอินสำเร็จในทุกๆ หน้า
     useEffect(() => {
-        if (status === "authenticated") {
-            const isAutoPlayEnabled = localStorage.getItem('pimwai_bgm_autoplay') !== 'false';
-            if (isAutoPlayEnabled && !soundManager.getIsBgmPlaying()) {
-                soundManager.startBgm();
-            }
-        }
-    }, [status]);
-
-    // ปลดล็อก Browser Autoplay Policy จากการคลิกหรือกดแป้นพิมพ์ใดๆ ครั้งแรกในเว็บ
-    useEffect(() => {
-        const handleInteraction = () => {
+        const tryPlayBgm = () => {
             if (status === "authenticated") {
                 const isAutoPlayEnabled = localStorage.getItem('pimwai_bgm_autoplay') !== 'false';
                 if (isAutoPlayEnabled && !soundManager.getIsBgmPlaying()) {
                     soundManager.startBgm();
                 }
             }
-            window.removeEventListener('click', handleInteraction);
-            window.removeEventListener('keydown', handleInteraction);
-            window.removeEventListener('touchstart', handleInteraction);
         };
 
-        window.addEventListener('click', handleInteraction);
-        window.addEventListener('keydown', handleInteraction);
-        window.addEventListener('touchstart', handleInteraction);
+        tryPlayBgm();
+
+        const handleUserGesture = () => {
+            if (!hasTriggeredRef.current && status === "authenticated") {
+                soundManager.startBgm();
+                hasTriggeredRef.current = true;
+            }
+        };
+
+        window.addEventListener('click', handleUserGesture);
+        window.addEventListener('keydown', handleUserGesture);
+        window.addEventListener('touchstart', handleUserGesture);
+        window.addEventListener('pointerdown', handleUserGesture);
 
         return () => {
-            window.removeEventListener('click', handleInteraction);
-            window.removeEventListener('keydown', handleInteraction);
-            window.removeEventListener('touchstart', handleInteraction);
+            window.removeEventListener('click', handleUserGesture);
+            window.removeEventListener('keydown', handleUserGesture);
+            window.removeEventListener('touchstart', handleUserGesture);
+            window.removeEventListener('pointerdown', handleUserGesture);
         };
     }, [status]);
 
-    // ไม่ต้อง Render ปุ่ม UI ลอยให้เกะกะสายตา แต่ทำงานเบื้องหลังตลอดเวลา
     return null;
 }

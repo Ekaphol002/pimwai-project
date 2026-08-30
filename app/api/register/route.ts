@@ -62,7 +62,7 @@ export async function POST(req: Request) {
         email,
         password: hashedPassword,
         name: username,
-        image: "/default-avatar.png"
+        image: null
       }
     });
 

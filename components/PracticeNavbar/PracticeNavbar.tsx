@@ -208,7 +208,10 @@ export default function PracticeNavbar({
                     onChange={(e) => handleSfxVolumeChange(Number(e.target.value))}
                     onMouseUp={handleSfxVolumeCommit}
                     onTouchEnd={handleSfxVolumeCommit}
-                    className="flex-1 accent-[#3498db] cursor-pointer h-1.5 bg-gray-200 rounded-lg"
+                    className="flex-1 accent-[#3498db] cursor-pointer h-1.5 bg-gray-200 rounded-lg appearance-none"
+                    style={{
+                      background: `linear-gradient(to right, #3498db 0%, #3498db ${sfxVolume}%, #e5e7eb ${sfxVolume}%, #e5e7eb 100%)`
+                    }}
                   />
                   <span className="text-[11px] font-bold text-gray-600 w-8 text-right logo-font">{sfxVolume}%</span>
                 </div>
@@ -241,7 +244,10 @@ export default function PracticeNavbar({
                   max="100"
                   value={bgmVolume}
                   onChange={(e) => handleBgmVolumeChange(Number(e.target.value))}
-                  className="flex-1 accent-[#3498db] cursor-pointer h-1.5 bg-gray-200 rounded-lg"
+                  className="flex-1 accent-[#3498db] cursor-pointer h-1.5 bg-gray-200 rounded-lg appearance-none"
+                  style={{
+                    background: `linear-gradient(to right, #3498db 0%, #3498db ${bgmVolume}%, #e5e7eb ${bgmVolume}%, #e5e7eb 100%)`
+                  }}
                 />
                 <span className="text-[11px] font-bold text-gray-600 w-8 text-right logo-font">{bgmVolume}%</span>
               </div>
