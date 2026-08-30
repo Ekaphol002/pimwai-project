@@ -6,6 +6,7 @@ import { Star, ChevronDown, Clock } from 'lucide-react';
 import StarParticleEffect from '../StarParticleEffect/StarParticleEffect';
 import Keyboard from '@/components/Keyboard/Keyboard';
 import RankProgressBox from './RankProgressBox';
+import { soundManager } from '@/lib/soundEffects';
 
 // Define the structure for the XP breakdown object
 interface XpBreakdown {
@@ -107,6 +108,10 @@ export default function PracticeResultModal({
       const starPopTimer = setTimeout(() => {
         setDisplayStars(i);
         setActiveParticleIndices(prev => [...prev, i]);
+
+        // เล่นเสียงดาวไล่ระดับต่ำไปสูง (ดวงที่ 1 -> 2 -> 3)
+        soundManager.playStarSound(i);
+
         const clearParticleTimer = setTimeout(() => {
           setActiveParticleIndices(prev => prev.filter(index => index !== i));
         }, 4000);

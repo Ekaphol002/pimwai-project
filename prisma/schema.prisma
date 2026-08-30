@@ -54,15 +54,19 @@ model VerificationToken {
 // =========================================================
 
 model User {
-  id            String    @id @default(cuid())
-  name          String? // ✅ เพิ่ม: ชื่อจริง (จาก Google)
-  username      String?   @unique // ปรับเป็น Optional เผื่อยังไม่ได้ตั้ง
-  email         String?   @unique
-  emailVerified DateTime? // ✅ เพิ่ม: สถานะยืนยันอีเมล
-  image         String? // รูปโปรไฟล์ (จาก Google)
-  password      String? // ✅ เพิ่ม: เผื่อทำระบบรหัสผ่านในอนาคต
-  createdAt     DateTime  @default(now())
-  lastPlayedAt  DateTime?
+  id                String    @id @default(cuid())
+  name              String? // ✅ เพิ่ม: ชื่อจริง (จาก Google)
+  username          String?   @unique // ปรับเป็น Optional เผื่อยังไม่ได้ตั้ง
+  email             String?   @unique
+  emailVerified     DateTime? // ✅ เพิ่ม: สถานะยืนยันอีเมล
+  image             String? // รูปโปรไฟล์ (จาก Google)
+  password          String? // ✅ เพิ่ม: เผื่อทำระบบรหัสผ่านในอนาคต
+  createdAt         DateTime  @default(now())
+  lastPlayedAt      DateTime?
+  lastNameChangedAt DateTime? // ✅ เพิ่ม: วันที่เปลี่ยนชื่อล่าสุด (เช็ค 7 วัน)
+  showInLeaderboard Boolean   @default(true) // ✅ เปิด/ปิด การแสดงตัวตนใน Leaderboard
+  keyboardSound     String    @default("click") // ✅ ธีมเสียงแป้นพิมพ์ ('none' | 'click' | 'mechanical' | 'soft')
+  isAvatarLocked    Boolean   @default(false) // ✅ ถูกล็อกไม่ให้เปลี่ยนรูปโปรไฟล์
 
   // --- NextAuth Relations ---
   accounts Account[]
@@ -77,8 +81,44 @@ model User {
   // --- App Relations ---
   progress    LessonProgress[]
   testResults SpeedTestResult[]
+  feedbacks   Feedback[]
+  reportsReceived Report[] @relation("ReportedUser")
+  reportsSent     Report[] @relation("ReporterUser")
 
   @@index([email])
+}
+
+// =========================================================
+// 💬 ตารางข้อเสนอแนะ (Feedback)
+// =========================================================
+model Feedback {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  category  String   @default("suggestion") // 'suggestion' | 'bug' | 'feature' | 'other'
+  title     String
+  content   String   @db.Text
+  status    String   @default("pending") // 'pending' | 'reviewed' | 'resolved'
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// =========================================================
+// 🚨 ตารางการรายงานผู้ใช้ (User Reports)
+// =========================================================
+model Report {
+  id             String   @id @default(cuid())
+  reporterId     String?
+  reporter       User?    @relation("ReporterUser", fields: [reporterId], references: [id], onDelete: SetNull)
+  reportedUserId String
+  reportedUser   User     @relation("ReportedUser", fields: [reportedUserId], references: [id], onDelete: Cascade)
+  reason         String   // 'inappropriate_name' | 'inappropriate_avatar' | 'cheating' | 'other'
+  details        String?  @db.Text
+  status         String   @default("pending") // 'pending' | 'resolved' | 'dismissed'
+  createdAt      DateTime @default(now())
+
+  @@index([reportedUserId])
 }
 
 // =========================================================
@@ -91,7 +131,7 @@ model Lesson {
   title String // ชื่อบทเรียน
   level String // 'beginner', 'intermediate', 'advanced'
   order Int // ลำดับการเรียง (1, 2, 3...)
-  slug  String   @unique
+  slug  String @unique
 
   subLessons SubLesson[]
 }
@@ -102,11 +142,11 @@ model SubLesson {
   title   String // ชื่อด่าน (ถ้ามี) หรือใช้ลำดับเอา
   content String // ข้อความที่จะให้พิมพ์ (Text)
   mode    String @default("word")
-  order     Int
+  order   Int
 
   lessonId Int
-  newKeys   String[] @default([])
-  lesson   Lesson @relation(fields: [lessonId], references: [id])
+  newKeys  String[] @default([])
+  lesson   Lesson   @relation(fields: [lessonId], references: [id])
 
   userProgress LessonProgress[]
 }

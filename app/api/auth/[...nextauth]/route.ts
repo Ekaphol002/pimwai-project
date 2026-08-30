@@ -63,12 +63,18 @@ export const authOptions: AuthOptions = {
   //   },
   // },
   callbacks: {
-    async signIn({ user, account }) {
-      return true;
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+        token.email = user.email;
+        token.name = user.name;
+      }
+      return token;
     },
     async session({ session, token }) {
-      if (session.user && token.sub) {
-        session.user.id = token.sub;
+      if (session.user) {
+        session.user.id = (token.id as string) || (token.sub as string);
+        if (token.email) session.user.email = token.email as string;
       }
       return session;
     }

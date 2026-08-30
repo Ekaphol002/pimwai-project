@@ -13,6 +13,7 @@ import {
   leftHandKeys,
   rightHandKeys
 } from '@/lib/keyMaps';
+import { soundManager } from '@/lib/soundEffects';
 
 const CHARS_PER_LINE = 8;
 
@@ -228,6 +229,10 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
       const typedKey = event.key;
       setPressedKey(typedKeyCode);
       event.preventDefault();
+
+      // เล่นเสียงคีย์บอร์ดที่ผู้ใช้เลือกไว้
+      soundManager.playKeySound();
+
       const shiftPressed = event.shiftKey;
 
       // ------------------------------------

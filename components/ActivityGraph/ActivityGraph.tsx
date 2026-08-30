@@ -70,9 +70,59 @@ export default function StreakCalendar({ completedDates = [] }: StreakCalendarPr
   return (
     <div className="w-full max-w-sm flex flex-col gap-2">
 
+      {/* --- กล่องที่ 1: สถิติต่อเนื่อง --- */}
+      <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-200 flex flex-col gap-4">
+        <div className="flex justify-between items-center">
+          <div className="text-gray-800 font-bold text-base flex items-center gap-2">
+            สถิติต่อเนื่อง
+          </div>
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-100 text-orange-500">
+            <Flame size={18} fill="currentColor" />
+            <span className="text-xl font-black leading-none">{currentStreak}</span>
+            <span className="text-xs font-bold mt-0.5">วัน</span>
+          </div>
+        </div>
+
+        <div className="flex justify-between items-center px-1">
+          {(() => {
+            const today = new Date();
+            const startOf7Days = new Date(today);
+            startOf7Days.setDate(today.getDate() - 6);
+
+            return Array.from({ length: 7 }).map((_, i) => {
+              const d = new Date(startOf7Days);
+              d.setDate(startOf7Days.getDate() + i);
+              const dateKey = toDateKey(d);
+              const isCompleted = completedDates.includes(dateKey);
+              const isToday = dateKey === toDateKey(today);
+              const dayName = WEEK_DAYS[d.getDay()];
+
+              return (
+                <div key={i} className="flex flex-col items-center gap-1.5 cursor-default">
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${isCompleted
+                      ? 'bg-orange-500 text-white shadow-sm shadow-orange-200'
+                      : 'bg-gray-100 text-gray-400'
+                      } ${isToday && !isCompleted ? 'ring-1 ring-orange-400 ring-offset-2' : ''}`}
+                  >
+                    {isCompleted ? (
+                      <Flame size={16} fill="currentColor" />
+                    ) : (
+                      <span className="text-[10px] font-bold">{dayName}</span>
+                    )}
+                  </div>
+                  <span className={`text-[10px] font-medium ${isToday ? 'text-orange-500 font-bold' : 'text-gray-400'}`}>
+                    {dayName}
+                  </span>
+                </div>
+              );
+            });
+          })()}
+        </div>
+      </div>
+
       {/* --- กล่องที่ 2: ปฏิทิน --- */}
       <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-200">
-
         {/* ส่วนควบคุมเดือน */}
         <div className="flex items-center justify-between mb-4">
           <button onClick={() => changeMonth(-1)} className="p-1 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition">
@@ -88,7 +138,7 @@ export default function StreakCalendar({ completedDates = [] }: StreakCalendarPr
 
         {/* ตารางปฏิทิน */}
         <div>
-          <div className="grid grid-cols-7 mb-2 text-center">
+          <div className="grid grid-cols-7 mb-5 text-center">
             {WEEK_DAYS.map((day, index) => (
               <span key={index} className={`text-[10px] font-medium ${index === 0 || index === 6 ? 'text-red-400' : 'text-gray-400'}`}>
                 {day}
@@ -103,40 +153,19 @@ export default function StreakCalendar({ completedDates = [] }: StreakCalendarPr
                 <div
                   key={item.key}
                   className={`
-                      aspect-square flex items-center justify-center rounded-lg text-xs font-medium cursor-default transition-all duration-200 relative
+                      aspect-square flex items-center justify-center rounded-full text-xs font-medium cursor-default transition-all duration-200 relative
                       ${item.isCompleted
                       ? 'bg-orange-500 text-white shadow-sm shadow-orange-200' // ถ้า isCompleted เป็น true จะเป็นสีส้มเสมอ ไม่สนว่า streak ขาดไหม
-                      : 'bg-gray-50 text-gray-300 hover:bg-gray-100'
+                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                     }
-                      ${item.isToday && !item.isCompleted ? 'ring-1 ring-orange-300 ring-offset-1 text-orange-500' : ''}
-                      ${item.isToday && item.isCompleted ? 'ring-2 ring-orange-200 ring-offset-1' : ''}
+                      ${item.isToday && !item.isCompleted ? 'ring-2 ring-orange-300 ring-offset-1 text-gray-500' : ''}
+                      ${item.isToday && item.isCompleted ? 'ring-2 ring-orange-500 ring-offset-1' : ''}
                     `}
                 >
                   {item.dayNumber}
                 </div>
               );
             })}
-          </div>
-
-          <div className="bg-orange-400 rounded-2xl mt-3 p-2 shadow-sm flex items-center justify-between">
-
-            <div className="text-white font-bold text-base ml-4">
-              สถิติต่อเนื่อง
-            </div>
-
-            {/* ส่วนแสดง Streak Count ยังคงนับแบบต่อเนื่องเหมือนเดิม */}
-            <div className={`
-              flex items-center gap-2 px-4 py-1 rounded-2xl transition-colors duration-300
-              ${currentStreak > 0
-                ? 'bg-orange-50 text-orange-600 border border-orange-200 shadow-sm'
-                : 'bg-gray-200 text-gray-400 border border-gray-300'
-              }
-            `}>
-              <Flame size={24} fill={currentStreak > 0 ? "currentColor" : "none"} />
-              <span className="text-2xl font-black">{currentStreak}</span>
-              <span className="text-sm font-bold mt-1">วัน</span>
-            </div>
-
           </div>
         </div>
       </div>

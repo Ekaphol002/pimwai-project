@@ -8,6 +8,7 @@ import PracticeResultModal from '@/components/PracticeResultModal/PracticeResult
 import PracticeNavbar from '@/components/PracticeNavbar/PracticeNavbar';
 import { SENTENCES_POOL } from '@/data/sentences';
 import { thaiShiftKeyDisplayMap } from '@/lib/keyMaps';
+import { soundManager } from '@/lib/soundEffects';
 
 // ลดจำนวนตัวอักษรต่อบรรทัดลงเล็กน้อยเพื่อให้ตัดคำภาษาไทยสวยขึ้น
 const CHARS_PER_LINE = 45;
@@ -231,6 +232,10 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
       }
 
       const typedKey = e.key;
+
+      // เล่นเสียงคีย์บอร์ดที่ผู้ใช้เลือกไว้
+      soundManager.playKeySound();
+
       if (typedKey === ' ' || typedKey.length === 1) e.preventDefault();
 
       // --- Logic Backspace ---

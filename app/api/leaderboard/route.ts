@@ -1,25 +1,34 @@
-// app/api/leaderboard/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { calculateTotalDays } from '@/lib/streakUtils';
+
+// ฟังก์ชันแปลง Date ให้เป็น format 'YYYY-MM-DD' เพื่อเปรียบเทียบวัน
+function toDateKey(date: Date): string {
+    const d = new Date(date);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 export async function GET(request: Request) {
     try {
         const { searchParams } = new URL(request.url);
-        const duration = parseInt(searchParams.get('duration') || '60'); // default 60 วิ
-        const mode = searchParams.get('mode') || 'speed'; // 'speed' | 'rank'
+        const mode = searchParams.get('mode') || 'speed'; // 'speed' | 'rank' | 'streak'
+        const duration = parseInt(searchParams.get('duration') || '1'); // 1, 3, 5 นาที (เฉพาะโหมด Speed)
 
-        // 1. ดึงข้อมูล User ปัจจุบัน (ถ้าล็อกอิน)
+        // ดึงข้อมูลผู้ใช้ปัจจุบัน (ถ้าล็อกอิน)
         const session = await getServerSession(authOptions);
         let currentUserId: string | null = null;
+        if (session?.user) {
+            const searchConditions = [];
+            if (session.user.id) searchConditions.push({ id: session.user.id });
+            if (session.user.email) searchConditions.push({ email: session.user.email });
+            if (session.user.name) searchConditions.push({ username: session.user.name }, { name: session.user.name });
 
-        if (session?.user?.email) {
-            const user = await prisma.user.findUnique({
-                where: { email: session.user.email },
-                select: { id: true }
-            });
-            if (user) currentUserId = user.id;
+            if (searchConditions.length > 0) {
+                const currentUser = await prisma.user.findFirst({ where: { OR: searchConditions } });
+                currentUserId = currentUser?.id || null;
+            }
         }
 
         let leaderboard: any[] = [];
@@ -39,15 +48,12 @@ export async function GET(request: Request) {
                 distinct: ['userId'],
                 take: 100,
                 include: {
-                    // ✅ แก้ที่ 1: เพิ่ม name: true เข้ามาด้วย
                     user: { select: { id: true, username: true, name: true, rank: true, currentExp: true, image: true } }
                 }
             });
 
             // กรอง User ซ้ำ (เอาคะแนนดีสุดของแต่ละคน)
-            leaderboard = rawResults.map((result, index) => {
-
-                // สร้าง user object ใหม่ (กันเหนียวเรื่องชื่อว่าง)
+            leaderboard = rawResults.map((result: any, index: number) => {
                 const displayUser = {
                     ...result.user,
                     username: result.user.username || result.user.name || "User"
@@ -75,7 +81,6 @@ export async function GET(request: Request) {
                     if (myBest) {
                         myData = {
                             ...myBest,
-                            // ✅ แก้ที่ 3: จัดการชื่อของตัวเองด้วย (กรณีไม่ติด Top 50)
                             user: {
                                 ...myBest.user,
                                 username: myBest.user.username || myBest.user.name || "User"
@@ -92,7 +97,7 @@ export async function GET(request: Request) {
         // ---------------------------------------------------------
         // CASE B: จัดอันดับตามยศ (Rank/EXP) -> ดึงจาก User โดยตรง
         // ---------------------------------------------------------
-        else {
+        else if (mode === 'rank') {
             const users = await prisma.user.findMany({
                 orderBy: [
                     { currentExp: 'desc' }, // EXP มากสุดขึ้นก่อน
@@ -100,15 +105,13 @@ export async function GET(request: Request) {
                 ],
                 take: 50,
                 select: {
-                    // ✅ แก้ที่ 4: เพิ่ม name: true ใน select
                     id: true, username: true, name: true, rank: true, currentExp: true, image: true
                 }
             });
 
-            leaderboard = users.map((u, index) => ({
+            leaderboard = users.map((u: any, index: number) => ({
                 id: u.id,
                 userId: u.id,
-                // ✅ แก้ที่ 5: จัดการชื่อในโหมด Rank
                 user: {
                     ...u,
                     username: u.username || u.name || "User"
@@ -128,7 +131,6 @@ export async function GET(request: Request) {
                         myData = {
                             id: myUser.id,
                             userId: myUser.id,
-                            // ✅ แก้ที่ 6: จัดการชื่อตัวเองในโหมด Rank
                             user: {
                                 ...myUser,
                                 username: myUser.username || myUser.name || "User"
@@ -142,25 +144,99 @@ export async function GET(request: Request) {
                 }
             }
         }
+        else if (mode === 'streak') {
+            const allUsers = await prisma.user.findMany({
+                select: { id: true, username: true, name: true, image: true, rank: true }
+            });
+
+            const [lessons, tests] = await Promise.all([
+                prisma.lessonProgress.findMany({
+                    select: { userId: true, updatedAt: true }
+                }),
+                prisma.speedTestResult.findMany({
+                    select: { userId: true, createdAt: true }
+                })
+            ]);
+
+            const userStreaks: any[] = [];
+            
+            allUsers.forEach((user: any) => {
+                const userLessons = lessons.filter(l => l.userId === user.id).map(l => toDateKey(l.updatedAt));
+                const userTests = tests.filter(t => t.userId === user.id).map(t => toDateKey(t.createdAt));
+                const activityDates = [...userLessons, ...userTests];
+                
+                const streak = calculateTotalDays(activityDates);
+                if (streak > 0) {
+                    userStreaks.push({
+                        user: {
+                            ...user,
+                            username: user.username || user.name || "User"
+                        },
+                        userId: user.id,
+                        id: user.id,
+                        streak: streak
+                    });
+                }
+            });
+
+            userStreaks.sort((a, b) => b.streak - a.streak);
+            const topStreaks = userStreaks.slice(0, 50);
+            
+            leaderboard = topStreaks.map((u, index) => ({
+                ...u,
+                rankOrder: index + 1,
+                displayVal1: u.streak,
+                displayVal2: 0,
+                isSpeedMode: false
+            }));
+
+            if (currentUserId) {
+                myData = leaderboard.find(item => item.userId === currentUserId);
+                if (!myData) {
+                    const myUser = userStreaks.find(u => u.userId === currentUserId);
+                    if (myUser) {
+                        myData = {
+                            ...myUser,
+                            rankOrder: null,
+                            displayVal1: myUser.streak,
+                            displayVal2: 0,
+                            isSpeedMode: false
+                        };
+                    }
+                }
+            }
+        }
 
         // กรณี User ใหม่ หรือไม่ได้ล็อกอิน
         if (!myData && currentUserId) {
-            myData = {
-                rankOrder: null,
-                displayVal1: 0,
-                displayVal2: 0,
-                user: { username: "คุณ (ยังไม่มีสถิติ)" }
-            };
+            const currentUser = await prisma.user.findUnique({
+                where: { id: currentUserId },
+                select: { id: true, username: true, name: true, rank: true, currentExp: true, image: true }
+            });
+            if (currentUser) {
+                myData = {
+                    user: {
+                        ...currentUser,
+                        username: currentUser.username || currentUser.name || "User"
+                    },
+                    userId: currentUserId,
+                    rankOrder: null,
+                    displayVal1: mode === 'speed' ? 0 : mode === 'rank' ? currentUser.rank : 0,
+                    displayVal2: mode === 'speed' ? 0 : mode === 'rank' ? currentUser.currentExp : 0,
+                    isSpeedMode: mode === 'speed'
+                };
+            }
         }
 
         return NextResponse.json({
             success: true,
-            leaderboard,
+            leaderboard: leaderboard.slice(0, 50),
+            myData: myData,
             myRank: myData
         });
 
     } catch (error) {
-        console.error('Leaderboard API Error:', error);
-        return NextResponse.json({ success: false, error: 'Failed' }, { status: 500 });
+        console.error("Leaderboard API Error:", error);
+        return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 });
     }
 }

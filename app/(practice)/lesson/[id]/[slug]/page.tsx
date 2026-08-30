@@ -8,8 +8,7 @@ import { cache } from 'react'; // ✅ Import React cache for request memoization
 
 import type { Metadata, ResolvingMetadata } from 'next';
 
-// ❌ ลบ force-dynamic ออก เพื่อเปิดใช้งาน SSG/Caching
-// export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic';
 
 // ✅ 1. ใช้ React.cache เพื่อป้องกันการ query ซ้ำ (Request Memoization)
 // ฟังก์ชันนี้จะถูกเรียกซ้ำใน generateMetadata และ Page แต่จะ query จริงแค่ครั้งเดียวต่อ Request

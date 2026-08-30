@@ -12,6 +12,7 @@ import {
   leftHandKeys,
   rightHandKeys
 } from '@/lib/keyMaps';
+import { soundManager } from '@/lib/soundEffects';
 
 type CharStatus = 'correct' | 'incorrect' | 'pending';
 const CHARS_PER_LINE = 35;
@@ -324,6 +325,9 @@ export default function PracticeModeWord({
       const typedKeyCode = event.code;
       const typedKey = event.key;
       setPressedKey(typedKeyCode);
+
+      // เล่นเสียงคีย์บอร์ดที่ผู้ใช้เลือกไว้
+      soundManager.playKeySound();
 
       // ป้องกัน Default action เช่น Spacebar เลื่อนหน้าจอ
       if (typedKey === ' ' || typedKey.length === 1) {

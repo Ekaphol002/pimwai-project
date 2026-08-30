@@ -26,7 +26,7 @@ interface TestResult {
 interface TestPerformanceSectionProps {
   selectedTime: number;
   onTimeChange: (time: number) => void;
-  recentResults: TestResult[]; 
+  recentResults: TestResult[];
 }
 
 // --- (2) Components ย่อย (Tooltip & Dot) ---
@@ -75,7 +75,7 @@ export default function TestPerformanceSection({
   recentResults,
 }: TestPerformanceSectionProps) {
   const [chartMode, setChartMode] = useState<'speed' | 'accuracy'>('speed');
-  
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [tooltipPos, setTooltipPos] = useState<any>(null);
 
@@ -119,9 +119,9 @@ export default function TestPerformanceSection({
               onClick={() => onTimeChange(time)}
               className={`px-6 py-1 rounded-lg font-bold text-xl transition-all 
               ${selectedTime === time
-                ? 'bg-[#5cb5db] text-white shadow-sm'
-                : 'text-[#5cb5db] hover:bg-white/10'
-              }`}
+                  ? 'bg-[#5cb5db] text-white shadow-sm'
+                  : 'text-[#5cb5db] hover:bg-white/10'
+                }`}
             >
               {time} นาที
             </button>
@@ -189,9 +189,9 @@ export default function TestPerformanceSection({
                   onClick={() => setChartMode('speed')}
                   className={`px-3 py-0.5 text-[10px] font-bold rounded-md transition-all 
                   ${chartMode === 'speed'
-                    ? 'bg-white text-[#5cb5db] shadow-sm'
-                    : 'text-gray-400 hover:text-gray-600'
-                  }`}
+                      ? 'bg-white text-[#5cb5db] shadow-sm'
+                      : 'text-gray-400 hover:text-gray-600'
+                    }`}
                 >
                   Speed
                 </button>
@@ -199,9 +199,9 @@ export default function TestPerformanceSection({
                   onClick={() => setChartMode('accuracy')}
                   className={`px-3 py-0.5 text-[10px] font-bold rounded-md transition-all 
                   ${chartMode === 'accuracy'
-                    ? 'bg-white text-[#5cb5db] shadow-sm'
-                    : 'text-gray-400 hover:text-gray-600'
-                  }`}
+                      ? 'bg-white text-[#5cb5db] shadow-sm'
+                      : 'text-gray-400 hover:text-gray-600'
+                    }`}
                 >
                   Acc.
                 </button>
@@ -210,90 +210,90 @@ export default function TestPerformanceSection({
           </div>
 
           <div className="flex-1 w-full min-h-0 relative" onMouseLeave={() => setTooltipPos(null)}>
-            
+
             {/* ✅ ใช้เงื่อนไข !showChart (ถ้าข้อมูล < 2 ให้แสดง Empty State) */}
             {!showChart ? (
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 z-20">
-                    {/* ปรับข้อความให้ชัดเจนขึ้นตามจำนวนข้อมูลที่มี */}
-                    <p className="text-sm font-bold text-gray-500">
-                        {hasData ? "ข้อมูลยังไม่เพียงพอสร้างกราฟ" : "ยังไม่มีข้อมูลกราฟ"}
-                    </p>
-                    <p className="text-xs opacity-70 mt-1">
-                        {hasData 
-                            ? "เล่นอีกครั้งเพื่อดูแนวโน้มพัฒนาการของคุณ" 
-                            : `เริ่มทดสอบ ${selectedTime} นาที เพื่อดูพัฒนาการ`
-                        }
-                    </p>
-                </div>
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 z-20">
+                {/* ปรับข้อความให้ชัดเจนขึ้นตามจำนวนข้อมูลที่มี */}
+                <p className="text-sm font-bold text-gray-500">
+                  {hasData ? "ข้อมูลยังไม่เพียงพอสร้างกราฟ" : "ยังไม่มีข้อมูลกราฟ"}
+                </p>
+                <p className="text-xs opacity-70 mt-1">
+                  {hasData
+                    ? "เล่นอีกครั้งเพื่อดูแนวโน้มพัฒนาการของคุณ"
+                    : `เริ่มทดสอบ ${selectedTime} นาที เพื่อดูพัฒนาการ`
+                  }
+                </p>
+              </div>
             ) : (
-                /* ✅ กรณีมีข้อมูล >= 2: แสดงกราฟ */
-                <>
-                    {tooltipPos && tooltipPos.visible && (
-                    <CustomTooltip
-                        active={true}
-                        payload={[
-                        {
-                            value: chartMode === 'speed' ? tooltipPos.data.wpm : tooltipPos.data.accuracy,
-                            payload: tooltipPos.data,
-                        },
-                        ]}
-                        coordinate={{ x: tooltipPos.x, y: tooltipPos.y }}
-                        mode={chartMode}
+              /* ✅ กรณีมีข้อมูล >= 2: แสดงกราฟ */
+              <>
+                {tooltipPos && tooltipPos.visible && (
+                  <CustomTooltip
+                    active={true}
+                    payload={[
+                      {
+                        value: chartMode === 'speed' ? tooltipPos.data.wpm : tooltipPos.data.accuracy,
+                        payload: tooltipPos.data,
+                      },
+                    ]}
+                    coordinate={{ x: tooltipPos.x, y: tooltipPos.y }}
+                    mode={chartMode}
+                  />
+                )}
+
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={chartData}
+                    margin={{ top: 25, right: 10, left: -20, bottom: 0 }}
+                    onMouseLeave={() => setTooltipPos(null)}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" vertical={true} stroke="#f0f0f0" />
+
+                    <XAxis
+                      dataKey="timestamp"
+                      tickFormatter={(value) => {
+                        const d = new Date(value);
+                        const day = d.getDate();
+                        let month = d.toLocaleString("th-TH", { month: "short" });
+                        month = month.replace(".", "");
+                        return `${day} ${month}`;
+                      }}
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 10, fill: "#9ca3af" }}
+                      dy={10}
+                      padding={{ left: 20, right: 20 }}
+                      interval="preserveStartEnd"
                     />
-                    )}
 
-                    <ResponsiveContainer width="100%" height="100%">
-                    <LineChart
-                        data={chartData}
-                        margin={{ top: 25, right: 10, left: -20, bottom: 0 }}
-                        onMouseLeave={() => setTooltipPos(null)}
-                    >
-                        <CartesianGrid strokeDasharray="3 3" vertical={true} stroke="#f0f0f0" />
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: '#9ca3af', fontSize: 10 }}
+                      domain={['auto', 'auto']}
+                      padding={{ top: 20, bottom: 20 }}
+                    />
 
-                        <XAxis
-                        dataKey="timestamp"
-                        tickFormatter={(value) => {
-                            const d = new Date(value);
-                            const day = d.getDate();
-                            let month = d.toLocaleString("th-TH", { month: "short" });
-                            month = month.replace(".", "");
-                            return `${day} ${month}`;
-                        }}
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fontSize: 10, fill: "#9ca3af" }}
-                        dy={10}
-                        padding={{ left: 20, right: 20 }}
-                        interval="preserveStartEnd"
-                        />
+                    <Tooltip content={() => null} cursor={false} />
 
-                        <YAxis
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fill: '#9ca3af', fontSize: 10 }}
-                        domain={['auto', 'auto']}
-                        padding={{ top: 20, bottom: 20 }}
-                        />
-
-                        <Tooltip content={() => null} cursor={false} />
-
-                        <Line
-                        type="monotone"
-                        dataKey={chartMode === 'speed' ? 'wpm' : 'accuracy'}
-                        stroke="#5cb5db"
-                        strokeWidth={3}
-                        dot={{
-                            r: 4,
-                            fill: '#fff',
-                            stroke: '#5cb5db',
-                            strokeWidth: 2,
-                        }}
-                        activeDot={<CustomActiveDot setTooltipPos={setTooltipPos} />}
-                        animationDuration={1000}
-                        />
-                    </LineChart>
-                    </ResponsiveContainer>
-                </>
+                    <Line
+                      type="monotone"
+                      dataKey={chartMode === 'speed' ? 'wpm' : 'accuracy'}
+                      stroke="#5cb5db"
+                      strokeWidth={3}
+                      dot={{
+                        r: 4,
+                        fill: '#fff',
+                        stroke: '#5cb5db',
+                        strokeWidth: 2,
+                      }}
+                      activeDot={<CustomActiveDot setTooltipPos={setTooltipPos} />}
+                      animationDuration={1000}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </>
             )}
 
           </div>
