@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   keywords: [
     "ฝึกพิมพ์ดีด", "พิมพ์สัมผัส", "พิมพ์ดีดออนไลน์", "เกมฝึกพิมพ์", "พิมพ์ดีดไทย", "พิมพ์ดีดอังกฤษ",
     "เรียนพิมพ์ดีด", "พิมพ์เร็ว", "Typing Practice", "Touch Typing Thai",
-    "ทดสอบความเร็วพิมพ์", "ฝึกวางนิ้ว", "ทดสอบ WPM", "พิมพ์ข้อความ", "PIMWAI", "พิมพ์ไว", "เกมพิมพ์ดีด", "แข่งพิมพ์เร็ว"
+    "ทดสอบความเร็วพิมพ์", "ฝึกวางนิ้ว", "ทดสอบ WPM", "พิมพ์ข้อความ", "PIMWAI", "พิมไว", "เกมพิมพ์ดีด", "แข่งพิมพ์เร็ว", "ฝึกพิมไทย"
   ],
   authors: [{ name: "PIMWAI Team" }],
   alternates: {
@@ -84,7 +84,7 @@ export default function RootLayout({
     "@context": "https://schema.org",
     "@type": "WebApplication",
     "name": "PIMWAI",
-    "alternateName": ["พิมพ์ไว", "Pimwai Typing"],
+    "alternateName": ["พิมไว", "Pimwai Typing", "พิมพ์ไว", "Pimwai"],
     "url": "https://pimwai.vercel.app",
     "applicationCategory": "EducationalApplication",
     "genre": "Typing Practice",
