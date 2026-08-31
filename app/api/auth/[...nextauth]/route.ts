@@ -18,16 +18,9 @@ export const authOptions: AuthOptions = {
           id: profile.sub,
           name: profile.name,
           email: profile.email,
-          image: null, // ป้องกันรูป Base64/URL ขนาดยาวที่ทำให้ Cookie บวม
+          image: null,
         }
       },
-      authorization: {
-        params: {
-          prompt: "select_account",
-          access_type: "offline",
-          response_type: "code"
-        }
-      }
     }),
     CredentialsProvider({
       name: "credentials",
@@ -62,19 +55,9 @@ export const authOptions: AuthOptions = {
   ],
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 วัน
+    maxAge: 30 * 24 * 60 * 60,
   },
-  cookies: {
-    sessionToken: {
-      name: `pimwai.session-token`,
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        secure: process.env.NODE_ENV === "production",
-      },
-    },
-  },
+  useSecureCookies: process.env.NODE_ENV === "production",
   callbacks: {
     async jwt({ token, user, trigger, session }) {
       if (user) {
