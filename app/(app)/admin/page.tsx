@@ -7,7 +7,8 @@ import Link from 'next/link';
 import {
     ShieldAlert, MessageSquare, AlertTriangle, UserX, CheckCircle,
     RotateCcw, Lock, Unlock, Loader2, ArrowLeft, Trash2, Check, X,
-    Calendar, User as UserIcon, Mail, Flag
+    Calendar, User as UserIcon, Mail, Flag, Users, Flame, BookOpen,
+    Zap, Trophy, TrendingUp, Clock, Activity, Sparkles
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { isAdmin } from '@/lib/adminAuth';
@@ -16,7 +17,8 @@ export default function AdminDashboardPage() {
     const { data: session, status } = useSession();
     const router = useRouter();
 
-    const [activeTab, setActiveTab] = useState<'reports' | 'feedbacks'>('reports');
+    const [activeTab, setActiveTab] = useState<'overview' | 'reports' | 'feedbacks'>('overview');
+    const [stats, setStats] = useState<any>(null);
     const [reports, setReports] = useState<any[]>([]);
     const [feedbacks, setFeedbacks] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -27,16 +29,19 @@ export default function AdminDashboardPage() {
     const fetchAdminData = async () => {
         setIsLoading(true);
         try {
-            const [reportRes, feedbackRes] = await Promise.all([
+            const [reportRes, feedbackRes, statsRes] = await Promise.all([
                 fetch('/api/report'),
-                fetch('/api/feedback')
+                fetch('/api/feedback'),
+                fetch('/api/admin/stats')
             ]);
 
             const reportData = await reportRes.json();
             const feedbackData = await feedbackRes.json();
+            const statsData = await statsRes.json();
 
             if (reportData.success) setReports(reportData.reports || []);
             if (feedbackData.success) setFeedbacks(feedbackData.feedbacks || []);
+            if (statsData.success) setStats(statsData.stats || null);
         } catch (error) {
             console.error('Fetch admin error:', error);
             toast.error('ไม่สามารถโหลดข้อมูล Admin ได้');
@@ -213,7 +218,18 @@ export default function AdminDashboardPage() {
                 </div>
 
                 {/* Navigation Tabs */}
-                <div className="flex gap-3 border-b border-gray-200 pb-2">
+                <div className="flex flex-wrap gap-2.5 border-b border-gray-200 pb-3">
+                    <button
+                        onClick={() => setActiveTab('overview')}
+                        className={`px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer ${activeTab === 'overview'
+                            ? 'bg-[#5cb5db] text-white shadow-md'
+                            : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200/80'
+                            }`}
+                    >
+                        <Activity size={16} />
+                        <span>ภาพรวมสถิติทั้งเว็บ (Overview)</span>
+                    </button>
+
                     <button
                         onClick={() => setActiveTab('reports')}
                         className={`px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer ${activeTab === 'reports'
@@ -222,20 +238,175 @@ export default function AdminDashboardPage() {
                             }`}
                     >
                         <AlertTriangle size={16} />
-                        <span>รายงานผู้ใช้ (Reports)</span>
+                        <span>รายงานผู้ใช้ (Reports) {reports.length > 0 && <span className="bg-white/20 text-white px-2 py-0.5 rounded-full text-xs">{reports.length}</span>}</span>
                     </button>
 
                     <button
                         onClick={() => setActiveTab('feedbacks')}
                         className={`px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer ${activeTab === 'feedbacks'
-                            ? 'bg-[#5cb5db] text-white shadow-md'
+                            ? 'bg-indigo-500 text-white shadow-md'
                             : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200/80'
                             }`}
                     >
                         <MessageSquare size={16} />
-                        <span>ข้อเสนอแนะ (Feedbacks)</span>
+                        <span>ข้อเสนอแนะ (Feedbacks) {feedbacks.length > 0 && <span className="bg-white/20 text-white px-2 py-0.5 rounded-full text-xs">{feedbacks.length}</span>}</span>
                     </button>
                 </div>
+
+                {/* --- TAB 0: ภาพรวมสถิติทั้งเว็บ (Overview) --- */}
+                {activeTab === 'overview' && (
+                    <div className="flex flex-col gap-6">
+                        {/* Summary Grid - วันนี้ (Today) */}
+                        <div>
+                            <div className="flex items-center gap-2 mb-3">
+                                <Sparkles size={18} className="text-amber-500" />
+                                <h2 className="text-base sm:text-lg font-black text-gray-800 logo-font">สถิติประจำวันนี้ (Today)</h2>
+                            </div>
+
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                                {/* คนเล่นวันนี้ */}
+                                <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl p-4 sm:p-5 text-white shadow-md relative overflow-hidden">
+                                    <div className="absolute right-3 top-3 opacity-15">
+                                        <Users size={64} />
+                                    </div>
+                                    <div className="flex items-center gap-2 text-blue-100 text-xs font-bold mb-1">
+                                        <Users size={14} />
+                                        <span>คนเข้าเล่นวันนี้</span>
+                                    </div>
+                                    <div className="text-2xl sm:text-3xl font-black">{stats?.today?.activeUsers || 0}</div>
+                                    <p className="text-[11px] text-blue-100/90 mt-1 font-medium">
+                                        + {stats?.today?.newUsers || 0} สมัครใหม่วันนี้
+                                    </p>
+                                </div>
+
+                                {/* เล่นบทเรียนวันนี้ */}
+                                <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-3xl p-4 sm:p-5 text-white shadow-md relative overflow-hidden">
+                                    <div className="absolute right-3 top-3 opacity-15">
+                                        <BookOpen size={64} />
+                                    </div>
+                                    <div className="flex items-center gap-2 text-emerald-100 text-xs font-bold mb-1">
+                                        <BookOpen size={14} />
+                                        <span>บทเรียนที่ผ่านวันนี้</span>
+                                    </div>
+                                    <div className="text-2xl sm:text-3xl font-black">{stats?.today?.lessonsPlayed || 0}</div>
+                                    <p className="text-[11px] text-emerald-100/90 mt-1 font-medium">รอบการฝึกซ้อม</p>
+                                </div>
+
+                                {/* สอบ Speed Test วันนี้ */}
+                                <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-3xl p-4 sm:p-5 text-white shadow-md relative overflow-hidden">
+                                    <div className="absolute right-3 top-3 opacity-15">
+                                        <Zap size={64} />
+                                    </div>
+                                    <div className="flex items-center gap-2 text-amber-100 text-xs font-bold mb-1">
+                                        <Zap size={14} />
+                                        <span>ทดสอบ Speed วันนี้</span>
+                                    </div>
+                                    <div className="text-2xl sm:text-3xl font-black">{stats?.today?.testsPlayed || 0}</div>
+                                    <p className="text-[11px] text-amber-100/90 mt-1 font-medium">รอบการสอบวัดผล</p>
+                                </div>
+
+                                {/* ความเร็วสูงสุดวันนี้ */}
+                                <div className="bg-gradient-to-br from-rose-500 to-pink-600 rounded-3xl p-4 sm:p-5 text-white shadow-md relative overflow-hidden">
+                                    <div className="absolute right-3 top-3 opacity-15">
+                                        <Trophy size={64} />
+                                    </div>
+                                    <div className="flex items-center gap-2 text-rose-100 text-xs font-bold mb-1">
+                                        <Trophy size={14} />
+                                        <span>Top Speed วันนี้</span>
+                                    </div>
+                                    <div className="text-2xl sm:text-3xl font-black">
+                                        {stats?.today?.topSpeed ? `${stats.today.topSpeed.wpm} WPM` : '-'}
+                                    </div>
+                                    <p className="text-[11px] text-rose-100/90 mt-1 font-medium truncate">
+                                        {stats?.today?.topSpeed ? `โดย: ${stats.today.topSpeed.userName} (${stats.today.topSpeed.accuracy}%)` : 'ยังไม่มีการทดสอบ'}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Overall Stats - สถิติรวมทั้งระบบ */}
+                        <div>
+                            <div className="flex items-center gap-2 mb-3">
+                                <TrendingUp size={18} className="text-[#5cb5db]" />
+                                <h2 className="text-base sm:text-lg font-black text-gray-800 logo-font">สถิติสะสมทั้งหมดของเว็บ (All-Time Stats)</h2>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                                <div className="bg-white border border-gray-200/80 rounded-3xl p-5 shadow-xs">
+                                    <div className="flex items-center gap-2 text-gray-500 text-xs font-bold mb-1">
+                                        <Users size={16} className="text-[#5cb5db]" />
+                                        <span>ผู้ใช้งานที่ลงทะเบียนทั้งหมด</span>
+                                    </div>
+                                    <div className="text-2xl sm:text-3xl font-black text-gray-800">
+                                        {stats?.overall?.totalUsers || 0} <span className="text-sm font-semibold text-gray-400">คน</span>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white border border-gray-200/80 rounded-3xl p-5 shadow-xs">
+                                    <div className="flex items-center gap-2 text-gray-500 text-xs font-bold mb-1">
+                                        <BookOpen size={16} className="text-emerald-500" />
+                                        <span>บทเรียนที่เล่นไปแล้วทั้งหมด</span>
+                                    </div>
+                                    <div className="text-2xl sm:text-3xl font-black text-gray-800">
+                                        {stats?.overall?.totalLessonsCompleted || 0} <span className="text-sm font-semibold text-gray-400">ครั้ง</span>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white border border-gray-200/80 rounded-3xl p-5 shadow-xs">
+                                    <div className="flex items-center gap-2 text-gray-500 text-xs font-bold mb-1">
+                                        <Zap size={16} className="text-amber-500" />
+                                        <span>การทดสอบความเร็วทั้งหมด</span>
+                                    </div>
+                                    <div className="text-2xl sm:text-3xl font-black text-gray-800">
+                                        {stats?.overall?.totalTestsCompleted || 0} <span className="text-sm font-semibold text-gray-400">ครั้ง</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Recent Active Players List */}
+                        <div className="bg-white border border-gray-200/80 rounded-3xl p-5 sm:p-6 shadow-xs">
+                            <div className="flex items-center justify-between gap-2 mb-4 pb-3 border-b border-gray-100">
+                                <div className="flex items-center gap-2">
+                                    <Flame size={20} className="text-orange-500" />
+                                    <h3 className="text-sm sm:text-base font-black text-gray-800 logo-font">
+                                        ผู้ใช้งานที่เข้าเล่นล่าสุด (Recent Active Players)
+                                    </h3>
+                                </div>
+                                <span className="text-xs text-gray-400 font-semibold">อัปเดตแบบเรียลไทม์</span>
+                            </div>
+
+                            {(!stats?.recentActiveUsers || stats.recentActiveUsers.length === 0) ? (
+                                <p className="text-center py-6 text-gray-400 text-sm font-medium">ยังไม่มีข้อมูลผู้เล่นล่าสุด</p>
+                            ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                                    {stats.recentActiveUsers.map((u: any) => (
+                                        <div key={u.id} className="p-3.5 bg-gray-50/80 hover:bg-gray-100/80 border border-gray-200/60 rounded-2xl flex items-center gap-3 transition">
+                                            <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-blue-100 border border-gray-200">
+                                                <img
+                                                    src={u.image && !u.image.includes('default-avatar.png') ? u.image : `https://ui-avatars.com/api/?name=${encodeURIComponent(u.username || u.name || 'U')}&background=5cb5db&color=fff&bold=true`}
+                                                    alt="Avatar"
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-xs font-bold text-gray-800 truncate">{u.username || u.name || "User"}</p>
+                                                <div className="flex items-center gap-1.5 text-[11px] text-gray-500 font-medium">
+                                                    <span className="text-[#5cb5db] font-bold">Rank {u.rank}</span>
+                                                    <span>•</span>
+                                                    <span>{u.currentExp?.toLocaleString() || 0} EXP</span>
+                                                </div>
+                                                <p className="text-[10px] text-gray-400 mt-0.5 truncate">
+                                                    {u.lastPlayedAt ? new Date(u.lastPlayedAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) : '-'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 {/* --- TAB 1: รายงานผู้ใช้ (Reports) --- */}
                 {activeTab === 'reports' && (
