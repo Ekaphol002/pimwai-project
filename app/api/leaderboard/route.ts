@@ -18,17 +18,14 @@ export async function GET(request: Request) {
 
         // ดึงข้อมูลผู้ใช้ปัจจุบัน (ถ้าล็อกอิน)
         const session = await getServerSession(authOptions);
-        let currentUserId: string | null = null;
-        if (session?.user) {
-            const searchConditions = [];
-            if (session.user.id) searchConditions.push({ id: session.user.id });
-            if (session.user.email) searchConditions.push({ email: session.user.email });
-            if (session.user.name) searchConditions.push({ username: session.user.name }, { name: session.user.name });
+        let currentUserId: string | null = session?.user?.id || null;
 
-            if (searchConditions.length > 0) {
-                const currentUser = await prisma.user.findFirst({ where: { OR: searchConditions } });
-                currentUserId = currentUser?.id || null;
-            }
+        if (!currentUserId && session?.user?.email) {
+            const currentUser = await prisma.user.findUnique({
+                where: { email: session.user.email },
+                select: { id: true }
+            });
+            currentUserId = currentUser?.id || null;
         }
 
         let leaderboard: any[] = [];

@@ -13,6 +13,14 @@ export const authOptions: AuthOptions = {
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
       allowDangerousEmailAccountLinking: true,
+      profile(profile) {
+        return {
+          id: profile.sub,
+          name: profile.name,
+          email: profile.email,
+          image: null, // ป้องกันรูป Base64/URL ขนาดยาวที่ทำให้ Cookie บวม
+        }
+      },
       authorization: {
         params: {
           prompt: "select_account",
@@ -55,17 +63,6 @@ export const authOptions: AuthOptions = {
   session: {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 วัน
-  },
-  cookies: {
-    sessionToken: {
-      name: process.env.NODE_ENV === "production" ? `__Secure-next-auth.session-token` : `next-auth.session-token`,
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        secure: process.env.NODE_ENV === "production",
-      },
-    },
   },
   callbacks: {
     async jwt({ token, user, trigger, session }) {

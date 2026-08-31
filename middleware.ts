@@ -11,9 +11,7 @@ export default withAuth({
 export const config = {
   // 🔒 ระบุ path ที่ต้องการ "ล็อก" (ห้ามคนนอกเข้า)
   matcher: [
-    "/lessons/:path*",      // ล็อกหน้าบทเรียนทั้งหมด
     "/progress/:path*",     // ล็อกหน้าดูผลงาน
-    "/tests/:path*",        // ล็อกหน้าเทส
     "/typing-test/:path*",  // ล็อกหน้าพิมพ์แข่ง (สำคัญ!)
     "/lesson/:path*",       // ล็อกหน้าฝึกซ้อม (ใน folder practice)
   ]

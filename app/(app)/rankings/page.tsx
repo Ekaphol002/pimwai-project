@@ -73,10 +73,8 @@ export default function LeaderboardPage() {
     };
 
     useEffect(() => {
-        if (status === "authenticated") {
-            fetchLeaderboard(true);
-        }
-    }, [status]);
+        fetchLeaderboard(true);
+    }, []);
 
     useEffect(() => {
         if (!isInitialLoading) {

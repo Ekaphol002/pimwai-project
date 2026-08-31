@@ -11,6 +11,18 @@ export default function sitemap(): MetadataRoute.Sitemap {
             priority: 1.0,
         },
         {
+            url: `${baseUrl}/lessons`,
+            lastModified: new Date(),
+            changeFrequency: 'daily',
+            priority: 0.9,
+        },
+        {
+            url: `${baseUrl}/tests`,
+            lastModified: new Date(),
+            changeFrequency: 'daily',
+            priority: 0.9,
+        },
+        {
             url: `${baseUrl}/rankings`,
             lastModified: new Date(),
             changeFrequency: 'always',

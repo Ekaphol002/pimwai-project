@@ -12,27 +12,20 @@ export const dynamic = 'force-dynamic';
 export default async function TestMenuPage() {
   // 1. ตรวจสอบ Session (ใครล็อกอินอยู่?)
   const session = await getServerSession(authOptions);
+  let user = null;
 
-  if (!session?.user?.email) {
-    redirect('/login');
+  if (session?.user?.email) {
+    user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    });
   }
 
-  // 2. ดึง User ตัวจริงจาก Database (เพื่อเอา ID)
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email }
-  });
-
-  // ถ้ามี Session แต่ไม่มี User ใน DB (กันเหนียว)
-  if (!user) {
-    redirect('/login');
-  }
-
-  // 3. ✅ ดึงผลสอบ Speed Test ทั้งหมดของ User คนนี้ (ใช้ user.id จริง)
-  const allResults = await prisma.speedTestResult.findMany({
-    where: { userId: user.id }, // 👈 ใช้ ID จริงตรงนี้
+  // 2. ดึงผลสอบ Speed Test (ถ้าล็อกอิน) หรือส่ง array ว่างสำหรับ Guest
+  const allResults = user ? await prisma.speedTestResult.findMany({
+    where: { userId: user.id },
     orderBy: { createdAt: 'desc' }
-  });
+  }) : [];
 
-  // 4. ส่งข้อมูลไปให้ Client Component จัดการต่อ
+  // 3. ส่งข้อมูลไปให้ Client Component จัดการต่อ
   return <TestDashboard allResults={allResults} />;
 }

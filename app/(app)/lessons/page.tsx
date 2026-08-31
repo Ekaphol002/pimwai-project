@@ -26,34 +26,27 @@ export default async function LessonsPage({ searchParams }: PageProps) {
 
   // 1. เช็ค Session
   const session = await getServerSession(authOptions);
-
-  if (!session?.user?.email) {
-    redirect('/login');
+  let user = null;
+  if (session?.user?.email) {
+    user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    });
   }
 
-  // 2. เอา Email ไปหา User ID ใน Database
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email }
-  });
-
-  if (!user) {
-    redirect('/login');
-  }
-
-  // ✅ ได้ ID จริงมาใช้งานแล้ว!
-  const userId = user.id;
+  // ID จริงของผู้ใช้ หรือ null สำหรับ Guest/Googlebot
+  const userId = user?.id || null;
 
   // =========================================================
-  // ส่วนคำนวณสถิติ (ปรับปรุงเล็กน้อยเพราะเราได้ตัวแปร user มาแล้วข้างบน)
+  // ส่วนคำนวณสถิติ (สำหรับคนที่ล็อกอินแล้ว)
   // =========================================================
 
   // 2. ดึงสถิติวันนี้
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const todaysProgress = await prisma.lessonProgress.findMany({
+  const todaysProgress = userId ? await prisma.lessonProgress.findMany({
     where: { userId: userId, updatedAt: { gte: today } }
-  });
+  }) : [];
 
   // คำนวณค่าสถิติจากข้อมูลที่ดึงมา
   const dailyTotalLessons = todaysProgress.length;
@@ -111,9 +104,9 @@ export default async function LessonsPage({ searchParams }: PageProps) {
       subLessons: {
         orderBy: { order: 'asc' },
         include: {
-          userProgress: {
-            where: { userId: userId } // ใช้ userId ของจริงที่ได้มา
-          }
+          userProgress: userId ? {
+            where: { userId: userId }
+          } : false
         }
       }
     }
@@ -122,7 +115,7 @@ export default async function LessonsPage({ searchParams }: PageProps) {
   // แปลงข้อมูล (Transform Data)
   const lessons = rawLessons.map(lesson => {
     const transformedSubLessons = lesson.subLessons.map(sub => {
-      const progress = sub.userProgress[0];
+      const progress = sub.userProgress?.[0];
 
       return {
         id: sub.id,
@@ -176,7 +169,7 @@ export default async function LessonsPage({ searchParams }: PageProps) {
   // =========================================================
   // ✅ ตรวจสอบว่าเป็น user ใหม่หรือไม่ (ไม่เคยเล่นเลย)
   // =========================================================
-  const isNewUser = user.lastPlayedAt === null;
+  const isNewUser = user ? user.lastPlayedAt === null : false;
 
   // หา URL ด่านแรก (beginner lesson 1, sub-lesson แรก)
   const firstLesson = rawLessons[0];
@@ -191,7 +184,7 @@ export default async function LessonsPage({ searchParams }: PageProps) {
       {/* Welcome Modal สำหรับ user ใหม่ */}
       {isNewUser && (
         <WelcomeModal
-          userName={user.name || undefined}
+          userName={user?.name || undefined}
           firstLessonUrl={firstLessonUrl}
         />
       )}
@@ -212,8 +205,8 @@ export default async function LessonsPage({ searchParams }: PageProps) {
 
         <div className="w-120 flex-shrink-0 hidden lg:block mr-6">
           <TodayStats
-            rank={user.rank} // ใช้ user ตัวจริงที่ดึงมาด้านบน
-            exp={user.currentExp}
+            rank={user?.rank || 1}
+            exp={user?.currentExp || 0}
             dailyWpm={dailyAvgWpm}
             dailyAcc={dailyAvgAcc}
             dailyTime={dailyTimeString}
