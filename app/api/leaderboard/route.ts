@@ -2,13 +2,9 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { calculateTotalDays } from '@/lib/streakUtils';
+import { calculateTotalDays, toDateKey } from '@/lib/streakUtils';
 
-// ฟังก์ชันแปลง Date ให้เป็น format 'YYYY-MM-DD' เพื่อเปรียบเทียบวัน
-function toDateKey(date: Date): string {
-    const d = new Date(date);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
     try {
