@@ -1,8 +1,13 @@
-export const toDateKey = (date: Date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+export const toDateKey = (date: Date | string) => {
+    const d = typeof date === 'string' ? new Date(date) : date;
+    // ใช้เวลาประเทศไทย (Asia/Bangkok, UTC+7) เสมอ ทั้งบน Localhost และบน Vercel (UTC)
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Bangkok',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    });
+    return formatter.format(d); // ผลลัพธ์: "YYYY-MM-DD"
 };
 
 export const calculateCurrentStreak = (activityDates: string[]) => {
