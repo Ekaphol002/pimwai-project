@@ -44,24 +44,17 @@ export const authOptions: AuthOptions = {
         if (!isPasswordCorrect) {
           throw new Error("รหัสผ่านไม่ถูกต้อง");
         }
-        return user;
+        return {
+          id: user.id,
+          name: user.username || user.name,
+          email: user.email
+        };
       }
     })
   ],
   session: {
     strategy: "jwt",
   },
-  // cookies: {
-  //   sessionToken: {
-  //     name: `next-auth.session-token`,
-  //     options: {
-  //       httpOnly: true,
-  //       sameSite: "lax",
-  //       path: "/",
-  //       secure: process.env.NODE_ENV === "production" && process.env.NEXTAUTH_URL?.startsWith("https"),
-  //     },
-  //   },
-  // },
   callbacks: {
     async jwt({ token, user, trigger, session }) {
       if (user) {
@@ -71,25 +64,6 @@ export const authOptions: AuthOptions = {
       }
       if (trigger === "update" && session?.name) {
         token.name = session.name;
-      }
-      // ดึงชื่อล่าสุดจาก Database เสมอเพื่อป้องกันข้อมูลค้าง
-      if (token.email || token.id) {
-        try {
-          const dbUser = await prisma.user.findFirst({
-            where: {
-              OR: [
-                ...(token.id ? [{ id: token.id as string }] : []),
-                ...(token.email ? [{ email: token.email as string }] : [])
-              ]
-            },
-            select: { username: true, name: true }
-          });
-          if (dbUser) {
-            token.name = dbUser.username || dbUser.name || token.name;
-          }
-        } catch (e) {
-          // ignore error
-        }
       }
       return token;
     },
