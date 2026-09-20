@@ -10,6 +10,7 @@ import { prisma } from '@/lib/prisma';
 import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 interface PageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -27,15 +28,16 @@ export default async function LessonsPage({ searchParams }: PageProps) {
     const session = await getServerSession(authOptions);
     const sessionEmail = session?.user?.email;
     const sessionId = (session?.user as any)?.id;
+    const sessionName = session?.user?.name;
 
-    if (sessionEmail) {
-      user = await prisma.user.findUnique({
-        where: { email: sessionEmail }
-      });
-    }
-    if (!user && sessionId) {
-      user = await prisma.user.findUnique({
-        where: { id: sessionId }
+    const searchConditions = [];
+    if (sessionId) searchConditions.push({ id: sessionId });
+    if (sessionEmail) searchConditions.push({ email: sessionEmail });
+    if (sessionName) searchConditions.push({ username: sessionName }, { name: sessionName });
+
+    if (searchConditions.length > 0) {
+      user = await prisma.user.findFirst({
+        where: { OR: searchConditions }
       });
     }
     userId = user?.id || sessionId || null;
@@ -52,16 +54,32 @@ export default async function LessonsPage({ searchParams }: PageProps) {
       include: {
         subLessons: {
           orderBy: { order: 'asc' },
-          include: userId ? {
-            userProgress: {
-              where: { userId: userId }
+          ...(userId ? {
+            include: {
+              userProgress: {
+                where: { userId }
+              }
             }
-          } : undefined
+          } : {})
         }
       }
     });
   } catch (err) {
-    console.error("Lessons query error:", err);
+    console.error("Lessons query error with userProgress:", err);
+    try {
+      // Fallback ดึงบทเรียนเปล่าๆ เพื่อไม่ให้หน้าบทเรียนว่างเปล่าเด็ดขาด
+      rawLessons = await prisma.lesson.findMany({
+        where: { level: selectedLevel },
+        orderBy: { order: 'asc' },
+        include: {
+          subLessons: {
+            orderBy: { order: 'asc' }
+          }
+        }
+      });
+    } catch (fallbackErr) {
+      console.error("Lessons fallback query error:", fallbackErr);
+    }
   }
 
   // 3. ดึงสถิติรายวันและการปลดล็อกเควส
@@ -85,7 +103,7 @@ export default async function LessonsPage({ searchParams }: PageProps) {
         }).catch(() => []),
         prisma.subLesson.count().catch(() => 0),
         prisma.lessonProgress.count({ where: { userId } }).catch(() => 0),
-        user.currentExp !== undefined ? prisma.user.count({ where: { currentExp: { gt: user.currentExp || 0 } } }).catch(() => 0) : Promise.resolve(0)
+        user?.currentExp !== undefined ? prisma.user.count({ where: { currentExp: { gt: user.currentExp || 0 } } }).catch(() => 0) : Promise.resolve(0)
       ]);
 
       todaysProgress = prog || [];

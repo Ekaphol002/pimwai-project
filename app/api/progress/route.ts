@@ -11,13 +11,18 @@ export async function GET() {
     // 1. ตรวจสอบ Session
     const session = await getServerSession(authOptions);
 
-    if (!session || !session.user?.email) {
+    if (!session || (!session.user?.email && !(session.user as any)?.id)) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    // 2. หา User ตัวจริง
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email }
+    // 2. หา User ตัวจริง (รองรับทั้ง id, email, name/username)
+    const searchConditions = [];
+    if ((session.user as any)?.id) searchConditions.push({ id: (session.user as any).id });
+    if (session.user?.email) searchConditions.push({ email: session.user.email });
+    if (session.user?.name) searchConditions.push({ username: session.user.name }, { name: session.user.name });
+
+    const user = await prisma.user.findFirst({
+      where: searchConditions.length > 0 ? { OR: searchConditions } : {},
     });
 
     if (!user) {

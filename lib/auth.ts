@@ -56,6 +56,7 @@ export const authOptions: AuthOptions = {
         strategy: "jwt",
         maxAge: 30 * 24 * 60 * 60,
     },
+    useSecureCookies: process.env.NODE_ENV === "production",
     callbacks: {
         async signIn({ user, account }) {
             if (account?.provider === "google" && user.email) {
