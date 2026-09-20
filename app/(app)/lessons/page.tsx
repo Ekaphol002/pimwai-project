@@ -20,70 +20,81 @@ export default async function LessonsPage({ searchParams }: PageProps) {
   const resolvedSearchParams = await searchParams;
   const selectedLevel = (resolvedSearchParams?.level as string) || 'beginner';
 
+  // 1. ดึงข้อมูลบทเรียนหลักเสมอ (ไม่มีวันว่างเปล่า ไม่ว่า User จะล็อกอินหรือไม่ หรือ session จะมีปัญหาหรือไม่)
+  let rawLessons: any[] = [];
+  try {
+    rawLessons = await prisma.lesson.findMany({
+      where: { level: selectedLevel },
+      orderBy: { order: 'asc' },
+      include: {
+        subLessons: {
+          orderBy: { order: 'asc' },
+          include: {
+            userProgress: true
+          }
+        }
+      }
+    });
+  } catch (err) {
+    console.error("Lessons query error:", err);
+  }
+
+  // 2. ดึง Session และ User อย่างปลอดภัย
   let user: any = null;
+  try {
+    const session = await getServerSession(authOptions);
+    const sessionEmail = session?.user?.email;
+    const sessionId = (session?.user as any)?.id;
+
+    if (sessionEmail) {
+      user = await prisma.user.findUnique({
+        where: { email: sessionEmail }
+      });
+    }
+    if (!user && sessionId) {
+      user = await prisma.user.findUnique({
+        where: { id: sessionId }
+      });
+    }
+  } catch (err) {
+    console.error("Session lookup error in LessonsPage:", err);
+  }
+
+  const userId = user?.id || null;
+
+  // 3. ดึงสถิติรายวันและการปลดล็อกเควส
   let todaysProgress: any[] = [];
   let todaysSpeedTests: any[] = [];
   let totalSubLessonsCount = 0;
   let userCompletedLessonsCount = 0;
   let higherExpUsersCount = 0;
-  let rawLessons: any[] = [];
 
-  try {
-    const session = await getServerSession(authOptions);
-    if (session?.user?.email) {
-      user = await prisma.user.findUnique({
-        where: { email: session.user.email }
-      });
+  if (userId) {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const [prog, tests, subCount, userProgCount, higherCount] = await Promise.all([
+        prisma.lessonProgress.findMany({
+          where: { userId: userId, updatedAt: { gte: today } }
+        }).catch(() => []),
+        prisma.speedTestResult.findMany({
+          where: { userId: userId, createdAt: { gte: today } }
+        }).catch(() => []),
+        prisma.subLesson.count().catch(() => 0),
+        prisma.lessonProgress.count({ where: { userId } }).catch(() => 0),
+        user.currentExp !== undefined ? prisma.user.count({ where: { currentExp: { gt: user.currentExp || 0 } } }).catch(() => 0) : Promise.resolve(0)
+      ]);
+
+      todaysProgress = prog || [];
+      todaysSpeedTests = tests || [];
+      totalSubLessonsCount = subCount || 0;
+      userCompletedLessonsCount = userProgCount || 0;
+      higherExpUsersCount = higherCount || 0;
+    } catch (err) {
+      console.error("Stats lookup error in LessonsPage:", err);
     }
-    if (!user && (session?.user as any)?.id) {
-      user = await prisma.user.findUnique({
-        where: { id: (session?.user as any).id }
-      });
-    }
-
-    const userId = user?.id || (session?.user as any)?.id || null;
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const [prog, tests, subCount, userProgCount, higherCount, lessonsData] = await Promise.all([
-      userId ? prisma.lessonProgress.findMany({
-        where: { userId: userId, updatedAt: { gte: today } }
-      }) : Promise.resolve([]),
-      userId ? prisma.speedTestResult.findMany({
-        where: { userId: userId, createdAt: { gte: today } }
-      }) : Promise.resolve([]),
-      prisma.subLesson.count().catch(() => 0),
-      userId ? prisma.lessonProgress.count({ where: { userId } }).catch(() => 0) : Promise.resolve(0),
-      userId && user ? prisma.user.count({ where: { currentExp: { gt: user.currentExp || 0 } } }).catch(() => 0) : Promise.resolve(0),
-      prisma.lesson.findMany({
-        where: { level: selectedLevel },
-        orderBy: { order: 'asc' },
-        include: {
-          subLessons: {
-            orderBy: { order: 'asc' },
-            include: {
-              userProgress: true
-            }
-          }
-        }
-      }).catch((err) => {
-        console.error("Failed to load lessons:", err);
-        return [];
-      })
-    ]);
-
-    todaysProgress = prog || [];
-    todaysSpeedTests = tests || [];
-    totalSubLessonsCount = subCount || 0;
-    userCompletedLessonsCount = userProgCount || 0;
-    higherExpUsersCount = higherCount || 0;
-    rawLessons = lessonsData || [];
-  } catch (error) {
-    console.error("LessonsPage data loading error:", error);
   }
-
-  const userId = user?.id || null;
 
   // คำนวณค่าสถิติจากข้อมูลที่ดึงมา (รวมบทเรียน + โหมดฟาร์ม)
   const dailyTotalLessons = todaysProgress.length + todaysSpeedTests.length;
