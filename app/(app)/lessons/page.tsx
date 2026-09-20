@@ -35,8 +35,13 @@ export default async function LessonsPage({ searchParams }: PageProps) {
         where: { email: session.user.email }
       });
     }
+    if (!user && (session?.user as any)?.id) {
+      user = await prisma.user.findUnique({
+        where: { id: (session?.user as any).id }
+      });
+    }
 
-    const userId = user?.id || null;
+    const userId = user?.id || (session?.user as any)?.id || null;
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -57,13 +62,9 @@ export default async function LessonsPage({ searchParams }: PageProps) {
         include: {
           subLessons: {
             orderBy: { order: 'asc' },
-            ...(userId ? {
-              include: {
-                userProgress: {
-                  where: { userId: userId }
-                }
-              }
-            } : {})
+            include: {
+              userProgress: true
+            }
           }
         }
       }).catch((err) => {
@@ -163,8 +164,10 @@ export default async function LessonsPage({ searchParams }: PageProps) {
 
   // แปลงข้อมูล (Transform Data)
   const lessons = rawLessons.map(lesson => {
-    const transformedSubLessons = lesson.subLessons.map(sub => {
-      const progress = sub.userProgress?.[0];
+    const transformedSubLessons = (lesson.subLessons || []).map((sub: any) => {
+      const progress = userId && sub.userProgress
+        ? sub.userProgress.find((p: any) => p.userId === userId)
+        : undefined;
 
       return {
         id: sub.id,
