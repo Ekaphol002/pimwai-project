@@ -20,27 +20,9 @@ export default async function LessonsPage({ searchParams }: PageProps) {
   const resolvedSearchParams = await searchParams;
   const selectedLevel = (resolvedSearchParams?.level as string) || 'beginner';
 
-  // 1. ดึงข้อมูลบทเรียนหลักเสมอ (ไม่มีวันว่างเปล่า ไม่ว่า User จะล็อกอินหรือไม่ หรือ session จะมีปัญหาหรือไม่)
-  let rawLessons: any[] = [];
-  try {
-    rawLessons = await prisma.lesson.findMany({
-      where: { level: selectedLevel },
-      orderBy: { order: 'asc' },
-      include: {
-        subLessons: {
-          orderBy: { order: 'asc' },
-          include: {
-            userProgress: true
-          }
-        }
-      }
-    });
-  } catch (err) {
-    console.error("Lessons query error:", err);
-  }
-
-  // 2. ดึง Session และ User อย่างปลอดภัย
+  // 1. ดึง Session และ User อย่างปลอดภัย
   let user: any = null;
+  let userId: string | null = null;
   try {
     const session = await getServerSession(authOptions);
     const sessionEmail = session?.user?.email;
@@ -56,11 +38,31 @@ export default async function LessonsPage({ searchParams }: PageProps) {
         where: { id: sessionId }
       });
     }
+    userId = user?.id || sessionId || null;
   } catch (err) {
     console.error("Session lookup error in LessonsPage:", err);
   }
 
-  const userId = user?.id || null;
+  // 2. ดึงข้อมูลบทเรียนหลัก (ดึงเฉพาะ userProgress ของผู้ใช้คนนี้เท่านั้น ไม่โหลดของคนอื่นทั้งเซิร์ฟเวอร์)
+  let rawLessons: any[] = [];
+  try {
+    rawLessons = await prisma.lesson.findMany({
+      where: { level: selectedLevel },
+      orderBy: { order: 'asc' },
+      include: {
+        subLessons: {
+          orderBy: { order: 'asc' },
+          include: userId ? {
+            userProgress: {
+              where: { userId: userId }
+            }
+          } : undefined
+        }
+      }
+    });
+  } catch (err) {
+    console.error("Lessons query error:", err);
+  }
 
   // 3. ดึงสถิติรายวันและการปลดล็อกเควส
   let todaysProgress: any[] = [];
@@ -176,9 +178,7 @@ export default async function LessonsPage({ searchParams }: PageProps) {
   // แปลงข้อมูล (Transform Data)
   const lessons = rawLessons.map((lesson: any) => {
     const transformedSubLessons = (lesson.subLessons || []).map((sub: any) => {
-      const progress = userId && sub.userProgress
-        ? sub.userProgress.find((p: any) => p.userId === userId)
-        : undefined;
+      const progress = sub.userProgress?.[0];
 
       return {
         id: sub.id,
