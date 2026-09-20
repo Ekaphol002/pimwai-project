@@ -163,7 +163,7 @@ export default async function LessonsPage({ searchParams }: PageProps) {
   ];
 
   // แปลงข้อมูล (Transform Data)
-  const lessons = rawLessons.map(lesson => {
+  const lessons = rawLessons.map((lesson: any) => {
     const transformedSubLessons = (lesson.subLessons || []).map((sub: any) => {
       const progress = userId && sub.userProgress
         ? sub.userProgress.find((p: any) => p.userId === userId)
@@ -180,24 +180,24 @@ export default async function LessonsPage({ searchParams }: PageProps) {
       };
     });
 
-    const isAllCompleted = transformedSubLessons.every(s => s.status === 'completed');
-    const isSomeCompleted = transformedSubLessons.some(s => s.status === 'completed');
+    const isAllCompleted = transformedSubLessons.every((s: any) => s.status === 'completed');
+    const isSomeCompleted = transformedSubLessons.some((s: any) => s.status === 'completed');
 
     let unitStatus = 'start';
     if (isAllCompleted) unitStatus = 'completed';
     else if (isSomeCompleted) unitStatus = 'resume';
 
-    const playedSubLessons = transformedSubLessons.filter(s => s.status === 'completed');
+    const playedSubLessons = transformedSubLessons.filter((s: any) => s.status === 'completed');
 
     const avgSpeed = playedSubLessons.length > 0
-      ? Math.round(playedSubLessons.reduce((sum, s) => sum + s.wpm, 0) / playedSubLessons.length)
+      ? Math.round(playedSubLessons.reduce((sum: number, s: any) => sum + s.wpm, 0) / playedSubLessons.length)
       : 0;
 
     const avgAcc = playedSubLessons.length > 0
-      ? Math.round(playedSubLessons.reduce((sum, s) => sum + s.acc, 0) / playedSubLessons.length)
+      ? Math.round(playedSubLessons.reduce((sum: number, s: any) => sum + s.acc, 0) / playedSubLessons.length)
       : 0;
 
-    const totalSeconds = playedSubLessons.reduce((sum, s) => sum + s.duration, 0);
+    const totalSeconds = playedSubLessons.reduce((sum: number, s: any) => sum + s.duration, 0);
 
     let timeString = undefined;
     if (totalSeconds > 0) {
