@@ -3,7 +3,7 @@ import React from 'react';
 import { prisma } from '@/lib/prisma';
 import TestDashboard from '@/components/TestDashboard/TestDashboard';
 import { getServerSession } from "next-auth"; // ✅ 1. เพิ่ม
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"; // ✅ 2. เพิ่ม (เช็ค Path ให้ถูก)
+import { authOptions } from "@/lib/auth"; // ✅ Import จาก @/lib/auth
 import { redirect } from 'next/navigation'; // ✅ 3. เพิ่ม
 
 // บังคับให้โหลดข้อมูลใหม่เสมอ (ไม่แคช) เพื่อให้เห็นผลสอบล่าสุดทันที

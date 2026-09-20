@@ -1,6 +1,6 @@
 // app/lessons/page.tsx
 import { getServerSession } from "next-auth"; // ✅ เพิ่ม getServerSession
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"; // ✅ ต้อง Import authOptions ให้ถูก path
+import { authOptions } from "@/lib/auth"; // ✅ Import จาก @/lib/auth
 
 import LessonMenuBar from '@/components/LessonMenuBar/LessonMenuBar';
 import LessonList from '@/components/LessonList/LessonList';
@@ -20,45 +20,71 @@ export default async function LessonsPage({ searchParams }: PageProps) {
   const resolvedSearchParams = await searchParams;
   const selectedLevel = (resolvedSearchParams?.level as string) || 'beginner';
 
-  // =========================================================
-  // ✅ ส่วนที่แก้ไข: ดึง User ID จริงจาก Session
-  // =========================================================
+  let user: any = null;
+  let todaysProgress: any[] = [];
+  let todaysSpeedTests: any[] = [];
+  let totalSubLessonsCount = 0;
+  let userCompletedLessonsCount = 0;
+  let higherExpUsersCount = 0;
+  let rawLessons: any[] = [];
 
-  // 1. เช็ค Session
-  const session = await getServerSession(authOptions);
-  let user = null;
-  if (session?.user?.email) {
-    user = await prisma.user.findUnique({
-      where: { email: session.user.email }
-    });
+  try {
+    const session = await getServerSession(authOptions);
+    if (session?.user?.email) {
+      user = await prisma.user.findUnique({
+        where: { email: session.user.email }
+      });
+    }
+
+    const userId = user?.id || null;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const [prog, tests, subCount, userProgCount, higherCount, lessonsData] = await Promise.all([
+      userId ? prisma.lessonProgress.findMany({
+        where: { userId: userId, updatedAt: { gte: today } }
+      }) : Promise.resolve([]),
+      userId ? prisma.speedTestResult.findMany({
+        where: { userId: userId, createdAt: { gte: today } }
+      }) : Promise.resolve([]),
+      prisma.subLesson.count().catch(() => 0),
+      userId ? prisma.lessonProgress.count({ where: { userId } }).catch(() => 0) : Promise.resolve(0),
+      userId && user ? prisma.user.count({ where: { currentExp: { gt: user.currentExp || 0 } } }).catch(() => 0) : Promise.resolve(0),
+      prisma.lesson.findMany({
+        where: { level: selectedLevel },
+        orderBy: { order: 'asc' },
+        include: {
+          subLessons: {
+            orderBy: { order: 'asc' },
+            include: {
+              userProgress: userId ? {
+                where: { userId: userId }
+              } : false
+            }
+          }
+        }
+      }).catch(() => [])
+    ]);
+
+    todaysProgress = prog || [];
+    todaysSpeedTests = tests || [];
+    totalSubLessonsCount = subCount || 0;
+    userCompletedLessonsCount = userProgCount || 0;
+    higherExpUsersCount = higherCount || 0;
+    rawLessons = lessonsData || [];
+  } catch (error) {
+    console.error("LessonsPage data loading error:", error);
   }
 
-  // ID จริงของผู้ใช้ หรือ null สำหรับ Guest/Googlebot
   const userId = user?.id || null;
-
-  // =========================================================
-  // ส่วนคำนวณสถิติ (สำหรับคนที่ล็อกอินแล้ว)
-  // =========================================================
-
-  // 2. ดึงสถิติวันนี้ (รวมทั้งบทเรียน และโหมดฟาร์ม/ทดสอบความเร็ว)
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const [todaysProgress, todaysSpeedTests] = await Promise.all([
-    userId ? prisma.lessonProgress.findMany({
-      where: { userId: userId, updatedAt: { gte: today } }
-    }) : [],
-    userId ? prisma.speedTestResult.findMany({
-      where: { userId: userId, createdAt: { gte: today } }
-    }) : []
-  ]);
 
   // คำนวณค่าสถิติจากข้อมูลที่ดึงมา (รวมบทเรียน + โหมดฟาร์ม)
   const dailyTotalLessons = todaysProgress.length + todaysSpeedTests.length;
-  const dailyTotalTime = todaysProgress.reduce((sum, p) => sum + p.duration, 0) + todaysSpeedTests.reduce((sum, t) => sum + t.duration, 0);
+  const dailyTotalTime = todaysProgress.reduce((sum: number, p: any) => sum + (p.duration || 0), 0) + todaysSpeedTests.reduce((sum: number, t: any) => sum + (t.duration || 0), 0);
 
-  const totalWpmSum = todaysProgress.reduce((sum, p) => sum + p.wpm, 0) + todaysSpeedTests.reduce((sum, t) => sum + t.wpm, 0);
-  const totalAccSum = todaysProgress.reduce((sum, p) => sum + p.accuracy, 0) + todaysSpeedTests.reduce((sum, t) => sum + t.accuracy, 0);
+  const totalWpmSum = todaysProgress.reduce((sum: number, p: any) => sum + (p.wpm || 0), 0) + todaysSpeedTests.reduce((sum: number, t: any) => sum + (t.wpm || 0), 0);
+  const totalAccSum = todaysProgress.reduce((sum: number, p: any) => sum + (p.accuracy || 0), 0) + todaysSpeedTests.reduce((sum: number, t: any) => sum + (t.accuracy || 0), 0);
 
   const dailyAvgWpm = dailyTotalLessons > 0 ? Math.round(totalWpmSum / dailyTotalLessons) : 0;
   const dailyAvgAcc = dailyTotalLessons > 0 ? Math.round(totalAccSum / dailyTotalLessons) : 0;
@@ -67,14 +93,6 @@ export default async function LessonsPage({ searchParams }: PageProps) {
   const m = Math.floor(dailyTotalTime / 60);
   const s = dailyTotalTime % 60;
   const dailyTimeString = `${m}:${s.toString().padStart(2, '0')}`;
-
-  // 3. ตรวจสอบว่าผู้ใช้เล่นบทเรียนครบทุกด่าน ทุกระดับแล้วหรือไม่ (สำหรับปลดล็อกเควส Tier 2)
-  // และคำนวณอันดับเซิร์ฟเวอร์ (Server Rank)
-  const [totalSubLessonsCount, userCompletedLessonsCount, higherExpUsersCount] = await Promise.all([
-    prisma.subLesson.count(),
-    userId ? prisma.lessonProgress.count({ where: { userId } }) : 0,
-    userId && user ? prisma.user.count({ where: { currentExp: { gt: user.currentExp || 0 } } }) : 0
-  ]);
 
   const isAllLessonsCompleted = userId ? (userCompletedLessonsCount >= totalSubLessonsCount && totalSubLessonsCount > 0) : false;
   const serverRank = userId && user ? higherExpUsersCount + 1 : null;
@@ -137,26 +155,6 @@ export default async function LessonsPage({ searchParams }: PageProps) {
       isCompleted: dailyTotalLessons > 0 && dailyAvgAcc >= 95
     },
   ];
-
-  // =========================================================
-  // ส่วนเดิมของคุณ (ดึงบทเรียน)
-  // =========================================================
-
-  // ดึงข้อมูลบทเรียน + userProgress
-  const rawLessons = await prisma.lesson.findMany({
-    where: { level: selectedLevel },
-    orderBy: { order: 'asc' },
-    include: {
-      subLessons: {
-        orderBy: { order: 'asc' },
-        include: {
-          userProgress: userId ? {
-            where: { userId: userId }
-          } : false
-        }
-      }
-    }
-  });
 
   // แปลงข้อมูล (Transform Data)
   const lessons = rawLessons.map(lesson => {
