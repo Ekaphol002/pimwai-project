@@ -57,14 +57,19 @@ export default async function LessonsPage({ searchParams }: PageProps) {
         include: {
           subLessons: {
             orderBy: { order: 'asc' },
-            include: {
-              userProgress: userId ? {
-                where: { userId: userId }
-              } : false
-            }
+            ...(userId ? {
+              include: {
+                userProgress: {
+                  where: { userId: userId }
+                }
+              }
+            } : {})
           }
         }
-      }).catch(() => [])
+      }).catch((err) => {
+        console.error("Failed to load lessons:", err);
+        return [];
+      })
     ]);
 
     todaysProgress = prog || [];
