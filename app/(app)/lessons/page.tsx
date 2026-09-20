@@ -68,14 +68,19 @@ export default async function LessonsPage({ searchParams }: PageProps) {
   const s = dailyTotalTime % 60;
   const dailyTimeString = `${m}:${s.toString().padStart(2, '0')}`;
 
-  // 🎯 ตรวจสอบว่าสำเร็จเควส Tier 1 ทั้งหมดหรือยัง (พิมพ์ 5 นาที, 3 รอบฝึก, แม่นยำ 95%)
-  const isTier1_TimeDone = m >= 5;
-  const isTier1_LessonsDone = dailyTotalLessons >= 3;
-  const isTier1_AccDone = dailyTotalLessons > 0 && dailyAvgAcc >= 95;
-  const isTier1Completed = isTier1_TimeDone && isTier1_LessonsDone && isTier1_AccDone;
+  // 3. ตรวจสอบว่าผู้ใช้เล่นบทเรียนครบทุกด่าน ทุกระดับแล้วหรือไม่ (สำหรับปลดล็อกเควส Tier 2)
+  // และคำนวณอันดับเซิร์ฟเวอร์ (Server Rank)
+  const [totalSubLessonsCount, userCompletedLessonsCount, higherExpUsersCount] = await Promise.all([
+    prisma.subLesson.count(),
+    userId ? prisma.lessonProgress.count({ where: { userId } }) : 0,
+    userId && user ? prisma.user.count({ where: { currentExp: { gt: user.currentExp || 0 } } }) : 0
+  ]);
 
-  // 🌟 ถ้าสำเร็จ Tier 1 ครบทุกข้อ ➔ ปลดล็อกเควสระดับ 2 (Tier 2 Quests) ทันที!
-  const quests = isTier1Completed ? [
+  const isAllLessonsCompleted = userId ? (userCompletedLessonsCount >= totalSubLessonsCount && totalSubLessonsCount > 0) : false;
+  const serverRank = userId && user ? higherExpUsersCount + 1 : null;
+
+  // 🌟 เควสรายวัน: ปลดล็อกเควส Tier 2 เมื่อเล่นบทเรียนครบทุกด่าน ทุกระดับ (Beginner, Intermediate, Advanced) แล้ว
+  const quests = isAllLessonsCompleted ? [
     {
       id: 101,
       tier: 2,
@@ -111,16 +116,16 @@ export default async function LessonsPage({ searchParams }: PageProps) {
       current: m,
       target: 5,
       unit: 'นาที',
-      isCompleted: isTier1_TimeDone
+      isCompleted: m >= 5
     },
     {
       id: 2,
       tier: 1,
-      text: 'ผ่าน 3 บทเรียน',
+      text: 'ผ่าน 3 บทเรียน / รอบฝึก',
       current: dailyTotalLessons,
       target: 3,
       unit: 'บทเรียน',
-      isCompleted: isTier1_LessonsDone
+      isCompleted: dailyTotalLessons >= 3
     },
     {
       id: 3,
@@ -129,7 +134,7 @@ export default async function LessonsPage({ searchParams }: PageProps) {
       current: dailyAvgAcc,
       target: 95,
       unit: '%',
-      isCompleted: isTier1_AccDone
+      isCompleted: dailyTotalLessons > 0 && dailyAvgAcc >= 95
     },
   ];
 
@@ -251,6 +256,7 @@ export default async function LessonsPage({ searchParams }: PageProps) {
             dailyWpm={dailyAvgWpm}
             dailyAcc={dailyAvgAcc}
             dailyTime={dailyTimeString}
+            serverRank={serverRank}
             quests={quests}
             completedQuestsCount={quests.filter(q => q.isCompleted).length}
           />
