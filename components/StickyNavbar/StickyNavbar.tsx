@@ -65,6 +65,11 @@ export default function StickyNavbar() {
           >ทดสอบ</Link>
 
           <Link
+            href="/farm"
+            className={`menu-link-base text-xs sm:text-sm ${pathname === '/farm' ? 'menu-link-active' : 'menu-link-inactive'}`}
+          >ฟาร์มเวล</Link>
+
+          <Link
             href="/rankings"
             className={`menu-link-base text-xs sm:text-sm ${pathname === '/rankings' ? 'menu-link-active' : 'menu-link-inactive'}`}
           >อันดับ</Link>
@@ -117,6 +122,13 @@ export default function StickyNavbar() {
             className={`py-2 px-3 rounded-xl font-bold text-sm ${pathname === '/tests' ? 'bg-[#5cb5db] text-white' : 'text-white/80 hover:bg-white/10'}`}
           >
             ทดสอบ
+          </Link>
+          <Link
+            href="/farm"
+            onClick={() => setIsMobileMenuOpen(false)}
+            className={`py-2 px-3 rounded-xl font-bold text-sm ${pathname === '/farm' ? 'bg-[#5cb5db] text-white' : 'text-white/80 hover:bg-white/10'}`}
+          >
+            ฟาร์มเวล
           </Link>
           <Link
             href="/rankings"

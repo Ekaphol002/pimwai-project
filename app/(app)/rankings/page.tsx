@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { User, Loader2, Star, Crown, Flame, Flag, AlertTriangle, X, Check } from 'lucide-react';
 import { useSession } from "next-auth/react";
 import toast, { Toaster } from 'react-hot-toast';
+import { calculateRankInfo } from '@/lib/rankUtils';
 
 interface UserWithId {
     id?: string;
@@ -23,6 +24,7 @@ interface LeaderboardItem {
         username: string;
         id: string;
         rank?: number;
+        currentExp?: number;
         image?: string | null;
     };
 }
@@ -151,34 +153,7 @@ export default function LeaderboardPage() {
         return true;
     });
 
-    const calculateRankInfo = (exp: number) => {
-        const RANK_1_CAP = 2500;
-        const RANK_2_CAP = 8500;
-
-        let rank = 1;
-        let stars = 0;
-
-        if (exp < RANK_1_CAP) {
-            rank = 1;
-            const expPerStar = 500;
-            stars = Math.floor(exp / expPerStar);
-        } else if (exp < RANK_2_CAP) {
-            rank = 2;
-            const expInRank = exp - RANK_1_CAP;
-            const expPerStar = 1200;
-            stars = Math.floor(expInRank / expPerStar);
-        } else {
-            rank = 3;
-            const expInRank = exp - RANK_2_CAP;
-            const expPerStar = 2000;
-            stars = Math.floor(expInRank / expPerStar);
-        }
-
-        if (stars > 5) stars = 5;
-        return { rank, stars };
-    };
-
-    const championRankInfo = (topUser && mode === 'rank') ? calculateRankInfo(topUser.displayVal2) : { rank: 1, stars: 0 };
+    const championRankInfo = (topUser && mode === 'rank') ? calculateRankInfo(topUser.displayVal2, true) : { rank: 1, stars: 0, rankName: '', thaiRankName: '' };
 
     if (status === "loading" || isInitialLoading) {
         return (
@@ -367,7 +342,8 @@ export default function LeaderboardPage() {
                                         const displayRank = index + 1;
                                         const isMe = isMeInList(user.userId);
                                         const displayName = user.user.username || (isMe ? (userData?.name || "You") : "User");
-                                        const { rank: userRank, stars: userStars } = calculateRankInfo(user.displayVal2);
+                                        const effectiveExpForRank = mode === 'rank' ? user.displayVal2 : (user.user?.currentExp || 0);
+                                        const { rank: userRank, stars: userStars } = calculateRankInfo(effectiveExpForRank, index < 10);
 
                                         let rankBadge = (
                                             <span className={`text-xl sm:text-2xl font-black w-10 text-center logo-font ${isMe ? 'text-white' : 'text-gray-500'}`}>
@@ -433,15 +409,30 @@ export default function LeaderboardPage() {
                                                 </div>
 
                                                 <div className="flex items-center gap-4 sm:gap-8">
-                                                    {mode === 'rank' && !isMe && (
-                                                        <div className="hidden md:flex flex-col items-center opacity-90">
-                                                            <img src={`/Rank${userRank}.png`} onError={(e) => e.currentTarget.src = '/Rank1.png'} className="h-10 object-contain " />
-                                                            <div className="flex gap-0.5 mt-1">
-                                                                {[1, 2, 3, 4, 5].map((starNum) => (
-                                                                    <Star key={starNum} size={10} className={starNum <= userStars ? "fill-yellow-400 text-yellow-400" : "fill-gray-200 text-gray-200"} />
-                                                                ))}
+                                                    {mode === 'rank' && (
+                                                        userRank === 7 ? (
+                                                            <div className="hidden md:flex flex-col items-center">
+                                                                <img src="/Rank7.png" onError={(e) => e.currentTarget.src = '/Rank1.png'} className="h-10 object-contain drop-shadow-xs" />
+                                                                <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider mt-0.5 shadow-xs ${isMe ? 'bg-white text-purple-700' : 'bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-500 text-white'}`}>
+                                                                    TOP 10
+                                                                </span>
                                                             </div>
-                                                        </div>
+                                                        ) : (
+                                                            <div className={`hidden md:flex flex-col items-center ${isMe ? 'opacity-100' : 'opacity-90'}`}>
+                                                                <img src={`/Rank${userRank}.png`} onError={(e) => e.currentTarget.src = '/Rank1.png'} className="h-10 object-contain drop-shadow-xs" />
+                                                                <div className="flex gap-0.5 mt-1">
+                                                                    {[1, 2, 3, 4, 5].map((starNum) => (
+                                                                        <Star
+                                                                            key={starNum}
+                                                                            size={10}
+                                                                            className={starNum <= userStars
+                                                                                ? (isMe ? "fill-yellow-300 text-yellow-300 drop-shadow-xs" : "fill-yellow-400 text-yellow-400")
+                                                                                : (isMe ? "fill-white/30 text-white/30" : "fill-gray-200 text-gray-200")}
+                                                                        />
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )
                                                     )}
 
                                                     <div className="text-right flex flex-col items-end justify-center">
@@ -473,7 +464,7 @@ export default function LeaderboardPage() {
                                     </div>
                                     <div className="flex flex-col">
                                         <span className="text-gray-800 font-bold text-lg sm:text-xl flex items-center gap-2">
-                                            {userData?.name || "You"}
+                                            {myRankData?.user?.username || userData?.name || "You"}
                                             <span className="bg-[#5cb5db] text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">You</span>
                                         </span>
                                         <span className={`text-xs sm:text-sm font-medium mt-1 ${myRankData.rankOrder ? 'text-[#5cb5db]' : 'text-gray-500'}`}>
@@ -482,20 +473,68 @@ export default function LeaderboardPage() {
                                     </div>
                                 </div>
 
-                                <div className="flex flex-col items-end">
-                                    <div className={`flex items-end gap-1 ${mode === 'streak' ? 'text-orange-500' : 'text-gray-800'}`}>
-                                        {mode === 'streak' && <Flame size={24} fill="currentColor" className="mb-1" />}
-                                        <span className="text-2xl sm:text-3xl font-black logo-font">
-                                            {mode === 'speed' ? myRankData.displayVal1 : (mode === 'streak' ? myRankData.displayVal1 : myRankData.displayVal2.toLocaleString())}
-                                        </span>
-                                        <span className="text-xs sm:text-sm text-gray-500 font-bold mb-1">{mode === 'speed' ? 'WPM' : (mode === 'streak' ? 'วัน' : 'EXP')}</span>
+                                <div className="flex items-center gap-4 sm:gap-6">
+                                    {mode === 'rank' && (() => {
+                                        const myExp = myRankData.displayVal2 || 0;
+                                        const isMyTop10 = myRankData.rankOrder !== null && myRankData.rankOrder <= 10;
+                                        const myRankInfo = calculateRankInfo(myExp, isMyTop10);
+                                        return myRankInfo.rank === 7 ? (
+                                            <div className="hidden sm:flex flex-col items-center">
+                                                <img src="/Rank7.png" onError={(e) => e.currentTarget.src = '/Rank1.png'} className="h-10 object-contain drop-shadow-xs" />
+                                                <span className="text-[8px] font-black px-2 py-0.5 bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-500 text-white rounded-full uppercase tracking-wider mt-0.5 shadow-xs">
+                                                    TOP 10
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            <div className="hidden sm:flex flex-col items-center">
+                                                <img src={`/Rank${myRankInfo.rank}.png`} onError={(e) => e.currentTarget.src = '/Rank1.png'} className="h-10 object-contain drop-shadow-xs" />
+                                                <div className="flex gap-0.5 mt-1">
+                                                    {[1, 2, 3, 4, 5].map((starNum) => (
+                                                        <Star
+                                                            key={starNum}
+                                                            size={10}
+                                                            className={starNum <= myRankInfo.stars ? "fill-yellow-400 text-yellow-400" : "fill-gray-200 text-gray-200"}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
+
+                                    <div className="flex flex-col items-end">
+                                        <div className={`flex items-end gap-1 ${mode === 'streak' ? 'text-orange-500' : 'text-gray-800'}`}>
+                                            {mode === 'streak' && <Flame size={24} fill="currentColor" className="mb-1" />}
+                                            <span className="text-2xl sm:text-3xl font-black logo-font">
+                                                {mode === 'speed' ? myRankData.displayVal1 : (mode === 'streak' ? myRankData.displayVal1 : myRankData.displayVal2.toLocaleString())}
+                                            </span>
+                                            <span className="text-xs sm:text-sm text-gray-500 font-bold mb-1">{mode === 'speed' ? 'WPM' : (mode === 'streak' ? 'วัน' : 'EXP')}</span>
+                                        </div>
+                                        {mode !== 'streak' && (
+                                            <span className="text-[10px] sm:text-xs text-[#5cb5db] font-bold uppercase mt-1">
+                                                {mode === 'speed' ? `${myRankData.displayVal2}% Accuracy` : 'Total Score'}
+                                            </span>
+                                        )}
                                     </div>
-                                    {mode !== 'streak' && (
-                                        <span className="text-[10px] sm:text-xs text-[#5cb5db] font-bold uppercase mt-1">
-                                            {mode === 'speed' ? `${myRankData.displayVal2}% Accuracy` : 'Total Score'}
-                                        </span>
-                                    )}
                                 </div>
+                            </div>
+                        )}
+
+                        {/* Guest Mode Notice in Leaderboard */}
+                        {!session?.user && !isTableLoading && (
+                            <div className="border-t border-gray-100 bg-amber-50/80 backdrop-blur-md p-4 sm:px-8 sm:py-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+                                <div className="flex items-center gap-3">
+                                    <span className="text-2xl">🔒</span>
+                                    <div>
+                                        <span className="text-gray-800 font-bold text-sm block">คุณกำลังเล่นในโหมดผู้เยี่ยมชม (Guest)</span>
+                                        <span className="text-xs text-gray-500">EXP และเลเวลของคุณถูกบันทึกไว้ในเครื่องเรียบร้อย แต่จะไม่แสดงบน Leaderboard จนกว่าจะเข้าสู่ระบบ</span>
+                                    </div>
+                                </div>
+                                <a
+                                    href="/login"
+                                    className="px-5 py-2.5 bg-[#5cb5db] hover:bg-[#4ba3c9] text-white font-bold text-xs rounded-2xl shadow-xs transition shrink-0 inline-flex items-center gap-1.5"
+                                >
+                                    เข้าสู่ระบบเพื่อร่วมชิงอันดับ
+                                </a>
                             </div>
                         )}
                     </div>

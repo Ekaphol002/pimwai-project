@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { calculateTotalDays, toDateKey } from '@/lib/streakUtils';
+import { calculateRankInfo } from '@/lib/rankUtils';
 
 export const dynamic = 'force-dynamic';
 
@@ -102,18 +103,23 @@ export async function GET(request: Request) {
                 }
             });
 
-            leaderboard = users.map((u: any, index: number) => ({
-                id: u.id,
-                userId: u.id,
-                user: {
-                    ...u,
-                    username: u.username || u.name || "User"
-                },
-                rankOrder: index + 1,
-                displayVal1: u.rank,       // Rank Level
-                displayVal2: u.currentExp, // Total EXP
-                isSpeedMode: false
-            }));
+            leaderboard = users.map((u: any, index: number) => {
+                const isTop10 = index < 10;
+                const dynamicRank = calculateRankInfo(u.currentExp || 0, isTop10).rank;
+                return {
+                    id: u.id,
+                    userId: u.id,
+                    user: {
+                        ...u,
+                        username: u.username || u.name || "User",
+                        rank: dynamicRank
+                    },
+                    rankOrder: index + 1,
+                    displayVal1: dynamicRank,       // Rank Level (1-7)
+                    displayVal2: u.currentExp,     // Total EXP
+                    isSpeedMode: false
+                };
+            });
 
             // หาอันดับของฉัน (เฉพาะถ้าล็อกอิน)
             if (currentUserId) {
@@ -139,7 +145,7 @@ export async function GET(request: Request) {
         }
         else if (mode === 'streak') {
             const allUsers = await prisma.user.findMany({
-                select: { id: true, username: true, name: true, image: true, rank: true }
+                select: { id: true, username: true, name: true, image: true, rank: true, currentExp: true }
             });
 
             const [lessons, tests] = await Promise.all([

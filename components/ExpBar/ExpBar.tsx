@@ -1,25 +1,30 @@
 interface ExpBarProps {
   currentExp: number;
   maxExp: number;
+  showText?: boolean;
+  barColor?: string;
 }
 
-export default function ExpBar({ currentExp, maxExp }: ExpBarProps) {
+export default function ExpBar({ currentExp, maxExp, showText = true, barColor = "bg-[#5cb5db]" }: ExpBarProps) {
   // คำนวณเปอร์เซ็นต์
-  const percentage = (currentExp / maxExp) * 100;
+  const safeMax = Math.max(1, maxExp || 1);
+  const percentage = Math.min(100, Math.max(0, (currentExp / safeMax) * 100));
 
   return (
-    <div className="w-full">
-      {/* ตัวหลอด EXP */}
-      <div className="w-full bg-gray-300 rounded-full h-2.5">
+    <div className="w-full select-none">
+      {/* ตัวหลอด EXP (หลอดสีเทาชัดเจน ไม่มีเงา ไม่มีขอบ) */}
+      <div className="w-full bg-gray-300 dark:bg-zinc-700 rounded-full h-3 overflow-hidden">
         <div
-          className="bg-[#5cb5db] h-2.5 rounded-full"
-          style={{ width: `${percentage}%` }} // <-- ควบคุมความกว้างจาก %
-        ></div>
+          className={`${barColor} h-full rounded-full transition-all duration-300`}
+          style={{ width: `${percentage}%` }}
+        />
       </div>
       {/* ข้อความ EXP */}
-      <div className="text-center text-xs font-semibold text-gray-500 mt-1">
-        {currentExp}/{maxExp} EXP
-      </div>
+      {showText && (
+        <div className="text-center text-xs font-bold text-gray-500 mt-1.5 logo-font">
+          {Math.floor(currentExp).toLocaleString()} / {Math.floor(safeMax).toLocaleString()} EXP
+        </div>
+      )}
     </div>
   );
 }

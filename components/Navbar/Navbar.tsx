@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from "next-auth/react";
 import { FaCaretDown, FaUserCog, FaSignOutAlt } from 'react-icons/fa';
-import { Flame, MessageSquarePlus, Menu, X, Loader2, Send } from 'lucide-react';
+import { Flame, MessageSquarePlus, Menu, X, Loader2, Send, BookOpen } from 'lucide-react';
 import { calculateCurrentStreak } from '@/lib/streakUtils';
 import toast, { Toaster } from 'react-hot-toast';
 
@@ -38,6 +38,8 @@ export default function Navbar() {
   }, [session]);
 
   const pathname = usePathname();
+  const isFarm = pathname === '/farm' || pathname?.startsWith('/farm');
+  const [isFarmNavOpen, setIsFarmNavOpen] = useState(false);
 
   // ถ้า URL มีคำว่า "typing-test" ให้ซ่อน Navbar
   if (pathname?.includes('/typing-test')) {
@@ -82,7 +84,30 @@ export default function Navbar() {
   return (
     <>
       <Toaster position="top-center" />
-      <nav className="w-full mx-auto h-24 md:h-28 relative z-50">
+
+      {/* Retractable Navbar Trigger สำหรับโหมดฟาร์มเวล (ซ่อนหมด ไร้ป้ายลอย) */}
+      {isFarm && (
+        <div 
+          className="fixed top-0 left-0 right-0 h-4 z-[60] pointer-events-auto"
+          onMouseEnter={() => setIsFarmNavOpen(true)}
+        />
+      )}
+
+      <nav 
+        className={`w-full mx-auto h-24 md:h-28 z-50 ${
+          isFarm
+            ? `fixed top-0 left-0 right-0 transition-transform duration-500 ease-out shadow-2xl ${
+                isFarmNavOpen ? 'translate-y-0' : '-translate-y-full'
+              }`
+            : 'relative'
+        }`}
+        onMouseLeave={() => {
+          if (isFarm) {
+            setIsFarmNavOpen(false);
+            setIsDropdownOpen(false);
+          }
+        }}
+      >
         <div className="absolute inset-0 bg-gradient-to-b from-[#0c648b] via-[#6fb2e6] to-[#5cb5db] border-bottom-1"></div>
         <div className="absolute inset-0 bg-[url('/pimwai_bg.png')] bg-cover bg-center opacity-10"></div>
 
@@ -105,6 +130,7 @@ export default function Navbar() {
           <div className="hidden lg:flex items-center gap-4 bg-[#182834]/20 rounded-2xl px-6 py-1.5 backdrop-blur-xs">
             <Link href="/lessons" className={`menu-link-base text-sm ${pathname === '/lessons' ? 'menu-link-active' : 'menu-link-inactive'}`}>บทเรียน</Link>
             <Link href="/tests" className={`menu-link-base text-sm ${pathname === '/tests' ? 'menu-link-active' : 'menu-link-inactive'}`}>ทดสอบ</Link>
+            <Link href="/farm" className={`menu-link-base text-sm ${pathname === '/farm' ? 'menu-link-active' : 'menu-link-inactive'}`}>ฟาร์มเวล</Link>
             <Link href="/rankings" className={`menu-link-base text-sm ${pathname === '/rankings' ? 'menu-link-active' : 'menu-link-inactive'}`}>อันดับ</Link>
             <Link href="/progress" className={`menu-link-base text-sm ${pathname === '/progress' ? 'menu-link-active' : 'menu-link-inactive'}`}>สรุปผลรวม</Link>
 
@@ -155,6 +181,18 @@ export default function Navbar() {
                         <FaUserCog className="text-base opacity-70" />
                         <span>ตั้งค่าบัญชี</span>
                       </Link>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsDropdownOpen(false);
+                          window.dispatchEvent(new CustomEvent('open-pimwai-news'));
+                        }}
+                        className="w-full text-left flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-50 hover:text-[#5cb5db] transition-colors"
+                      >
+                        <BookOpen className="text-base opacity-70" size={16} />
+                        <span>ข่าวสาร & คู่มือระบบ</span>
+                      </button>
 
                       <button
                         type="button"
@@ -233,6 +271,13 @@ export default function Navbar() {
               ทดสอบ
             </Link>
             <Link
+              href="/farm"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className={`py-2 px-3 rounded-xl font-bold text-sm ${pathname === '/farm' ? 'bg-[#5cb5db] text-white' : 'text-white/80 hover:bg-white/10'}`}
+            >
+              ฟาร์มเวล
+            </Link>
+            <Link
               href="/rankings"
               onClick={() => setIsMobileMenuOpen(false)}
               className={`py-2 px-3 rounded-xl font-bold text-sm ${pathname === '/rankings' ? 'bg-[#5cb5db] text-white' : 'text-white/80 hover:bg-white/10'}`}
@@ -246,6 +291,18 @@ export default function Navbar() {
             >
               สรุปผลรวม
             </Link>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsMobileMenuOpen(false);
+                window.dispatchEvent(new CustomEvent('open-pimwai-news'));
+              }}
+              className="py-2 px-3 rounded-xl font-bold text-sm text-left text-sky-200 hover:bg-white/10 flex items-center gap-2"
+            >
+              <BookOpen size={16} />
+              <span>ข่าวสาร & คู่มือระบบ</span>
+            </button>
 
             <button
               type="button"

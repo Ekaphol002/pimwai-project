@@ -28,8 +28,8 @@ export const thaiShiftKeyDisplayMap: { [key: string]: string } = {
   KeyA: 'ฤ', KeyS: 'ฆ', KeyD: 'ฏ', KeyF: 'โ', KeyG: 'ฌ', KeyH: '็', KeyJ: '๋', KeyK: 'ษ', KeyL: 'ศ', Semicolon: 'ซ', Quote: '.',
   KeyZ: '(', KeyX: ')', KeyC: 'ฉ', KeyV: 'ฮ', KeyB: ' ฺ ',
   // --- (แก้) '?' อยู่บน 'ท' (KeyM), 'ฬ' อยู่บน 'ม' (Comma) ---
-  KeyN: '์', // (จริงๆ KeyN Shift คือ ๊ แต่ ๊ ก็อยู่บน ู (Digit6) ด้วย... เอา ๊ ไปก่อน)
-  KeyM: '?', Comma: 'ฬ', Period: 'ฒ', Slash: 'ฦ',
+  KeyN: '์',
+  KeyM: '?', Comma: 'ฒ', Period: 'ฬ', Slash: 'ฦ',
 };
 
 // (แผนที่ "ย้อนกลับ" - ไม่ต้องแก้ มันสร้างเองอัตโนมัติ)

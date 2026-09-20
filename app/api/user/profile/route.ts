@@ -79,6 +79,47 @@ export async function GET() {
             }
         }
 
+        // คำนวณบัฟถาวรจากการจบบทเรียน (Lesson Perks)
+        let perks = {
+            beginner: false,
+            intermediate: false,
+            advanced: false
+        };
+
+        try {
+            const allLessons = await prisma.lesson.findMany({
+                select: {
+                    id: true,
+                    level: true,
+                    subLessons: {
+                        select: { id: true }
+                    }
+                }
+            });
+
+            const userProgress = await prisma.lessonProgress.findMany({
+                where: { userId: user.id },
+                select: { subLessonId: true, status: true, stars: true }
+            });
+
+            const completedSubLessonIds = new Set(
+                userProgress
+                    .filter(p => p.status === 'completed' || p.stars > 0)
+                    .map(p => p.subLessonId)
+            );
+
+            const levels = ['beginner', 'intermediate', 'advanced'] as const;
+            for (const lvl of levels) {
+                const lessonsInLvl = allLessons.filter(l => l.level?.toLowerCase() === lvl);
+                const allSubInLvl = lessonsInLvl.flatMap(l => l.subLessons);
+                if (allSubInLvl.length > 0) {
+                    perks[lvl] = allSubInLvl.every(sub => completedSubLessonIds.has(sub.id));
+                }
+            }
+        } catch (perkErr) {
+            console.error('Error calculating lesson perks:', perkErr);
+        }
+
         // ไม่ส่ง password hash กลับไป
         const { password, ...safeUser } = user;
 
@@ -91,8 +132,10 @@ export async function GET() {
                 hasPassword,
                 showInLeaderboard: rawUser.showInLeaderboard ?? true,
                 keyboardSound: rawUser.keyboardSound || 'click',
-                lastNameChangedAt: rawUser.lastNameChangedAt || null
+                lastNameChangedAt: rawUser.lastNameChangedAt || null,
+                lessonPerks: perks
             },
+            lessonPerks: perks,
             canChangeName,
             nextAvailableDate,
             daysLeft
@@ -157,7 +200,7 @@ export async function PUT(request: Request) {
                 }, { status: 400 });
             }
 
-            if (currentUser.username !== trimmedUsername && (!currentUser.username && currentUser.name !== trimmedUsername)) {
+            if (currentUser.username !== trimmedUsername || currentUser.name !== trimmedUsername) {
                 // ตรวจสอบเงื่อนไข 7 วัน
                 if (currentUser.lastNameChangedAt) {
                     const lastChangeTime = new Date(currentUser.lastNameChangedAt).getTime();
@@ -175,8 +218,13 @@ export async function PUT(request: Request) {
                 }
 
                 // ตรวจสอบชื่อซ้ำ
-                const existingUser = await (prisma.user as any).findUnique({
-                    where: { username: trimmedUsername }
+                const existingUser = await (prisma.user as any).findFirst({
+                    where: {
+                        OR: [
+                            { username: trimmedUsername },
+                            { name: trimmedUsername }
+                        ]
+                    }
                 });
 
                 if (existingUser && existingUser.id !== currentUser.id) {

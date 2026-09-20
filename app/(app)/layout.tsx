@@ -1,12 +1,13 @@
 // app/(main)/layout.tsx
 import Navbar from "@/components/Navbar/Navbar";
 import Footer from '@/components/Footer/Footer';
+import PimwaiFloatingWidget from "@/components/PimwaiFloatingWidget/PimwaiFloatingWidget";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[#f0f4f8] flex flex-col items-center">
       
-      <div className="w-full max-w-screen-2xl flex flex-col flex-1 bg-white"> 
+      <div className="w-full max-w-screen-2xl flex flex-col flex-1 bg-white relative"> 
         
         <Navbar />
 
@@ -14,6 +15,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           {children}
         </main>
         <Footer />
+        <PimwaiFloatingWidget />
       </div>
     </div>
   );

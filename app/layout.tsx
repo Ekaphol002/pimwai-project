@@ -6,7 +6,7 @@ import "./globals.css";
 import { Providers } from "@/components/Providers/Providers";
 
 const sarabun = Sarabun({
-  weight: ['400', '700'],
+  weight: ['400', '500', '600', '700'],
   subsets: ['thai', 'latin'],
   display: 'swap',
 })

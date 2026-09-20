@@ -67,8 +67,9 @@ export const authOptions: AuthOptions = {
           email: user.email,
         };
       }
-      if (trigger === "update" && session?.name) {
-        token.name = session.name;
+      if (trigger === "update") {
+        if (session?.name) token.name = session.name;
+        else if (session?.user?.name) token.name = session.user.name;
       }
       return {
         id: token.id,

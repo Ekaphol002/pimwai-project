@@ -40,55 +40,96 @@ export default async function LessonsPage({ searchParams }: PageProps) {
   // ส่วนคำนวณสถิติ (สำหรับคนที่ล็อกอินแล้ว)
   // =========================================================
 
-  // 2. ดึงสถิติวันนี้
+  // 2. ดึงสถิติวันนี้ (รวมทั้งบทเรียน และโหมดฟาร์ม/ทดสอบความเร็ว)
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const todaysProgress = userId ? await prisma.lessonProgress.findMany({
-    where: { userId: userId, updatedAt: { gte: today } }
-  }) : [];
+  const [todaysProgress, todaysSpeedTests] = await Promise.all([
+    userId ? prisma.lessonProgress.findMany({
+      where: { userId: userId, updatedAt: { gte: today } }
+    }) : [],
+    userId ? prisma.speedTestResult.findMany({
+      where: { userId: userId, createdAt: { gte: today } }
+    }) : []
+  ]);
 
-  // คำนวณค่าสถิติจากข้อมูลที่ดึงมา
-  const dailyTotalLessons = todaysProgress.length;
-  const dailyTotalTime = todaysProgress.reduce((sum, p) => sum + p.duration, 0);
+  // คำนวณค่าสถิติจากข้อมูลที่ดึงมา (รวมบทเรียน + โหมดฟาร์ม)
+  const dailyTotalLessons = todaysProgress.length + todaysSpeedTests.length;
+  const dailyTotalTime = todaysProgress.reduce((sum, p) => sum + p.duration, 0) + todaysSpeedTests.reduce((sum, t) => sum + t.duration, 0);
 
-  const dailyAvgWpm = dailyTotalLessons > 0
-    ? Math.round(todaysProgress.reduce((sum, p) => sum + p.wpm, 0) / dailyTotalLessons)
-    : 0;
+  const totalWpmSum = todaysProgress.reduce((sum, p) => sum + p.wpm, 0) + todaysSpeedTests.reduce((sum, t) => sum + t.wpm, 0);
+  const totalAccSum = todaysProgress.reduce((sum, p) => sum + p.accuracy, 0) + todaysSpeedTests.reduce((sum, t) => sum + t.accuracy, 0);
 
-  const dailyAvgAcc = dailyTotalLessons > 0
-    ? Math.round(todaysProgress.reduce((sum, p) => sum + p.accuracy, 0) / dailyTotalLessons)
-    : 0;
+  const dailyAvgWpm = dailyTotalLessons > 0 ? Math.round(totalWpmSum / dailyTotalLessons) : 0;
+  const dailyAvgAcc = dailyTotalLessons > 0 ? Math.round(totalAccSum / dailyTotalLessons) : 0;
 
   // แปลงเวลาเป็น นาที:วินาที
   const m = Math.floor(dailyTotalTime / 60);
   const s = dailyTotalTime % 60;
   const dailyTimeString = `${m}:${s.toString().padStart(2, '0')}`;
 
-  const quests = [
+  // 🎯 ตรวจสอบว่าสำเร็จเควส Tier 1 ทั้งหมดหรือยัง (พิมพ์ 5 นาที, 3 รอบฝึก, แม่นยำ 95%)
+  const isTier1_TimeDone = m >= 5;
+  const isTier1_LessonsDone = dailyTotalLessons >= 3;
+  const isTier1_AccDone = dailyTotalLessons > 0 && dailyAvgAcc >= 95;
+  const isTier1Completed = isTier1_TimeDone && isTier1_LessonsDone && isTier1_AccDone;
+
+  // 🌟 ถ้าสำเร็จ Tier 1 ครบทุกข้อ ➔ ปลดล็อกเควสระดับ 2 (Tier 2 Quests) ทันที!
+  const quests = isTier1Completed ? [
+    {
+      id: 101,
+      tier: 2,
+      text: 'พิมพ์สะสมครบ 10 นาที',
+      current: m,
+      target: 10,
+      unit: 'นาที',
+      isCompleted: m >= 10
+    },
+    {
+      id: 102,
+      tier: 2,
+      text: 'ผ่าน 5 บทเรียน / รอบฝึก',
+      current: dailyTotalLessons,
+      target: 5,
+      unit: 'รอบ',
+      isCompleted: dailyTotalLessons >= 5
+    },
+    {
+      id: 103,
+      tier: 2,
+      text: 'ทำความเร็วให้ได้ 25+ WPM',
+      current: dailyAvgWpm,
+      target: 25,
+      unit: 'WPM',
+      isCompleted: dailyAvgWpm >= 25
+    }
+  ] : [
     {
       id: 1,
+      tier: 1,
       text: 'พิมพ์ให้ครบ 5 นาที',
       current: m,
       target: 5,
       unit: 'นาที',
-      isCompleted: m >= 5
+      isCompleted: isTier1_TimeDone
     },
     {
       id: 2,
+      tier: 1,
       text: 'ผ่าน 3 บทเรียน',
       current: dailyTotalLessons,
       target: 3,
       unit: 'บทเรียน',
-      isCompleted: dailyTotalLessons >= 3
+      isCompleted: isTier1_LessonsDone
     },
     {
       id: 3,
+      tier: 1,
       text: 'ทำความแม่นยำให้ได้ 95%',
       current: dailyAvgAcc,
       target: 95,
       unit: '%',
-      isCompleted: dailyTotalLessons > 0 && dailyAvgAcc >= 95
+      isCompleted: isTier1_AccDone
     },
   ];
 

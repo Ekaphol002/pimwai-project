@@ -12,6 +12,7 @@ interface Quest {
   target: number;
   unit: string;
   isCompleted: boolean;
+  tier?: number;
 }
 
 interface LessonMenuBarProps {
@@ -36,6 +37,7 @@ export default function LessonMenuBar({ selectedLevel, quests }: LessonMenuBarPr
   // ✅ 3. คำนวณจาก quests ที่รับมาจริงๆ (ใช้ isCompleted ที่คำนวณมาแล้วจากหลังบ้าน)
   const questsCompleted = quests.filter(q => q.isCompleted).length;
   const questsTotal = quests.length;
+  const isTier2 = quests.some(q => q.tier === 2);
 
   // --- คำนวณเส้นรอบวงกลม ---
   const size = 64;
@@ -122,7 +124,12 @@ export default function LessonMenuBar({ selectedLevel, quests }: LessonMenuBarPr
         <div className="flex items-center gap-3">
 
           {/* 1. รายการเควส */}
-          <div className="hidden lg:flex items-center gap-1 border-2 border-gray-200 rounded-full p-2 px-4">
+          <div className={`hidden lg:flex items-center gap-1 border-2 rounded-full p-2 px-4 ${isTier2 ? 'border-amber-300 bg-amber-50/50 shadow-xs' : 'border-gray-200'}`}>
+            {isTier2 && (
+              <span className="text-[10px] font-black px-2 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-full uppercase tracking-wider mr-1 shadow-xs animate-pulse">
+                TIER 2
+              </span>
+            )}
             {quests.map((quest, index) => {
               // ✅ 4. ใช้ isCompleted จาก Props โดยตรง
               const isCompleted = quest.isCompleted;

@@ -1,8 +1,8 @@
-// app/api/save-lesson/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { getRankFromExp } from '@/lib/rankUtils';
 
 // Config ค่า EXP และโบนัสต่างๆ
 const EXP_CONFIG = {
@@ -213,16 +213,7 @@ export async function POST(request: Request) {
             const totalExpGained = baseLessonExp + questBonus + wpmBonus + grinderBonus + firstWinBonus;
 
             const currentTotalExp = (user.currentExp || 0) + totalExpGained;
-            const MAX_CAP_EXP = 35000;
-            const EXP_PER_RANK = 6000;
-            let newRank = 1;
-
-            if (currentTotalExp >= MAX_CAP_EXP) {
-                newRank = 3;
-            } else {
-                newRank = Math.floor(currentTotalExp / EXP_PER_RANK) + 1;
-                if (newRank > 3) newRank = 3;
-            }
+            const newRank = getRankFromExp(currentTotalExp);
 
             let starsToAdd = 0;
             if (isFirstClear) {

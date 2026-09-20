@@ -1,8 +1,8 @@
-// app/api/save-test/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { getRankFromExp } from '@/lib/rankUtils';
 
 export async function POST(request: Request) {
   try {
@@ -73,13 +73,7 @@ export async function POST(request: Request) {
       let updatedUser = user;
       if (earnedXP > 0) {
         const currentTotalExp = (user.currentExp || 0) + earnedXP;
-        
-        // Logic Rank
-        const RANK_1_CAP = 2500;
-        const RANK_2_CAP = 8500;
-        let newRank = 1;
-        if (currentTotalExp >= RANK_2_CAP) newRank = 3;
-        else if (currentTotalExp >= RANK_1_CAP) newRank = 2;
+        const newRank = getRankFromExp(currentTotalExp);
 
         updatedUser = await tx.user.update({
           where: { id: user.id },

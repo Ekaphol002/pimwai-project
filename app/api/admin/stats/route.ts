@@ -19,68 +19,38 @@ export async function GET() {
         today.setHours(0, 0, 0, 0);
 
         // 1. สถิติผู้ใช้งานรายวัน & ทั้งหมด
-        const [
-            totalUsers,
-            activeUsersToday,
-            newUsersToday,
-            lessonsPlayedToday,
-            testsPlayedToday,
-            totalLessonsCompleted,
-            totalTestsCompleted,
-            topSpeedToday,
-            recentActiveUsers
-        ] = await Promise.all([
-            // ผู้ใช้ทั้งหมด
-            prisma.user.count(),
+        const totalUsers = await prisma.user.count().catch(() => 0);
+        const activeUsersToday = await prisma.user.count({
+            where: { lastPlayedAt: { gte: today } }
+        }).catch(() => 0);
+        const newUsersToday = await prisma.user.count({
+            where: { createdAt: { gte: today } }
+        }).catch(() => 0);
+        const lessonsPlayedToday = await prisma.lessonProgress.count({
+            where: { updatedAt: { gte: today } }
+        }).catch(() => 0);
+        const testsPlayedToday = await prisma.speedTestResult.count({
+            where: { createdAt: { gte: today } }
+        }).catch(() => 0);
+        const totalLessonsCompleted = await prisma.lessonProgress.count().catch(() => 0);
+        const totalTestsCompleted = await prisma.speedTestResult.count().catch(() => 0);
 
-            // คนเล่นวันนี้ (active วันนี้)
-            prisma.user.count({
-                where: {
-                    lastPlayedAt: { gte: today }
-                }
-            }),
-
-            // ผู้ใช้ใหม่ที่สมัครวันนี้
-            prisma.user.count({
-                where: {
-                    createdAt: { gte: today }
-                }
-            }),
-
-            // จำนวนบทเรียนที่ถูกเล่นวันนี้
-            prisma.lessonProgress.count({
-                where: {
-                    updatedAt: { gte: today }
-                }
-            }),
-
-            // จำนวนการทดสอบ Speed Test วันนี้
-            prisma.speedTestResult.count({
-                where: {
-                    createdAt: { gte: today }
-                }
-            }),
-
-            // บทเรียนที่เคยเล่นทั้งหมด
-            prisma.lessonProgress.count(),
-
-            // Speed Test ที่เคยเล่นทั้งหมด
-            prisma.speedTestResult.count(),
-
-            // WPM สูงสุดวันนี้
-            prisma.speedTestResult.findFirst({
+        let topSpeedToday = null;
+        try {
+            topSpeedToday = await prisma.speedTestResult.findFirst({
                 where: { createdAt: { gte: today } },
                 orderBy: { wpm: 'desc' },
-                select: {
-                    wpm: true,
-                    accuracy: true,
-                    duration: true,
+                include: {
                     user: { select: { name: true, username: true } }
                 }
-            }),
+            });
+        } catch (e) {
+            console.error("topSpeedToday query error:", e);
+        }
 
-            // ผู้ใช้ที่เข้าเล่นล่าสุด 8 คน
-            prisma.user.findMany({
+        let recentActiveUsers: any[] = [];
+        try {
+            recentActiveUsers = await prisma.user.findMany({
                 where: { lastPlayedAt: { not: null } },
                 orderBy: { lastPlayedAt: 'desc' },
                 take: 8,
@@ -93,8 +63,10 @@ export async function GET() {
                     rank: true,
                     lastPlayedAt: true
                 }
-            })
-        ]);
+            });
+        } catch (e) {
+            console.error("recentActiveUsers query error:", e);
+        }
 
         return NextResponse.json({
             success: true,
@@ -109,7 +81,7 @@ export async function GET() {
                         wpm: topSpeedToday.wpm,
                         accuracy: topSpeedToday.accuracy,
                         duration: topSpeedToday.duration,
-                        userName: topSpeedToday.user.username || topSpeedToday.user.name || "User"
+                        userName: topSpeedToday.user?.username || topSpeedToday.user?.name || "User"
                     } : null
                 },
                 overall: {
@@ -118,12 +90,15 @@ export async function GET() {
                     totalTestsCompleted,
                     totalPlays: totalLessonsCompleted + totalTestsCompleted
                 },
-                recentActiveUsers
+                recentActiveUsers: recentActiveUsers || []
             }
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Admin stats API error:", error);
-        return NextResponse.json({ success: false, error: "Internal Server Error" }, { status: 500 });
+        return NextResponse.json({ 
+            success: false, 
+            error: error?.message || "Internal Server Error" 
+        }, { status: 500 });
     }
 }

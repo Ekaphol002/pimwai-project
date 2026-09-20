@@ -7,7 +7,7 @@ export default function Footer() {
   const pathname = usePathname();
   const currentYear = new Date().getFullYear(); 
 
-  if (pathname?.includes('typing-test') || pathname?.includes('/tests/typing')) {
+  if (pathname?.includes('typing-test') || pathname?.includes('/tests/typing') || pathname === '/farm' || pathname?.startsWith('/farm')) {
     return null; 
   }
 

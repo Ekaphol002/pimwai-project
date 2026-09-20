@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { Star } from 'lucide-react';
 import RankUpOverlay from './RankUpOverlay';
+import { calculateRankInfo } from '@/lib/rankUtils';
 
 interface RankProgressBoxProps {
     totalExp: number;   // XP รวมปัจจุบัน (หลังจบเกม)
@@ -59,60 +60,6 @@ export default function RankProgressBox({ totalExp, earnedExp, shouldAnimate }: 
     // 4. Rank Up Logic
     const [showRankUp, setShowRankUp] = useState(false);
 
-    // ==========================================
-    // 🧠 Logic คำนวณ Rank & Stars (ชุดเดียวกับ Leaderboard/TodayStats)
-    // ==========================================
-    const calculateRankInfo = (exp: number) => {
-        const RANK_1_CAP = 2500;
-        const RANK_2_CAP = 8500;
-
-        let rank = 1;
-        let rankName = "Beginner";
-        let stars = 0;
-        let currentBarExp = 0;
-        let maxBarExp = 500; // Default
-
-        if (exp < RANK_1_CAP) {
-            // === RANK 1 ===
-            rank = 1;
-            rankName = "Beginner";
-            const expPerStar = 500;
-            stars = Math.floor(exp / expPerStar);
-            currentBarExp = exp % expPerStar;
-            maxBarExp = expPerStar;
-        } else if (exp < RANK_2_CAP) {
-            // === RANK 2 ===
-            rank = 2;
-            rankName = "Intermediate";
-            const expInRank = exp - RANK_1_CAP;
-            const expPerStar = 1200;
-            stars = Math.floor(expInRank / expPerStar);
-            currentBarExp = expInRank % expPerStar;
-            maxBarExp = expPerStar;
-        } else {
-            // === RANK 3 ===
-            rank = 3;
-            rankName = "Advanced";
-            const expInRank = exp - RANK_2_CAP;
-            const expPerStar = 2000;
-            stars = Math.floor(expInRank / expPerStar);
-
-            if (stars >= 5) {
-                stars = 5;
-                maxBarExp = 5000;
-                currentBarExp = expInRank % 5000;
-            } else {
-                currentBarExp = expInRank % expPerStar;
-                maxBarExp = expPerStar;
-            }
-        }
-
-        // กันเหนียวดาวเกิน
-        if (stars > 5) stars = 5;
-
-        return { rank, rankName, stars, currentBarExp, maxBarExp };
-    };
-
     const prevInfo = calculateRankInfo(previousTotalExp);
     const currentInfo = calculateRankInfo(totalExp);
 
@@ -130,7 +77,7 @@ export default function RankProgressBox({ totalExp, earnedExp, shouldAnimate }: 
     }, [shouldAnimate, currentInfo.rank, prevInfo.rank]);
 
     // คำนวณค่าสำหรับแสดงผล (ใช้ displayExp เพื่อให้เห็นหลอดขยับ)
-    const { rank, rankName, stars, currentBarExp, maxBarExp } = calculateRankInfo(displayExp);
+    const { rank, rankName, thaiRankName, stars, currentBarExp, maxBarExp, badgeBg } = calculateRankInfo(displayExp);
 
     // ข้อมูลเป้าหมาย (ใช้ totalExp) เพื่อดูว่า "ปลายทาง" อยู่ตรงไหน
     const targetInfo = calculateRankInfo(totalExp);
@@ -139,38 +86,30 @@ export default function RankProgressBox({ totalExp, earnedExp, shouldAnimate }: 
     const progressPercent = Math.min(100, Math.max(0, (currentBarExp / maxBarExp) * 100));
 
     // คำนวณ % ความกว้างหลอดขาว (Target)
-    // ถ้า Level Up หรือ Star Up ให้ Target เต็มหลอด (100%)
     let targetPercent = 0;
     if (targetInfo.rank > rank || (targetInfo.rank === rank && targetInfo.stars > stars)) {
         targetPercent = 100;
     } else {
-        // ถ้าอยู่ใน Level/Star เดิม ก็คำนวณ % ตามปกติ
         targetPercent = Math.min(100, Math.max(0, (targetInfo.currentBarExp / targetInfo.maxBarExp) * 100));
     }
 
     return (
         <>
             <div className="w-full rounded-2xl border-1 border-gray-200 p-4 pr-6 flex items-center relative">
-                {/* ... (Existing Content) ... */}
-                {/* Copy existing content here or keep it wrapped if I could use wrap. 
-                   Since I'm replacing the return, I need to include the original content. 
-                   Wait, replace_file_content requires me to provide the whole replacement.
-                   I will keep the existing JSX for the box.
-               */}
                 <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full blur-3xl opacity-50 pointer-events-none"></div>
 
                 {/* --- ฝั่งซ้าย: รูป Rank --- */}
                 <div className="flex-shrink-0 relative group p-2">
                     <div className="absolute inset-0 bg-blue-400/20 items-center blur-xl rounded-full scale-0 group-hover:scale-110 transition-transform duration-500"></div>
                     <Image
-                        src={`/Rank${rank > 3 ? 3 : rank}.png`}
+                        src={`/Rank${rank}.png`}
                         width={100}
                         height={100}
                         alt={rankName}
                         className="relative drop-shadow-md object-contain w-30 h-20 mt-[-10] transition-transform duration-300 hover:scale-110 hover:-rotate-6"
                     />
                     <div className="z-20 absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap">
-                        <span className="px-3 py-1 bg-gradient-to-r from-yellow-400 to-orange-400 text-white font-black text-xs rounded-full border-2 border-white tracking-wider uppercase">
+                        <span className={`px-3 py-0.5 bg-gradient-to-r ${badgeBg} text-white font-black text-[11px] rounded-full border-2 border-white tracking-wider uppercase shadow-sm`}>
                             {rankName}
                         </span>
                     </div>

@@ -4,6 +4,7 @@ import React from 'react';
 import Image from 'next/image';
 import { Star } from 'lucide-react';
 import ExpBar from '@/components/ExpBar/ExpBar';
+import { calculateRankInfo } from '@/lib/rankUtils';
 
 interface Quest {
   id: number;
@@ -12,6 +13,7 @@ interface Quest {
   target: number;
   unit: string;
   isCompleted: boolean;
+  tier?: number;
 }
 
 interface TodayStatsProps {
@@ -20,6 +22,7 @@ interface TodayStatsProps {
   dailyWpm: number;
   dailyAcc: number;
   dailyTime: string;
+  serverRank?: number | null; // อันดับในเซิร์ฟเวอร์ (Leaderboard Rank)
   quests?: Quest[];
   completedQuestsCount?: number;
 }
@@ -30,154 +33,161 @@ export default function TodayStats({
   dailyWpm,
   dailyAcc,
   dailyTime,
+  serverRank = null,
   quests = [],
   completedQuestsCount = 0
 }: TodayStatsProps) {
 
-  // ==========================================
-  // 🧠 Logic ใหม่: ปรับความยากง่ายตามระดับ (Balancing)
-  // ==========================================
-  
-  // กำหนดเพดาน EXP ของแต่ละ Rank (จบ Rank นี้ต้องใช้ EXP รวมเท่าไหร่)
-  const RANK_1_CAP = 2500;  // จบ Beginner ที่ 2,500 XP (เดิมต้อง 6,000)
-  const RANK_2_CAP = 8500;  // จบ Intermediate ที่ 8,500 XP
-  // Rank 3 ไปเรื่อยๆ
+  const isServerTop10 = serverRank !== null && serverRank <= 10;
 
-  let calculatedRank = 1;
-  let currentStars = 0;
-  let currentBarExp = 0;
-  let maxBarExp = 500; // ค่า Default เริ่มต้น (ดาวละ 500)
+  const {
+    rank: calculatedRank,
+    rankName,
+    thaiRankName,
+    stars: currentStars,
+    currentBarExp,
+    maxBarExp,
+    color,
+    badgeBg,
+    isTop10Eligible
+  } = calculateRankInfo(exp, isServerTop10);
 
-  if (exp < RANK_1_CAP) {
-    // === RANK 1: BEGINNER (โหมด Easy) ===
-    // เป้าหมาย: ให้มือใหม่อัปดาวไวๆ จะได้มีกำลังใจ
-    calculatedRank = 1;
-    const expPerStar = 500; // ดาวละ 500 XP (เล่นประมาณ 4-5 ด่านก็ได้ดาวแล้ว)
-    
-    currentStars = Math.floor(exp / expPerStar);
-    currentBarExp = exp % expPerStar;
-    maxBarExp = expPerStar;
-
-  } else if (exp < RANK_2_CAP) {
-    // === RANK 2: INTERMEDIATE (โหมด Normal) ===
-    calculatedRank = 2;
-    const expInRank = exp - RANK_1_CAP; // นับ EXP เริ่มต้นใหม่จาก 0 ของแรงค์นี้
-    const rankRange = RANK_2_CAP - RANK_1_CAP; // ระยะห่าง (6,000 XP)
-    const expPerStar = 1200; // ดาวละ 1,200 XP (เริ่มยากขึ้น)
-
-    currentStars = Math.floor(expInRank / expPerStar);
-    currentBarExp = expInRank % expPerStar;
-    maxBarExp = expPerStar;
-
-  } else {
-    // === RANK 3: ADVANCED (โหมด Hard/Endgame) ===
-    calculatedRank = 3;
-    const expInRank = exp - RANK_2_CAP;
-    const expPerStar = 2000; // ดาวละ 2,000 XP (ต้องเก่งจริงถึงจะได้)
-
-    currentStars = Math.floor(expInRank / expPerStar);
-    
-    // ตันที่ 5 ดาว
-    if (currentStars > 5) {
-      currentStars = 5;
-      // ถ้าตันแล้ว ให้หลอดโชว์ EXP ที่เกินมาแบบเท่ๆ (วนลูปทุก 5000)
-      maxBarExp = 5000;
-      currentBarExp = expInRank % 5000; 
-    } else {
-      currentBarExp = expInRank % expPerStar;
-      maxBarExp = expPerStar;
-    }
-  }
-
-  // ฟังก์ชันชื่อ Rank (เหมือนเดิม)
-  const getRankName = (r: number) => {
-    switch (r) {
-      case 1: return "Beginner";
-      case 2: return "Intermediate";
-      case 3: return "Advanced";
-      default: return "Advanced";
-    }
-  };
+  const isTop50 = serverRank !== null && serverRank <= 50;
 
   // ==========================================
-  // 🎨 UI ส่วนแสดงผล (เหมือนเดิม 100%)
+  // 🎨 UI ส่วนแสดงผล
   // ==========================================
   return (
     <div className="w-full rounded-lg p-3 flex flex-col items-center">
-      
+
       <h2 className="text-3xl font-bold text-gray-700 mb-2">แรงค์ของคุณ</h2>
       <div className="relative w-full flex flex-col items-center mb-4">
 
-        <div className="mb-[-10px] z-20 mt-3">
-          <span className="px-6 py-1 bg-gradient-to-r from-yellow-400 to-orange-400 text-white font-black text-lg rounded-full shadow-lg border-2 border-white tracking-wider uppercase">
-            {getRankName(calculatedRank)}
+        <div className="mb-[-10px] z-20 mt-1">
+          <span className={`px-6 py-1 bg-gradient-to-r ${badgeBg} text-white font-black text-lg rounded-full shadow-lg border-2 border-white tracking-wider uppercase`}>
+            {rankName}
           </span>
         </div>
 
         <div className="relative z-10 animate-float mb-[-4]">
           <Image
-            src={`/Rank${calculatedRank > 3 ? 3 : calculatedRank}.png`}
+            src={`/Rank${calculatedRank}.png`}
             width={600} height={160} alt={`Rank ${calculatedRank}`} priority
             onError={(e) => { e.currentTarget.srcset = "/Rank1.png" }}
           />
         </div>
 
-        <div className="absolute top-[60%] left-1/2 -translate-x-1/2 w-3/4 h-4 bg-black/70 rounded-full blur-xl z-0" aria-hidden="true" />
+        <div className="absolute top-[55%] left-1/2 -translate-x-1/2 w-3/4 h-4 bg-black/70 rounded-full blur-xl z-0" aria-hidden="true" />
 
-        <div className="relative h-14 w-full flex justify-center items-start z-20 gap-5">
-          {[1, 2, 3, 4, 5].map((starNum) => {
-            // Logic การวางดาวแบบโค้ง (Arc) เหมือนเดิม
-            const index = starNum;
-            const distance = Math.abs(index - 3);
-            const yOffset = -1 * (distance * distance) * 3;
-            const rotate = (index - 3) * 12;
-
-            return (
-              <div key={starNum} className="transition-all duration-500" style={{ transform: `translateY(${yOffset}px) rotate(${rotate}deg)` }}>
-                <Star size={45} className={`${starNum <= currentStars ? "text-yellow-400 fill-yellow-400 drop-shadow-md" : "text-gray-400 fill-gray-400"}`} />
+        {/* 🌟 แสดงดาว (เฉพาะ Rank 1 - 6) หรือ แสดงอันดับ & EXP รวมตัวใหญ่ (สำหรับ Rank 7) */}
+        {calculatedRank === 7 ? (
+          <div className="relative h-14 w-full flex flex-col items-center justify-center z-20 select-none">
+            <span className="text-xs mb-1 font-black px-3.5 py-0.5 bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-500 text-white rounded-full uppercase tracking-wider shadow-xs">
+              TOP 10 LEADERBOARD
+            </span>
+            <div className="text-2xl mb-3 sm:text-3xl font-black text-purple-600 dark:text-purple-400 logo-font mt-1">
+              {exp.toLocaleString()} EXP
+            </div>
+          </div>
+        ) : (
+          <div className="relative w-full flex flex-col items-center z-20 select-none">
+            {/* 🌟 ป้าย TOP 50 LEADERBOARD แสดงบนดาว (สีเปลี่ยนตามธีมแรงค์) */}
+            {isTop50 && (
+              <div className="mb-3 z-20">
+                <span className={`px-4 py-0.5 bg-gradient-to-r ${badgeBg} text-white font-black text-xs rounded-full shadow-xs tracking-wider uppercase border border-white/20`}>
+                  TOP 50 LEADERBOARD
+                </span>
               </div>
-            );
-          })}
-        </div>
+            )}
+            <div className="relative h-14 w-full flex justify-center items-start z-20 gap-5">
+              {[1, 2, 3, 4, 5].map((starNum) => {
+                const index = starNum;
+                const distance = Math.abs(index - 3);
+                const yOffset = -1 * (distance * distance) * 3;
+                const rotate = (index - 3) * 12;
+
+                return (
+                  <div key={starNum} className="transition-all duration-500" style={{ transform: `translateY(${yOffset}px) rotate(${rotate}deg)` }}>
+                    <Star size={45} className={`${starNum <= currentStars ? "text-yellow-400 fill-yellow-400 drop-shadow-md" : "text-gray-400 fill-gray-400"}`} />
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* 🌟 ข้อความอันดับที่ ของเซิร์ฟเวอร์ ไว้ใต้ดาว */}
+            {isTop50 && (
+              <div className={`text-center text-sm sm:text-base font-black mb-1 logo-font ${color}`}>
+                อันดับที่ {serverRank} ของเซิร์ฟเวอร์
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="w-full z-20 px-4">
-          {/* ส่งค่าที่คำนวณใหม่ไปให้ ExpBar */}
-          <ExpBar currentExp={currentBarExp} maxExp={maxBarExp} />
-          
-          {/* Debug: อยากเห็นตัวเลขจริงก็ uncomment บรรทัดล่างได้ครับ */}
-          {/* <div className="text-center text-xs text-gray-400 mt-1">EXP: {exp} | {currentBarExp}/{maxBarExp}</div> */}
+          {calculatedRank === 7 ? (
+            <div className="w-full flex flex-col items-center select-none">
+              <div className="w-full bg-gray-300 dark:bg-zinc-700 rounded-full h-3 overflow-hidden">
+                <div className="bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-500 h-full rounded-full w-full" />
+              </div>
+              <div className="text-center text-base sm:text-lg font-black text-purple-600 dark:text-purple-400 mt-2 logo-font">
+                อันดับที่ {serverRank || 1} ของเซิร์ฟเวอร์
+              </div>
+            </div>
+          ) : isTop10Eligible ? (
+            <div className="w-full flex flex-col items-center select-none">
+              <div className="w-full bg-gray-300 dark:bg-zinc-700 rounded-full h-3 overflow-hidden">
+                <div className={`bg-gradient-to-r ${badgeBg} h-full rounded-full w-full`} />
+              </div>
+              <div className="text-center mt-2 flex flex-col items-center gap-0.5">
+                <span className="text-xs font-bold text-rose-600">
+                  หลอดเต็ม 5 ดาว (รอชิง TOP 10 เพื่อเลื่อนเป็น Rank 7)
+                </span>
+                <span className="text-[11px] font-bold text-gray-500 logo-font">
+                  EXP รวม: {exp.toLocaleString()} XP
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <ExpBar
+                currentExp={currentBarExp}
+                maxExp={maxBarExp}
+                barColor={`bg-gradient-to-r ${badgeBg}`}
+              />
+            </div>
+          )}
         </div>
       </div>
 
       <h3 className="text-xl font-bold text-gray-700 mt-3 mb-3">สถิติในวันนี้</h3>
       <div className="w-full grid grid-cols-3 gap-3">
-         <div className="bg-[#5cb5db] rounded-2xl p-2 shadow-md">
-           <h4 className="text-center text-sm text-white font-bold my-1">ความเร็ว</h4>
-           <div className="bg-white rounded-xl py-5 px-3 flex items-center justify-between">
-             <Image src="/Speed.png" width={25} height={25} alt="Speed" />
-             <span className="text-2sm logo-font text-cyan-600">
-               {dailyWpm > 0 ? `${dailyWpm} WPM` : '-- WPM'}
-             </span>
-           </div>
-         </div>
-         <div className="bg-[#5cb5db] rounded-2xl p-2 shadow-md">
-           <h4 className="text-center text-sm text-white font-bold my-1">ความแม่นยำ</h4>
-           <div className="bg-white rounded-xl py-5 px-3 flex items-center justify-between">
-             <Image src="/Accuracy.png" width={25} height={25} alt="Accuracy" />
-             <span className="text-2sm logo-font text-cyan-600">
-               {dailyWpm > 0 ? `${dailyAcc}% Acc` : '-- % Acc'}
-             </span>
-           </div>
-         </div>
-         <div className="bg-[#5cb5db] rounded-2xl p-2 shadow-md">
-           <h4 className="text-center text-sm text-white font-bold my-1">เวลาที่ใช้</h4>
-           <div className="bg-white rounded-xl py-5 px-6 flex items-center justify-between">
-             <Image src="/Time.png" width={25} height={25} alt="Time" />
-             <span className="text-2sm logo-font text-cyan-600">
-               {dailyTime !== "0:00" ? dailyTime : '-- time'}
-             </span>
-           </div>
-         </div>
+        <div className="bg-[#5cb5db] rounded-2xl p-2 shadow-md">
+          <h4 className="text-center text-sm text-white font-bold my-1">ความเร็ว</h4>
+          <div className="bg-white rounded-xl py-5 px-3 flex items-center justify-between">
+            <Image src="/Speed.png" width={25} height={25} alt="Speed" />
+            <span className="text-2sm logo-font text-cyan-600">
+              {dailyWpm > 0 ? `${dailyWpm} WPM` : '-- WPM'}
+            </span>
+          </div>
+        </div>
+        <div className="bg-[#5cb5db] rounded-2xl p-2 shadow-md">
+          <h4 className="text-center text-sm text-white font-bold my-1">ความแม่นยำ</h4>
+          <div className="bg-white rounded-xl py-5 px-3 flex items-center justify-between">
+            <Image src="/Accuracy.png" width={25} height={25} alt="Accuracy" />
+            <span className="text-2sm logo-font text-cyan-600">
+              {dailyWpm > 0 ? `${dailyAcc}% Acc` : '-- % Acc'}
+            </span>
+          </div>
+        </div>
+        <div className="bg-[#5cb5db] rounded-2xl p-2 shadow-md">
+          <h4 className="text-center text-sm text-white font-bold my-1">เวลาที่ใช้</h4>
+          <div className="bg-white rounded-xl py-5 px-6 flex items-center justify-between">
+            <Image src="/Time.png" width={25} height={25} alt="Time" />
+            <span className="text-2sm logo-font text-cyan-600">
+              {dailyTime !== "0:00" ? dailyTime : '-- time'}
+            </span>
+          </div>
+        </div>
       </div>
 
     </div>
