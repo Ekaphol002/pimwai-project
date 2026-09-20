@@ -96,11 +96,11 @@ export async function GET() {
     const recentActivity = allActivities.slice(0, 5).map(item => {
       let title = "";
       if (item.type === 'lesson') {
-        // @ts-ignore
-        title = `${item.subLesson.lesson.title} - ${item.subLesson.title}`;
+        const lessonTitle = (item as any)?.subLesson?.lesson?.title || 'บทเรียน';
+        const subTitle = (item as any)?.subLesson?.title || '';
+        title = subTitle ? `${lessonTitle} - ${subTitle}` : lessonTitle;
       } else {
-        // @ts-ignore
-        title = `Speed Test (${Math.ceil(item.duration / 60)} min)`;
+        title = `Speed Test (${Math.ceil(((item as any)?.duration || 60) / 60)} min)`;
       }
       return {
         id: item.id,
