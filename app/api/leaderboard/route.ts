@@ -39,15 +39,22 @@ export async function GET(request: Request) {
                     { accuracy: 'desc' },
                     { createdAt: 'desc' }
                 ],
-                distinct: ['userId'],
-                take: 100,
+                take: 200,
                 include: {
-                    user: { select: { id: true, username: true, name: true, rank: true, currentExp: true, image: true } }
+                    user: { select: { id: true, username: true, name: true, rank: true, currentExp: true, image: true, showInLeaderboard: true } }
                 }
             });
 
-            // กรอง User ซ้ำ (เอาคะแนนดีสุดของแต่ละคน)
-            leaderboard = rawResults.map((result: any, index: number) => {
+            // กรอง User ซ้ำ (เอาคะแนนดีสุดของแต่ละคน) และกรองคนที่ปิด showInLeaderboard
+            const seenUserIds = new Set<string>();
+            const uniqueResults = rawResults.filter((result: any) => {
+                if (!result.user || result.user.showInLeaderboard === false) return false;
+                if (seenUserIds.has(result.userId)) return false;
+                seenUserIds.add(result.userId);
+                return true;
+            });
+
+            leaderboard = uniqueResults.slice(0, 50).map((result: any, index: number) => {
                 const displayUser = {
                     ...result.user,
                     username: result.user.username || result.user.name || "User"
