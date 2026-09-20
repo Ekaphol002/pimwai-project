@@ -56,8 +56,42 @@ export const authOptions: AuthOptions = {
         strategy: "jwt",
         maxAge: 30 * 24 * 60 * 60,
     },
-    useSecureCookies: process.env.NODE_ENV === "production",
     callbacks: {
+        async signIn({ user, account }) {
+            if (account?.provider === "google" && user.email) {
+                try {
+                    const existingUser = await prisma.user.findUnique({
+                        where: { email: user.email },
+                        include: { accounts: true }
+                    });
+                    if (existingUser) {
+                        const isLinked = existingUser.accounts.some(
+                            a => a.provider === account.provider && a.providerAccountId === account.providerAccountId
+                        );
+                        if (!isLinked) {
+                            await prisma.account.create({
+                                data: {
+                                    userId: existingUser.id,
+                                    type: account.type,
+                                    provider: account.provider,
+                                    providerAccountId: account.providerAccountId,
+                                    access_token: account.access_token,
+                                    expires_at: account.expires_at,
+                                    token_type: account.token_type,
+                                    scope: account.scope,
+                                    id_token: account.id_token,
+                                    refresh_token: account.refresh_token,
+                                    session_state: account.session_state as string | null
+                                }
+                            });
+                        }
+                    }
+                } catch (e) {
+                    console.error("Auto-linking account error:", e);
+                }
+            }
+            return true;
+        },
         async jwt({ token, user, trigger, session }) {
             if (user) {
                 return {
