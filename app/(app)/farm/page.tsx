@@ -595,21 +595,21 @@ export default function FarmPage() {
                         let isGoldenBounty = false;
 
                         if (targetWordObj.isGolden && lessonPerksRef.current.intermediate) {
-                            // Intermediate Perk: Golden Word Bounty +15 EXP
+                            // Intermediate Perk: Golden Word Bounty +20 EXP
                             const wordLen = targetWord.length;
-                            bountyExp = 15 + Math.min(15, Math.max(0, (wordLen - 4) * 2));
+                            bountyExp = 20 + Math.min(15, Math.max(0, (wordLen - 4) * 2));
                             isGoldenBounty = true;
                         } else if (lessonPerksRef.current.beginner) {
-                            // Beginner Perk: Flawless Word Bounty ได้โบนัสจบคำสมดุลตามความยาวคำ
+                            // Beginner Perk: Flawless Word Bounty เริ่มต้นอย่างต่ำ +5 EXP และเพิ่มตามความยาวคำ
                             const wordLen = targetWord.length;
                             if (wordLen <= 3) {
-                                bountyExp = 2;
+                                bountyExp = 5;
                             } else if (wordLen <= 6) {
-                                bountyExp = 4;
+                                bountyExp = 8;
                             } else if (wordLen <= 9) {
-                                bountyExp = 7;
+                                bountyExp = 12;
                             } else {
-                                bountyExp = Math.min(12, 8 + Math.floor((wordLen - 9) * 1));
+                                bountyExp = Math.min(20, 14 + Math.floor((wordLen - 9) * 1.5));
                             }
                         }
 
@@ -1857,8 +1857,8 @@ export default function FarmPage() {
                                             <strong className="text-gray-800">🛡️ เกราะกันพลาด 2 ครั้งต่อรอบ (Double Shield):</strong> หากพิมพ์ผิดหรือสะกดวรรณยุกต์พลาด เกราะจะดูดซับความเสียหายไว้ <span className="text-emerald-700 font-bold">คอมโบไม่หลุด และตัวคูณไม่ลด</span>
                                         </li>
                                         <li>
-                                            <strong className="text-gray-800">✨ โบนัสพิมพ์เป๊ะคำยาว (Flawless Bounty):</strong> เคาะ Spacebar จบคำถูกต้อง 100% โดย<span className="underline decoration-emerald-500 underline-offset-2">ไม่กดปุ่ม Backspace เลย</span> รับโบนัสสมดุลตามความยาวคำ: คำสั้น <span className="text-emerald-700 font-black">+2 EXP</span>, คำปานกลาง <span className="text-emerald-700 font-black">+4 EXP</span>, คำยาว <span className="text-emerald-700 font-black">+7 ถึง 12 EXP</span>
-                                        </li>
+                                            <strong className="text-gray-800">✨ โบนัสพิมพ์เป๊ะคำยาว (Flawless Bounty):</strong> เคาะ Spacebar จบคำถูกต้อง 100% โดย<span className="underline decoration-emerald-500 underline-offset-2">ไม่กดปุ่ม Backspace เลย</span> รับโบนัสเริ่มต้นอย่างต่ำ <span className="text-emerald-700 font-black">+5 EXP</span> (คำปานกลาง <span className="text-emerald-700 font-black">+8 EXP</span>, คำยาว <span className="text-emerald-700 font-black">+12 ถึง 20 EXP</span>)
+                                         </li>
                                     </ul>
                                 </div>
 
