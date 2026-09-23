@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Star } from 'lucide-react';
 import ExpBar from '@/components/ExpBar/ExpBar';
@@ -38,6 +38,59 @@ export default function TodayStats({
   completedQuestsCount = 0
 }: TodayStatsProps) {
 
+  // 🌟 ซิงค์ EXP และสถิติของ Guest จาก localStorage ถ้า server ส่งมาเป็น 0
+  const [effectiveExp, setEffectiveExp] = useState<number>(exp);
+  const [effectiveWpm, setEffectiveWpm] = useState<number>(dailyWpm);
+  const [effectiveAcc, setEffectiveAcc] = useState<number>(dailyAcc);
+  const [effectiveTime, setEffectiveTime] = useState<string>(dailyTime);
+
+  useEffect(() => {
+    const syncGuestData = () => {
+      // 1. ซิงค์ EXP
+      if (exp === 0) {
+        try {
+          const savedGuestExp = localStorage.getItem('pimwai_guest_exp');
+          if (savedGuestExp) {
+            const parsed = parseInt(savedGuestExp, 10);
+            if (!isNaN(parsed) && parsed > 0) {
+              setEffectiveExp(parsed);
+            }
+          }
+        } catch (e) { }
+      } else {
+        setEffectiveExp(exp);
+      }
+
+      // 2. ซิงค์สถิติรายวัน
+      if (!dailyWpm || dailyWpm === 0) {
+        try {
+          const todayKey = 'pimwai_guest_today_' + new Date().toISOString().split('T')[0];
+          const savedToday = localStorage.getItem(todayKey);
+          if (savedToday) {
+            const parsed = JSON.parse(savedToday);
+            if (parsed.wpm) setEffectiveWpm(parsed.wpm);
+            if (parsed.acc) setEffectiveAcc(parsed.acc);
+            if (parsed.time) setEffectiveTime(parsed.time);
+          }
+        } catch (e) { }
+      } else {
+        setEffectiveWpm(dailyWpm);
+        setEffectiveAcc(dailyAcc);
+        setEffectiveTime(dailyTime);
+      }
+    };
+
+    syncGuestData();
+
+    // ดักจับการเปลี่ยนแปลงเมื่อสลับแท็บหรือพิมพ์เสร็จในหน้าอื่น
+    window.addEventListener('storage', syncGuestData);
+    window.addEventListener('focus', syncGuestData);
+    return () => {
+      window.removeEventListener('storage', syncGuestData);
+      window.removeEventListener('focus', syncGuestData);
+    };
+  }, [exp, dailyWpm, dailyAcc, dailyTime]);
+
   const isServerTop10 = serverRank !== null && serverRank <= 10;
 
   const {
@@ -50,7 +103,7 @@ export default function TodayStats({
     color,
     badgeBg,
     isTop10Eligible
-  } = calculateRankInfo(exp, isServerTop10);
+  } = calculateRankInfo(effectiveExp, isServerTop10);
 
   const isTop50 = serverRank !== null && serverRank <= 50;
 
@@ -86,7 +139,7 @@ export default function TodayStats({
               TOP 10 LEADERBOARD
             </span>
             <div className="text-2xl mb-3 sm:text-3xl font-black text-purple-600 dark:text-purple-400 logo-font mt-1">
-              {exp.toLocaleString()} EXP
+              {effectiveExp.toLocaleString()} EXP
             </div>
           </div>
         ) : (
@@ -143,7 +196,7 @@ export default function TodayStats({
                   หลอดเต็ม 5 ดาว (รอชิง TOP 10 เพื่อเลื่อนเป็น Rank 7)
                 </span>
                 <span className="text-[11px] font-bold text-gray-500 logo-font">
-                  EXP รวม: {exp.toLocaleString()} XP
+                  EXP รวม: {effectiveExp.toLocaleString()} XP
                 </span>
               </div>
             </div>
@@ -166,7 +219,7 @@ export default function TodayStats({
           <div className="bg-white rounded-xl py-5 px-3 flex items-center justify-between">
             <Image src="/Speed.png" width={25} height={25} alt="Speed" />
             <span className="text-2sm logo-font text-cyan-600">
-              {dailyWpm > 0 ? `${dailyWpm} WPM` : '-- WPM'}
+              {effectiveWpm > 0 ? `${effectiveWpm} WPM` : '-- WPM'}
             </span>
           </div>
         </div>
@@ -175,7 +228,7 @@ export default function TodayStats({
           <div className="bg-white rounded-xl py-5 px-3 flex items-center justify-between">
             <Image src="/Accuracy.png" width={25} height={25} alt="Accuracy" />
             <span className="text-2sm logo-font text-cyan-600">
-              {dailyWpm > 0 ? `${dailyAcc}% Acc` : '-- % Acc'}
+              {effectiveWpm > 0 ? `${effectiveAcc}% Acc` : '-- % Acc'}
             </span>
           </div>
         </div>
@@ -184,7 +237,7 @@ export default function TodayStats({
           <div className="bg-white rounded-xl py-5 px-6 flex items-center justify-between">
             <Image src="/Time.png" width={25} height={25} alt="Time" />
             <span className="text-2sm logo-font text-cyan-600">
-              {dailyTime !== "0:00" ? dailyTime : '-- time'}
+              {effectiveTime && effectiveTime !== "0:00" ? effectiveTime : '-- time'}
             </span>
           </div>
         </div>

@@ -4,6 +4,9 @@ export const metadata: Metadata = {
   title: 'จัดอันดับคนพิมพ์เร็ว Leaderboard พิมพ์สัมผัส',
   description: 'ตารางจัดอันดับนักพิมพ์ดีดที่เร็วที่สุด เช็คสถิติผู้เล่นที่มี WPM สูงสุด แข่งแรงค์จัดอันดับพิมพ์ดีดไปกับเพื่อนๆ บน PIMWAI',
   keywords: ['อันดับคนพิมพ์เร็ว', 'จัดอันดับพิมพ์ดีด', 'Leaderboard พิมพ์ดีด', 'สถิติพิมพ์ดีด', 'แชมป์พิมพ์ดีด', 'แข่งพิมพ์ดีด'],
+  alternates: {
+    canonical: '/rankings',
+  },
 }
 
 export default function AppLayout({

@@ -5,8 +5,17 @@ export default function robots(): MetadataRoute.Robots {
         rules: [
             {
                 userAgent: '*',
-                allow: ['/', '/lessons', '/tests', '/rankings', '/login'],
-                disallow: ['/api/', '/admin/', '/progress/', '/lesson/', '/typing-test/'],
+                allow: ['/', '/lessons', '/tests', '/farm', '/rankings', '/login'],
+                disallow: [
+                    '/api/',
+                    '/admin/',
+                    '/progress/',
+                    '/lesson/',
+                    '/typing-test/',
+                    '/login?*',
+                    '/*?*callbackUrl*',
+                    '/_next/static/media/*.woff2'
+                ],
             }
         ],
         sitemap: 'https://pimwai.vercel.app/sitemap.xml',

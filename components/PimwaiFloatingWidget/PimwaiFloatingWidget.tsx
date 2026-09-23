@@ -166,7 +166,7 @@ export default function PimwaiFloatingWidget() {
                                     }`}
                             >
                                 <Gamepad2 size={16} />
-                                <span>วิธีเล่นโหมดฟาร์มเวล</span>
+                                <span>วิธีเล่นโหมดพิมพ์ด่วน</span>
                             </button>
                         </div>
 

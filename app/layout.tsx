@@ -30,9 +30,6 @@ export const metadata: Metadata = {
     "ทดสอบความเร็วพิมพ์", "ฝึกวางนิ้ว", "ทดสอบ WPM", "พิมพ์ข้อความ", "PIMWAI", "พิมไว", "เกมพิมพ์ดีด", "แข่งพิมพ์เร็ว", "ฝึกพิมไทย"
   ],
   authors: [{ name: "PIMWAI Team" }],
-  alternates: {
-    canonical: 'https://pimwai.vercel.app',
-  },
   openGraph: {
     title: "PIMWAI (พิมพ์ไว) - อยากพิมพ์ไว ต้องมาฝึกที่นี่",
     description: "แพลตฟอร์มฝึกพิมพ์สัมผัสสมัยใหม่ เรียนรู้วิธีวางนิ้ว ทดสอบความเร็วพิมพ์ WPM ฟรี ไม่มีโฆษณา พร้อมระบบจัดอันดับ",

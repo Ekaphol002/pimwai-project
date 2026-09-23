@@ -251,75 +251,74 @@ export default function LeaderboardPage() {
                         {filteredLeaderboard.length > 0 && (
                             <div
                                 key={`${mode}-${selectedTime}`}
-                                className={`flex justify-center items-end gap-2 sm:gap-6 md:gap-8 relative z-10 ${
-                                    isTableLoading ? 'opacity-0' : 'animate-slide-up-podium'
-                                }`}
+                                className={`flex justify-center items-end gap-2 sm:gap-6 md:gap-8 relative z-10 ${isTableLoading ? 'opacity-0' : 'animate-slide-up-podium'
+                                    }`}
                             >
-                            {top2 && (
-                                <div
-                                    onContextMenu={(e) => handleContextMenu(e, top2.userId, top2.user.username, isMeInList(top2.userId))}
-                                    className="relative flex flex-col items-center justify-end px-2 cursor-pointer"
-                                >
-                                    <div className="absolute bottom-0 w-full h-[35%] bg-slate-200 rounded-t-2xl z-0"></div>
-                                    <div className="absolute -top-4 sm:-top-2 md:top-0 flex flex-col items-center z-30 transition-transform hover:scale-105">
-                                        <div className="z-1 bg-slate-400 text-white text-[9px] sm:text-[10px] font-bold px-2.5 py-0.5 rounded-full -mb-2 shadow-sm">อันดับที่ 2</div>
-                                        <div className="flex items-center gap-2 bg-white/95 backdrop-blur-sm pl-1 pr-3 sm:pr-4 py-1 rounded-full border border-gray-100 shadow-sm">
-                                            <img
-                                                src={top2.user.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(top2.user.username)}&background=eceff1`}
-                                                className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 rounded-full object-cover"
-                                                onError={(e) => { e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(top2.user.username)}&background=eceff1`; }}
-                                            />
-                                            <span className="text-[10px] sm:text-xs md:text-sm font-bold text-gray-800 truncate max-w-[60px] sm:max-w-[100px]">{top2.user.username}</span>
-                                        </div>
-                                    </div>
-                                    <img src="/top2.png" className="h-35 sm:h-54 md:h-75 object-contain pointer-events-none relative z-10" alt="Rank 2" />
-                                </div>
-                            )}
-
-                            {top1 && (
-                                <div
-                                    onContextMenu={(e) => handleContextMenu(e, top1.userId, top1.user.username, isMeInList(top1.userId))}
-                                    className="relative flex flex-col items-center justify-end px-4 cursor-pointer"
-                                >
-                                    <div className="absolute bottom-0 w-full h-[45%] bg-yellow-300 rounded-t-2xl z-0"></div>
-                                    <div className="absolute -top-4 sm:-top-2 md:-top-2 flex flex-col items-center z-30 transition-transform hover:scale-105">
-                                        <div className="z-1 bg-yellow-500 text-white text-[9px] sm:text-[10px] font-bold px-2.5 py-0.5 rounded-full -mb-2 shadow-sm">อันดับที่ 1</div>
-                                        <div className="flex items-center gap-2 bg-white/95 backdrop-blur-sm pl-1 pr-3 sm:pr-4 py-1 rounded-full border border-gray-100 shadow-sm">
-                                            <img
-                                                src={top1.user.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(top1.user.username)}&background=eceff1`}
-                                                className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 rounded-full object-cover"
-                                                onError={(e) => { e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(top1.user.username)}&background=eceff1`; }}
-                                            />
-                                            <span className="text-[10px] sm:text-xs md:text-sm font-bold text-gray-800 truncate max-w-[60px] sm:max-w-[100px]">{top1.user.username}</span>
-                                            <img src="/ranktest.png" className="h-6 sm:h-8 w-auto object-contain" alt="Rank 1 Badge" />
-                                        </div>
-                                    </div>
-                                    <img src="/top1.png" className="h-50 sm:h-70 md:h-90 object-contain pointer-events-none relative z-10" alt="Rank 1" />
-                                </div>
-                            )}
-
-                                    {top3 && (
-                                        <div
-                                            onContextMenu={(e) => handleContextMenu(e, top3.userId, top3.user.username, isMeInList(top3.userId))}
-                                            className="relative flex flex-col items-center justify-end px-2 cursor-pointer"
-                                        >
-                                            <div className="absolute bottom-0 w-full h-[30%] bg-orange-400 rounded-t-2xl z-0"></div>
-                                            <div className="absolute -top-4 sm:-top-2 md:-top-2 flex flex-col items-center z-30 transition-transform hover:scale-105">
-                                                <div className="z-1 bg-orange-500 text-white text-[9px] sm:text-[10px] font-bold px-2.5 py-0.5 rounded-full -mb-2 shadow-sm">อันดับที่ 3</div>
-                                                <div className="flex items-center gap-2 bg-white/95 backdrop-blur-sm pl-1 pr-3 sm:pr-4 py-1 rounded-full border border-gray-100 shadow-sm">
-                                                    <img
-                                                        src={top3.user.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(top3.user.username)}&background=eceff1`}
-                                                        className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 rounded-full object-cover"
-                                                        onError={(e) => { e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(top3.user.username)}&background=eceff1`; }}
-                                                    />
-                                                    <span className="text-[10px] sm:text-xs md:text-sm font-bold text-gray-800 truncate max-w-[60px] sm:max-w-[100px]">{top3.user.username}</span>
-                                                </div>
+                                {top2 && (
+                                    <div
+                                        onContextMenu={(e) => handleContextMenu(e, top2.userId, top2.user.username, isMeInList(top2.userId))}
+                                        className="relative flex flex-col items-center justify-end px-2 cursor-pointer"
+                                    >
+                                        <div className="absolute bottom-0 w-full h-[35%] bg-slate-200 rounded-t-2xl z-0"></div>
+                                        <div className="absolute -top-4 sm:-top-2 md:top-0 flex flex-col items-center z-30 transition-transform hover:scale-105">
+                                            <div className="z-1 bg-slate-400 text-white text-[9px] sm:text-[10px] font-bold px-2.5 py-0.5 rounded-full -mb-2 shadow-sm">อันดับที่ 2</div>
+                                            <div className="flex items-center gap-2 bg-white/95 backdrop-blur-sm pl-1 pr-3 sm:pr-4 py-1 rounded-full border border-gray-100 shadow-sm">
+                                                <img
+                                                    src={top2.user.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(top2.user.username)}&background=eceff1`}
+                                                    className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 rounded-full object-cover"
+                                                    onError={(e) => { e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(top2.user.username)}&background=eceff1`; }}
+                                                />
+                                                <span className="text-[10px] sm:text-xs md:text-sm font-bold text-gray-800 truncate max-w-[60px] sm:max-w-[100px]">{top2.user.username}</span>
                                             </div>
-                                            <img src="/top3.png" className="h-30 sm:h-40 md:h-60 object-contain pointer-events-none relative z-10" alt="Rank 3" />
                                         </div>
-                                    )}
-                                </div>
-                            )}
+                                        <img src="/top2.png" className="h-35 sm:h-54 md:h-75 object-contain pointer-events-none relative z-10" alt="Rank 2" />
+                                    </div>
+                                )}
+
+                                {top1 && (
+                                    <div
+                                        onContextMenu={(e) => handleContextMenu(e, top1.userId, top1.user.username, isMeInList(top1.userId))}
+                                        className="relative flex flex-col items-center justify-end px-4 cursor-pointer"
+                                    >
+                                        <div className="absolute bottom-0 w-full h-[45%] bg-yellow-300 rounded-t-2xl z-0"></div>
+                                        <div className="absolute -top-4 sm:-top-2 md:-top-2 flex flex-col items-center z-30 transition-transform hover:scale-105">
+                                            <div className="z-1 bg-yellow-500 text-white text-[9px] sm:text-[10px] font-bold px-2.5 py-0.5 rounded-full -mb-2 shadow-sm">อันดับที่ 1</div>
+                                            <div className="flex items-center gap-2 bg-white/95 backdrop-blur-sm pl-1 pr-3 sm:pr-4 py-1 rounded-full border border-gray-100 shadow-sm">
+                                                <img
+                                                    src={top1.user.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(top1.user.username)}&background=eceff1`}
+                                                    className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 rounded-full object-cover"
+                                                    onError={(e) => { e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(top1.user.username)}&background=eceff1`; }}
+                                                />
+                                                <span className="text-[10px] sm:text-xs md:text-sm font-bold text-gray-800 truncate max-w-[60px] sm:max-w-[100px]">{top1.user.username}</span>
+                                                <img src="/ranktest.png" className="h-6 sm:h-8 w-auto object-contain" alt="Rank 1 Badge" />
+                                            </div>
+                                        </div>
+                                        <img src="/top1.png" className="h-50 sm:h-70 md:h-90 object-contain pointer-events-none relative z-10" alt="Rank 1" />
+                                    </div>
+                                )}
+
+                                {top3 && (
+                                    <div
+                                        onContextMenu={(e) => handleContextMenu(e, top3.userId, top3.user.username, isMeInList(top3.userId))}
+                                        className="relative flex flex-col items-center justify-end px-2 cursor-pointer"
+                                    >
+                                        <div className="absolute bottom-0 w-full h-[30%] bg-orange-400 rounded-t-2xl z-0"></div>
+                                        <div className="absolute -top-4 sm:-top-2 md:-top-2 flex flex-col items-center z-30 transition-transform hover:scale-105">
+                                            <div className="z-1 bg-orange-500 text-white text-[9px] sm:text-[10px] font-bold px-2.5 py-0.5 rounded-full -mb-2 shadow-sm">อันดับที่ 3</div>
+                                            <div className="flex items-center gap-2 bg-white/95 backdrop-blur-sm pl-1 pr-3 sm:pr-4 py-1 rounded-full border border-gray-100 shadow-sm">
+                                                <img
+                                                    src={top3.user.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(top3.user.username)}&background=eceff1`}
+                                                    className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 rounded-full object-cover"
+                                                    onError={(e) => { e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(top3.user.username)}&background=eceff1`; }}
+                                                />
+                                                <span className="text-[10px] sm:text-xs md:text-sm font-bold text-gray-800 truncate max-w-[60px] sm:max-w-[100px]">{top3.user.username}</span>
+                                            </div>
+                                        </div>
+                                        <img src="/top3.png" className="h-30 sm:h-40 md:h-60 object-contain pointer-events-none relative z-10" alt="Rank 3" />
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     {/* Leaderboard Table Container */}
@@ -521,9 +520,8 @@ export default function LeaderboardPage() {
 
                         {/* Guest Mode Notice in Leaderboard */}
                         {!session?.user && !isTableLoading && (
-                            <div className="border-t border-gray-100 bg-amber-50/80 backdrop-blur-md p-4 sm:px-8 sm:py-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+                            <div className="border-t border-gray-100 bg-gray-100 backdrop-blur-md p-4 sm:px-8 sm:py-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
                                 <div className="flex items-center gap-3">
-                                    <span className="text-2xl">🔒</span>
                                     <div>
                                         <span className="text-gray-800 font-bold text-sm block">คุณกำลังเล่นในโหมดผู้เยี่ยมชม (Guest)</span>
                                         <span className="text-xs text-gray-500">EXP และเลเวลของคุณถูกบันทึกไว้ในเครื่องเรียบร้อย แต่จะไม่แสดงบน Leaderboard จนกว่าจะเข้าสู่ระบบ</span>

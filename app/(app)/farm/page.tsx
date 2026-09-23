@@ -595,12 +595,22 @@ export default function FarmPage() {
                         let isGoldenBounty = false;
 
                         if (targetWordObj.isGolden && lessonPerksRef.current.intermediate) {
-                            // Intermediate Perk: Golden Word Bounty +30 EXP
-                            bountyExp = 30;
+                            // Intermediate Perk: Golden Word Bounty +30 EXP (คำยาวบวกเพิ่มอีกตามความยาว)
+                            const wordLen = targetWord.length;
+                            bountyExp = 30 + Math.max(0, (wordLen - 4) * 3);
                             isGoldenBounty = true;
                         } else if (lessonPerksRef.current.beginner) {
-                            // Beginner Perk: Flawless Word Bounty +5 EXP
-                            bountyExp = 5;
+                            // Beginner Perk: Flawless Word Bounty ยิ่งคำยาว ยิ่งได้ EXP เยอะมากหลังเคาะเว้นวรรค
+                            const wordLen = targetWord.length;
+                            if (wordLen <= 3) {
+                                bountyExp = 8;
+                            } else if (wordLen <= 6) {
+                                bountyExp = 15;
+                            } else if (wordLen <= 9) {
+                                bountyExp = 25;
+                            } else {
+                                bountyExp = 35 + (wordLen - 9) * 4;
+                            }
                         }
 
                         if (bountyExp > 0) {
@@ -979,7 +989,7 @@ export default function FarmPage() {
                                 }`}
                         >
                             <InfinityIcon size={15} />
-                            <span>ฟาร์มเวล (Zen)</span>
+                            <span>พิมพ์ชิลล์ (Zen)</span>
                         </button>
                     </div>
 
@@ -1154,26 +1164,42 @@ export default function FarmPage() {
                             </div>
 
                             {/* Bottom Controls: Large Icon-only buttons (ChevronRight on left & RefreshCw on right) */}
-                            <div className="flex items-center justify-center gap-10 sm:gap-14 pt-8 border-t border-gray-100 dark:border-slate-800 mt-4">
-                                {/* 1. ปุ่มต่อไป (คำต่อไป) */}
-                                <button
-                                    type="button"
-                                    onClick={nextNewWords}
-                                    className="text-gray-400 hover:text-gray-800 dark:text-gray-500 dark:hover:text-gray-100 transition-all duration-150 hover:scale-115 active:scale-90 cursor-pointer p-3 rounded-2xl select-none"
-                                    title="คำต่อไป (Tab)"
-                                >
-                                    <ChevronRight size={34} strokeWidth={2.8} />
-                                </button>
+                            <div className="flex flex-col items-center justify-center gap-4 pt-8 border-t border-gray-100 dark:border-slate-800 mt-4">
+                                <div className="flex items-center justify-center gap-10 sm:gap-14">
+                                    {/* 1. ปุ่มต่อไป (คำต่อไป) */}
+                                    <button
+                                        type="button"
+                                        onClick={nextNewWords}
+                                        className="text-gray-400 hover:text-gray-800 dark:text-gray-500 dark:hover:text-gray-100 transition-all duration-150 hover:scale-115 active:scale-90 cursor-pointer p-3 rounded-2xl select-none"
+                                        title="คำต่อไป (Tab)"
+                                    >
+                                        <ChevronRight size={34} strokeWidth={2.8} />
+                                    </button>
 
-                                {/* 2. ปุ่มเริ่มใหม่ (คำเดิม) */}
-                                <button
-                                    type="button"
-                                    onClick={repeatSameWords}
-                                    className="text-gray-400 hover:text-gray-800 dark:text-gray-500 dark:hover:text-gray-100 transition-all duration-150 hover:scale-115 active:scale-90 cursor-pointer p-3 rounded-2xl select-none"
-                                    title="เริ่มใหม่ (คำเดิม)"
-                                >
-                                    <RefreshCw size={28} strokeWidth={2.8} />
-                                </button>
+                                    {/* 2. ปุ่มเริ่มใหม่ (คำเดิม) */}
+                                    <button
+                                        type="button"
+                                        onClick={repeatSameWords}
+                                        className="text-gray-400 hover:text-gray-800 dark:text-gray-500 dark:hover:text-gray-100 transition-all duration-150 hover:scale-115 active:scale-90 cursor-pointer p-3 rounded-2xl select-none"
+                                        title="เริ่มใหม่ (คำเดิม)"
+                                    >
+                                        <RefreshCw size={28} strokeWidth={2.8} />
+                                    </button>
+                                </div>
+
+                                {/* 🌟 แนะนำการสร้างบัญชีสำหรับผู้เล่นที่เป็น Guest (ไม่บังคับ แต่ช่วยให้เซฟแรงค์ถาวร) */}
+                                {!session?.user && (
+                                    <div className="mt-2 px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/80 rounded-2xl flex items-center gap-3 text-xs text-blue-900 shadow-xs">
+                                        <Sparkles size={16} className="text-amber-500 shrink-0 fill-amber-400" />
+                                        <span>คุณกำลังเล่นในโหมดทดลองพิมพ์</span>
+                                        <Link
+                                            href="/login"
+                                            className="font-bold underline text-blue-600 hover:text-blue-800 hover:scale-105 transition-all"
+                                        >
+                                            เข้าสู่ระบบเพื่อบันทึก EXP และติดอันดับ Leaderboard
+                                        </Link>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ) : (
@@ -1831,7 +1857,7 @@ export default function FarmPage() {
                                             <strong className="text-gray-800">🛡️ เกราะกันพลาด 2 ครั้งต่อรอบ (Double Shield):</strong> หากพิมพ์ผิดหรือสะกดวรรณยุกต์พลาด เกราะจะดูดซับความเสียหายไว้ <span className="text-emerald-700 font-bold">คอมโบไม่หลุด และตัวคูณไม่ลด</span>
                                         </li>
                                         <li>
-                                            <strong className="text-gray-800">✨ โบนัสพิมพ์เป๊ะ (Flawless Bounty):</strong> เคาะ Spacebar จบคำถูกต้อง 100% โดย<span className="underline decoration-emerald-500 underline-offset-2">ไม่กดปุ่ม Backspace เลย</span> รับโบนัส <span className="text-emerald-700 font-black">+5 EXP</span> ต่อคำทันที
+                                            <strong className="text-gray-800">✨ โบนัสพิมพ์เป๊ะคำยาว (Flawless Bounty):</strong> เคาะ Spacebar จบคำถูกต้อง 100% โดย<span className="underline decoration-emerald-500 underline-offset-2">ไม่กดปุ่ม Backspace เลย</span> ยิ่งคำยาว ยิ่งได้เยอะทันที: คำสั้น <span className="text-emerald-700 font-black">+8 EXP</span>, คำปานกลาง <span className="text-emerald-700 font-black">+15 EXP</span>, คำยาว <span className="text-emerald-700 font-black">+25 ถึง 40+ EXP</span>!
                                         </li>
                                     </ul>
                                 </div>

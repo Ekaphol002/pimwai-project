@@ -38,7 +38,7 @@ export default function Navbar() {
   }, [session]);
 
   const pathname = usePathname();
-  const isFarm = pathname === '/farm' || pathname?.startsWith('/farm');
+  const isFarm = pathname === '/' || pathname === '/farm' || pathname?.startsWith('/farm');
   const [isFarmNavOpen, setIsFarmNavOpen] = useState(false);
 
   // ถ้า URL มีคำว่า "typing-test" ให้ซ่อน Navbar
@@ -120,7 +120,7 @@ export default function Navbar() {
 
           {/* Logo */}
           <div className="shrink-0">
-            <Link href="/lessons" className="flex flex-col">
+            <Link href="/" className="flex flex-col">
               <span className="logo-font text-2xl sm:text-3xl font-bold tracking-wide leading-none">PIMWAI</span>
               <span className="logo-font text-base sm:text-lg font-bold text-white/80 leading-none mt-0.5">.com</span>
             </Link>
@@ -130,7 +130,7 @@ export default function Navbar() {
           <div className="hidden lg:flex items-center gap-4 bg-[#182834]/20 rounded-2xl px-6 py-1.5 backdrop-blur-xs">
             <Link href="/lessons" className={`menu-link-base text-sm ${pathname === '/lessons' ? 'menu-link-active' : 'menu-link-inactive'}`}>บทเรียน</Link>
             <Link href="/tests" className={`menu-link-base text-sm ${pathname === '/tests' ? 'menu-link-active' : 'menu-link-inactive'}`}>ทดสอบ</Link>
-            <Link href="/farm" className={`menu-link-base text-sm ${pathname === '/farm' ? 'menu-link-active' : 'menu-link-inactive'}`}>ฟาร์มเวล</Link>
+            <Link href="/farm" className={`menu-link-base text-sm ${pathname === '/farm' || pathname === '/' ? 'menu-link-active' : 'menu-link-inactive'}`}>พิมพ์ด่วน</Link>
             <Link href="/rankings" className={`menu-link-base text-sm ${pathname === '/rankings' ? 'menu-link-active' : 'menu-link-inactive'}`}>อันดับ</Link>
             <Link href="/progress" className={`menu-link-base text-sm ${pathname === '/progress' ? 'menu-link-active' : 'menu-link-inactive'}`}>สรุปผลรวม</Link>
 
@@ -273,9 +273,9 @@ export default function Navbar() {
             <Link
               href="/farm"
               onClick={() => setIsMobileMenuOpen(false)}
-              className={`py-2 px-3 rounded-xl font-bold text-sm ${pathname === '/farm' ? 'bg-[#5cb5db] text-white' : 'text-white/80 hover:bg-white/10'}`}
+              className={`py-2 px-3 rounded-xl font-bold text-sm ${pathname === '/farm' || pathname === '/' ? 'bg-[#5cb5db] text-white' : 'text-white/80 hover:bg-white/10'}`}
             >
-              ฟาร์มเวล
+              พิมพ์ด่วน
             </Link>
             <Link
               href="/rankings"

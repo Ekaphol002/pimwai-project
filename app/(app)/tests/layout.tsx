@@ -17,6 +17,9 @@ export const metadata: Metadata = {
     'ประวัติการสอบพิมพ์ดีด',
     'หาจุดอ่อนการพิมพ์สัมผัส'
   ],
+  alternates: {
+    canonical: '/tests',
+  },
 }
 
 export default function AppLayout({
