@@ -595,21 +595,21 @@ export default function FarmPage() {
                         let isGoldenBounty = false;
 
                         if (targetWordObj.isGolden && lessonPerksRef.current.intermediate) {
-                            // Intermediate Perk: Golden Word Bounty +30 EXP (คำยาวบวกเพิ่มอีกตามความยาว)
+                            // Intermediate Perk: Golden Word Bounty +15 EXP
                             const wordLen = targetWord.length;
-                            bountyExp = 30 + Math.max(0, (wordLen - 4) * 3);
+                            bountyExp = 15 + Math.min(15, Math.max(0, (wordLen - 4) * 2));
                             isGoldenBounty = true;
                         } else if (lessonPerksRef.current.beginner) {
-                            // Beginner Perk: Flawless Word Bounty ยิ่งคำยาว ยิ่งได้ EXP เยอะมากหลังเคาะเว้นวรรค
+                            // Beginner Perk: Flawless Word Bounty ได้โบนัสจบคำสมดุลตามความยาวคำ
                             const wordLen = targetWord.length;
                             if (wordLen <= 3) {
-                                bountyExp = 8;
+                                bountyExp = 2;
                             } else if (wordLen <= 6) {
-                                bountyExp = 15;
+                                bountyExp = 4;
                             } else if (wordLen <= 9) {
-                                bountyExp = 25;
+                                bountyExp = 7;
                             } else {
-                                bountyExp = 35 + (wordLen - 9) * 4;
+                                bountyExp = Math.min(12, 8 + Math.floor((wordLen - 9) * 1));
                             }
                         }
 
@@ -1857,7 +1857,7 @@ export default function FarmPage() {
                                             <strong className="text-gray-800">🛡️ เกราะกันพลาด 2 ครั้งต่อรอบ (Double Shield):</strong> หากพิมพ์ผิดหรือสะกดวรรณยุกต์พลาด เกราะจะดูดซับความเสียหายไว้ <span className="text-emerald-700 font-bold">คอมโบไม่หลุด และตัวคูณไม่ลด</span>
                                         </li>
                                         <li>
-                                            <strong className="text-gray-800">✨ โบนัสพิมพ์เป๊ะคำยาว (Flawless Bounty):</strong> เคาะ Spacebar จบคำถูกต้อง 100% โดย<span className="underline decoration-emerald-500 underline-offset-2">ไม่กดปุ่ม Backspace เลย</span> ยิ่งคำยาว ยิ่งได้เยอะทันที: คำสั้น <span className="text-emerald-700 font-black">+8 EXP</span>, คำปานกลาง <span className="text-emerald-700 font-black">+15 EXP</span>, คำยาว <span className="text-emerald-700 font-black">+25 ถึง 40+ EXP</span>!
+                                            <strong className="text-gray-800">✨ โบนัสพิมพ์เป๊ะคำยาว (Flawless Bounty):</strong> เคาะ Spacebar จบคำถูกต้อง 100% โดย<span className="underline decoration-emerald-500 underline-offset-2">ไม่กดปุ่ม Backspace เลย</span> รับโบนัสสมดุลตามความยาวคำ: คำสั้น <span className="text-emerald-700 font-black">+2 EXP</span>, คำปานกลาง <span className="text-emerald-700 font-black">+4 EXP</span>, คำยาว <span className="text-emerald-700 font-black">+7 ถึง 12 EXP</span>
                                         </li>
                                     </ul>
                                 </div>
@@ -1891,7 +1891,7 @@ export default function FarmPage() {
                                             <strong className="text-gray-800">🌟 โอกาสพบคำทองคำพุ่งสูง (Golden Rush):</strong> โอกาสสุ่มเจอคำสีทองเพิ่มจาก 8% ขึ้นเป็น <span className="text-amber-700 font-black">15%</span> (คำสีทองให้โบนัสตัวคูณ +1.0x อยู่แล้ว)
                                         </li>
                                         <li>
-                                            <strong className="text-gray-800">💰 ล่าสมบัติคำทองคำ (Golden Bounty):</strong> เมื่อพิมพ์คำสีทองถูกต้องครบ 100% แบบ Flawless (ไม่กด Backspace) รับโบนัสจัดหนัก <span className="text-amber-700 font-black">+30 EXP</span> ทันที
+                                            <strong className="text-gray-800">💰 ล่าสมบัติคำทองคำ (Golden Bounty):</strong> เมื่อพิมพ์คำสีทองถูกต้องครบ 100% แบบ Flawless (ไม่กด Backspace) รับโบนัสสมดุล <span className="text-amber-700 font-black">+15 EXP</span> ทันที
                                         </li>
                                     </ul>
                                 </div>
