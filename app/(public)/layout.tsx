@@ -4,15 +4,29 @@ import Footer from '@/components/Footer/Footer';
 import PimwaiFloatingWidget from "@/components/PimwaiFloatingWidget/PimwaiFloatingWidget";
 
 export const metadata: Metadata = {
-  title: 'PIMWAI (พิมพ์ไว) - ฝึกพิมพ์ดีดออนไลน์ฟรี ทดสอบความเร็ว WPM สไตล์ Monkeytype',
-  description: 'เว็บฝึกพิมพ์ดีดและทดสอบความเร็วพิมพ์สัมผัสภาษาไทยสไตล์ Monkeytype ฟรี 100% วางนิ้วแล้วเคาะแป้นเริ่มพิมพ์ได้ทันทีโดยไม่ต้องสมัครสมาชิก พร้อมระบบจับเวลา วิเคราะห์ WPM และเก็บ EXP',
-  keywords: ['ฝึกพิมพ์ดีด', 'monkeytype ภาษาไทย', 'monkeytype thai', 'พิมพ์สัมผัส', 'ทดสอบความเร็วการพิมพ์', 'Typing Test', 'เรียนพิมพ์ดีดออนไลน์', 'เกมพิมพ์ดีด', 'PIMWAI', 'พิมพ์ด่วน', 'วัดระดับความเร็วพิมพ์'],
+  title: 'ฝึกพิมพ์ดีด (Typing Test) - ฝึกพิมพ์สัมผัสไทย 10 นิ้ว ทดสอบพิมพ์เร็วออนไลน์ฟรี | PIMWAI',
+  description: 'ฝึกพิมพ์ดีดออนไลน์ฟรี! ทดสอบพิมพ์ดีด ฝึกพิมพ์สัมผัส 10 นิ้วภาษาไทยและอังกฤษ เช็คความเร็ว WPM ความแม่นยำ พร้อมโหมดพิมพ์ด่วน เล่นได้ทันทีไม่ต้องล็อกอิน มีระบบอัปแรงค์และบทเรียนวางนิ้วที่ PIMWAI',
+  keywords: [
+    'ฝึกพิมพ์',
+    'ฝึกพิมพ์ดีด',
+    'ทดสอบพิมพ์ดีด',
+    'ฝึกพิมพ์สัมผัส',
+    'พิมพ์สัมผัส 10 นิ้ว',
+    'ทดสอบความเร็วการพิมพ์',
+    'typing test thai',
+    'พิมพ์เร็ว',
+    'เกมฝึกพิมพ์ดีด',
+    'พิมพ์ดีดออนไลน์',
+    'เรียนพิมพ์ดีด',
+    'PIMWAI',
+    'พิมพ์ไว'
+  ],
   alternates: {
     canonical: '/',
   },
   openGraph: {
-    title: 'PIMWAI (พิมพ์ไว) - ฝึกพิมพ์ดีดออนไลน์ฟรี พิมพ์ได้ทันทีสไตล์ Monkeytype',
-    description: 'ทดสอบความเร็วนิ้วของคุณทันที! เว็บฝึกพิมพ์ดีดภาษาไทยมาตรฐาน Monkeytype เคาะแป้นได้เลยไม่ต้องล็อกอิน ใช้งานฟรี 100%',
+    title: 'ฝึกพิมพ์ดีด (Typing Test) - ฝึกพิมพ์สัมผัสไทย 10 นิ้วออนไลน์ฟรี | PIMWAI',
+    description: 'ฝึกพิมพ์ดีดออนไลน์ฟรี! เคาะแป้นทดสอบความเร็วพิมพ์ (WPM) และฝึกพิมพ์สัมผัส 10 นิ้วได้ทันทีไม่ต้องล็อกอิน',
     url: 'https://pimwai.vercel.app',
     siteName: 'PIMWAI',
     images: [
@@ -20,7 +34,7 @@ export const metadata: Metadata = {
         url: '/logopimwai.png',
         width: 1200,
         height: 630,
-        alt: 'PIMWAI ฝึกพิมพ์ดีดออนไลน์ฟรี สไตล์ Monkeytype',
+        alt: 'PIMWAI ฝึกพิมพ์ดีดและทดสอบพิมพ์สัมผัสออนไลน์ฟรี',
       },
     ],
     type: 'website',
@@ -28,8 +42,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'PIMWAI (พิมพ์ไว) - ฝึกพิมพ์ดีดออนไลน์ฟรี พิมพ์ได้ทันทีสไตล์ Monkeytype',
-    description: 'ทดสอบความเร็วพิมพ์ดีดภาษาไทยมาตรฐาน Monkeytype เริ่มพิมพ์ได้ทันทีไม่ต้องล็อกอิน',
+    title: 'ฝึกพิมพ์ดีด (Typing Test) - ฝึกพิมพ์สัมผัสไทย 10 นิ้วออนไลน์ฟรี | PIMWAI',
+    description: 'เว็บฝึกพิมพ์ดีดออนไลน์ฟรี เช็คความเร็วพิมพ์ WPM เริ่มพิมพ์ได้ทันทีไม่ต้องสมัครสมาชิก',
     creator: '@PIMWAI',
     images: ['/logopimwai.png'],
   },

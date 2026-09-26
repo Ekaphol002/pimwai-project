@@ -1956,6 +1956,41 @@ export default function FarmPage() {
                     </div>
                 )}
 
+                {/* 🔍 SEO Semantic Section (Googlebot Crawl Content): ข้อความคุณภาพสูงที่บอทและผู้ใช้ใช้อ่าน */}
+                <section className="w-full mt-10 mb-6 pt-8 border-t border-gray-200/80 text-gray-600 text-xs sm:text-sm leading-relaxed">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="bg-white/70 p-4 rounded-2xl border border-gray-100 shadow-xs">
+                            <h2 className="font-bold text-gray-800 text-sm mb-2 flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full bg-[#5cb5db]"></span>
+                                ฝึกพิมพ์ดีด และ ฝึกพิมพ์สัมผัส 10 นิ้ว
+                            </h2>
+                            <p className="text-gray-500 text-xs">
+                                PIMWAI ออกแบบมาเพื่อช่วยให้คุณ<strong>ฝึกพิมพ์ดีด</strong>ภาษาไทยและภาษาอังกฤษได้อย่างถูกต้องตามหลักการวางนิ้วสัมผัส 10 นิ้ว (แป้นเหย้า ฟ ห ก ด ่ า ส ว) เสริมสร้างความจำของกล้ามเนื้อ (Muscle Memory) เพื่อเพิ่มความเร็วในการพิมพ์โดยไม่ต้องมองแป้น
+                            </p>
+                        </div>
+
+                        <div className="bg-white/70 p-4 rounded-2xl border border-gray-100 shadow-xs">
+                            <h2 className="font-bold text-gray-800 text-sm mb-2 flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                ทดสอบพิมพ์ดีด เช็คความเร็ว WPM ฟรี
+                            </h2>
+                            <p className="text-gray-500 text-xs">
+                                <strong>ทดสอบพิมพ์ดีด</strong> (Typing Test) แบบจับเวลา 15, 30 หรือ 60 วินาที คำนวณความเร็วคำต่อนาที (WPM - Words Per Minute) พร้อมวิเคราะห์ความแม่นยำ (Accuracy) แบบเรียลไทม์ และรายงานสถิติตัวอักษรที่พิมพ์ผิดบ่อยเพื่อให้คุณนำไปฝึกฝนแก้ไขได้ตรงจุด
+                            </p>
+                        </div>
+
+                        <div className="bg-white/70 p-4 rounded-2xl border border-gray-100 shadow-xs">
+                            <h2 className="font-bold text-gray-800 text-sm mb-2 flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                                โหมดพิมพ์ด่วน เล่นได้ทันที ไม่ต้องล็อกอิน
+                            </h2>
+                            <p className="text-gray-500 text-xs">
+                                ฝึกพิมพ์ได้ทันทีโดยไม่ต้องผ่านขั้นตอนยุ่งยาก คลังคำศัพท์ภาษาไทยความถี่สูงกว่า 1,000 คำ สะสมค่าประสบการณ์ (EXP) ปลดล็อกแรงค์ และแข่งจัดอันดับความเร็วพิมพ์กับผู้ใช้ทั่วประเทศได้ฟรี 100%
+                            </p>
+                        </div>
+                    </div>
+                </section>
+
             </main>
         </div>
     );

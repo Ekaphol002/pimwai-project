@@ -20,14 +20,31 @@ const nunito = Nunito({
 export const metadata: Metadata = {
   metadataBase: new URL('https://pimwai.vercel.app'),
   title: {
-    default: "PIMWAI (พิมพ์ไว) - ฝึกพิมพ์ดีดออนไลน์ฟรี ทดสอบความเร็ว WPM พิมพ์สัมผัสไทย-อังกฤษ",
-    template: "%s | PIMWAI"
+    default: "ฝึกพิมพ์ดีด (Typing Test) - ฝึกพิมพ์สัมผัสไทย 10 นิ้ว ทดสอบพิมพ์เร็วออนไลน์ฟรี | PIMWAI",
+    template: "%s | PIMWAI ฝึกพิมพ์ดีดออนไลน์"
   },
-  description: "เว็บฝึกพิมพ์ดีดและฝึกพิมพ์สัมผัสออนไลน์อันดับ 1 ของไทย เล่นฟรี 100% สอนวิธีวางนิ้วที่ถูกต้องผ่านเกมและบทเรียนสนุกๆ พร้อมระบบทดสอบความเร็วในการพิมพ์ WPM ภาษาไทยและอังกฤษ เก็บคะแนนและจัดอันดับผู้เล่นทั่วประเทศ",
+  description: "ฝึกพิมพ์ดีดและทดสอบพิมพ์สัมผัสออนไลน์อันดับ 1 ของไทย เล่นฟรี 100% วัดความเร็ว WPM และความแม่นยำ พร้อมบทเรียนฝึกวางนิ้ว 10 นิ้ว และโหมดพิมพ์ด่วน เล่นได้ทันทีไม่ต้องล็อกอิน",
   keywords: [
-    "ฝึกพิมพ์ดีด", "พิมพ์สัมผัส", "พิมพ์ดีดออนไลน์", "เกมฝึกพิมพ์", "พิมพ์ดีดไทย", "พิมพ์ดีดอังกฤษ",
-    "เรียนพิมพ์ดีด", "พิมพ์เร็ว", "Typing Practice", "Touch Typing Thai",
-    "ทดสอบความเร็วพิมพ์", "ฝึกวางนิ้ว", "ทดสอบ WPM", "พิมพ์ข้อความ", "PIMWAI", "พิมไว", "เกมพิมพ์ดีด", "แข่งพิมพ์เร็ว", "ฝึกพิมไทย"
+    "ฝึกพิมพ์",
+    "ฝึกพิมพ์ดีด",
+    "ทดสอบพิมพ์ดีด",
+    "พิมพ์สัมผัส",
+    "พิมพ์สัมผัส 10 นิ้ว",
+    "พิมพ์ดีดออนไลน์",
+    "เกมฝึกพิมพ์",
+    "พิมพ์ดีดไทย",
+    "พิมพ์ดีดอังกฤษ",
+    "เรียนพิมพ์ดีด",
+    "พิมพ์เร็ว",
+    "Typing Practice",
+    "Touch Typing Thai",
+    "ทดสอบความเร็วพิมพ์",
+    "ฝึกวางนิ้ว",
+    "ทดสอบ WPM",
+    "PIMWAI",
+    "พิมไว",
+    "เกมพิมพ์ดีด",
+    "แข่งพิมพ์เร็ว"
   ],
   authors: [{ name: "PIMWAI Team" }],
   openGraph: {
@@ -80,14 +97,15 @@ export default function RootLayout({
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "WebApplication",
-    "name": "PIMWAI",
-    "alternateName": ["พิมไว", "Pimwai Typing", "พิมพ์ไว", "Pimwai"],
+    "name": "PIMWAI (พิมพ์ไว)",
+    "alternateName": ["ฝึกพิมพ์ดีด PIMWAI", "พิมไว", "Pimwai Typing", "พิมพ์ดีดไทย", "Pimwai"],
     "url": "https://pimwai.vercel.app",
     "applicationCategory": "EducationalApplication",
-    "genre": "Typing Practice",
+    "genre": "Typing Test & Touch Typing Practice",
     "operatingSystem": "All",
     "browserRequirements": "Requires JavaScript",
-    "description": "เว็บฝึกพิมพ์ดีดและทดสอบความเร็วในการพิมพ์สัมผัสออนไลน์ฟรี ภาษาไทยและภาษาอังกฤษ",
+    "description": "เว็บฝึกพิมพ์ดีดออนไลน์ฟรี ทดสอบความเร็วในการพิมพ์ WPM และฝึกพิมพ์สัมผัส 10 นิ้วภาษาไทยและอังกฤษ",
+    "keywords": "ฝึกพิมพ์, ฝึกพิมพ์ดีด, ทดสอบพิมพ์ดีด, พิมพ์สัมผัส, พิมพ์ดีดออนไลน์, Typing Test",
     "offers": {
       "@type": "Offer",
       "price": "0",
