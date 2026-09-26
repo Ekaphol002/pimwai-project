@@ -1,0 +1,2140 @@
+[
+  {
+    "id": 15,
+    "slug": "lesson-advanced-1",
+    "title": "คำไทยใช้บ่อย",
+    "level": "advanced",
+    "order": 1,
+    "subLessonsCount": 14,
+    "subLessons": [
+      {
+        "id": "shift-top-left-tones",
+        "title": "คำสรรพนาม",
+        "mode": "word",
+        "order": 1,
+        "newKeys": [],
+        "contentSample": "ฉันและเธอรักเขา เราและนายต่างคนต่างไป ท่"
+      },
+      {
+        "id": "shift-words-tones",
+        "title": "กริยาพื้นฐาน",
+        "mode": "word",
+        "order": 2,
+        "newKeys": [],
+        "contentSample": "กินข้าวแล้วก็นอน นั่งฟังเพลงสบายใจ พูดคุ"
+      },
+      {
+        "id": "shift-top-left-hard-chars",
+        "title": "คำขยายความ",
+        "mode": "word",
+        "order": 3,
+        "newKeys": [],
+        "contentSample": "บ้านหลังใหญ่มาก รถวิ่งเร็วที่สุด แมวตัวเ"
+      },
+      {
+        "id": "shift-words-rue-phop",
+        "title": "คำเชื่อมประโยค",
+        "mode": "word",
+        "order": 4,
+        "newKeys": [],
+        "contentSample": "ฉันและเธอ หรือว่าเขา แต่เขาก็ไม่มา เพราะ"
+      },
+      {
+        "id": "shift-switch-left",
+        "title": "คำถามทั่วไป",
+        "mode": "word",
+        "order": 5,
+        "newKeys": [],
+        "contentSample": "ใครเป็นคนทำ อะไรอยู่ในกล่อง ที่ไหนมีของข"
+      },
+      {
+        "id": "shift-words-rit",
+        "title": "คำระบุเวลา",
+        "mode": "word",
+        "order": 6,
+        "newKeys": [],
+        "contentSample": "วันนี้วันจันทร์ พรุ่งนี้วันอังคาร เมื่อว"
+      },
+      {
+        "id": "shift-pinky-left",
+        "title": "สถานที่ทั่วไป",
+        "mode": "word",
+        "order": 7,
+        "newKeys": [],
+        "contentSample": "บ้านของฉันอยู่ไกล โรงเรียนเลิกเรียนแล้ว "
+      },
+      {
+        "id": "shift-words-long",
+        "title": "ความรู้สึก",
+        "mode": "word",
+        "order": 8,
+        "newKeys": [],
+        "contentSample": "ฉันรักเธอมาก ชอบกินไอศกรีม เกลียดคนโกหก "
+      },
+      {
+        "id": "shift-top-left-combined",
+        "title": "คำทักทาย",
+        "mode": "word",
+        "order": 9,
+        "newKeys": [],
+        "contentSample": "สวัสดีตอนเช้าครับ ขอบคุณสำหรับของขวัญ ขอ"
+      },
+      {
+        "id": "shift-chapter-1-test",
+        "title": "เครือญาติ",
+        "mode": "word",
+        "order": 10,
+        "newKeys": [],
+        "contentSample": "พ่อแม่รักลูก ปู่ย่าตายายใจดี ลุงป้าน้าอา"
+      },
+      {
+        "id": "adv-common-extra-1",
+        "title": "สีสันต่างๆ",
+        "mode": "word",
+        "order": 11,
+        "newKeys": [],
+        "contentSample": "ท้องฟ้าสีคราม ดอกกุหลาบสีแดง ใบไม้สีเขีย"
+      },
+      {
+        "id": "adv-common-extra-2",
+        "title": "อวัยวะร่างกาย",
+        "mode": "word",
+        "order": 12,
+        "newKeys": [],
+        "contentSample": "หัวไหล่ตูด ปากจมูกตา หูฟังเสียงเพลง มือจ"
+      },
+      {
+        "id": "adv-common-extra-3",
+        "title": "ของใช้ในบ้าน",
+        "mode": "word",
+        "order": 13,
+        "newKeys": [],
+        "contentSample": "จานชามช้อนส้อม หม้อหุงข้าวไฟฟ้า แก้วน้ำใ"
+      },
+      {
+        "id": "adv-common-boss",
+        "title": "บอสคำไทยใช้บ่อย",
+        "mode": "word",
+        "order": 14,
+        "newKeys": [],
+        "contentSample": "สวัสดีวันจันทร์อันสดใส ฉันรักประเทศไทยมา"
+      }
+    ]
+  },
+  {
+    "id": 1,
+    "slug": "lesson-beginner-1",
+    "title": "ก้าวแรกนิ้วชี้ (ด ไม้เอก พ)",
+    "level": "beginner",
+    "order": 1,
+    "subLessonsCount": 10,
+    "subLessons": [
+      {
+        "id": "home-row-left-index-middle",
+        "title": "ฝึกปุ่ม ด",
+        "mode": "character",
+        "order": 1,
+        "newKeys": [
+          "ด"
+        ],
+        "contentSample": "ด ด ด ด ด ด ด ด ด ด ด ด ด ด ด ด ด ด ด ด"
+      },
+      {
+        "id": "home-row-words-left-basic",
+        "title": "ฝึกปุ่ม ไม้เอก",
+        "mode": "word",
+        "order": 2,
+        "newKeys": [
+          "่"
+        ],
+        "contentSample": "ด ดด ดด่ ดด่่ ด่ด่ด ด ดด ด่่ ดด่ด"
+      },
+      {
+        "id": "home-row-right-index-middle",
+        "title": "ฝึกปุ่ม พ",
+        "mode": "character",
+        "order": 3,
+        "newKeys": [
+          "พ"
+        ],
+        "contentSample": "ด พ ด พ ด พ ด พ ด พ ด พ ด พ ด พ ด พ ด พ"
+      },
+      {
+        "id": "home-row-words-right-basic",
+        "title": "ผสม ด-่",
+        "mode": "word",
+        "order": 4,
+        "newKeys": [],
+        "contentSample": "ด่่ด่ ดด ด่ดด ดด ด่ ด่ ดด่ด่ ด่ด่ ด่ ดด่"
+      },
+      {
+        "id": "home-row-switch-index",
+        "title": "ผสม ด-พ",
+        "mode": "character",
+        "order": 5,
+        "newKeys": [],
+        "contentSample": "ด พ ด พ ด พ ด พ ด พ ด พ ด พ ด พ ด พ ด พ "
+      },
+      {
+        "id": "home-row-words-tones-1",
+        "title": "ผสม ่-พ",
+        "mode": "word",
+        "order": 6,
+        "newKeys": [],
+        "contentSample": "ด พ่ ด่ด พ่่ด พ่ด่่ พ ด่ พพ่ ด่พ่ พ่่ด่ "
+      },
+      {
+        "id": "home-row-switch-middle",
+        "title": "รวม 3 ปุ่ม",
+        "mode": "character",
+        "order": 7,
+        "newKeys": [],
+        "contentSample": "พ พ ด พ ่ ่ ด ด ด พ พ พ ่ ด ่ ่ พ พ ่ ่ "
+      },
+      {
+        "id": "home-row-words-middle-focus",
+        "title": "สร้างคำมั่ว",
+        "mode": "word",
+        "order": 8,
+        "newKeys": [],
+        "contentSample": "พ่พพพ ดพ ด่่ดด ด่ดพ่ ด่่ด ดพ่พ พดดด ด่ ด"
+      },
+      {
+        "id": "home-row-4-keys-mastery",
+        "title": "สลับนิ้ว",
+        "mode": "word",
+        "order": 9,
+        "newKeys": [],
+        "contentSample": "ดด่่พ พ่ด่่ พ่่ดพ พ่ด พพ่ พ่ ด่ พ่พ่่ พ่"
+      },
+      {
+        "id": "home-row-chapter-1-test",
+        "title": "บอส ด ่ พ",
+        "mode": "word",
+        "order": 10,
+        "newKeys": [],
+        "contentSample": "พ่ พดพ พพดพ ดดพ่พ ดด่่พ ดพ ด่พ พ่่ด่ ด่ "
+      }
+    ]
+  },
+  {
+    "id": 8,
+    "slug": "lesson-intermediate-1",
+    "title": "ลุยแถวล่างนิ้วชี้ (อ สระอิ สระอือ)",
+    "level": "intermediate",
+    "order": 1,
+    "subLessonsCount": 10,
+    "subLessons": [
+      {
+        "id": "bottom-row-left-pinky-ring",
+        "title": "ฝึกปุ่ม อ",
+        "mode": "character",
+        "order": 1,
+        "newKeys": [
+          "อ"
+        ],
+        "contentSample": "ด อ ด อ ด อ ด อ ด อ ด อ ด อ ด อ ด อ ด อ"
+      },
+      {
+        "id": "bottom-row-words-pae-phu",
+        "title": "ฝึกปุ่ม สระอิ",
+        "mode": "word",
+        "order": 2,
+        "newKeys": [
+          "ิ"
+        ],
+        "contentSample": "ด ดด ดิด ดิิด ดิดิด ด ดิ ดิิ ดดิด"
+      },
+      {
+        "id": "bottom-row-left-middle-index",
+        "title": "ฝึกปุ่ม สระอือ",
+        "mode": "character",
+        "order": 3,
+        "newKeys": [
+          "ื"
+        ],
+        "contentSample": "่ ื ่ อ ่ ื ่ อ ่ ื ่ อ ่ ื ่ อ ่ ื ่ อ"
+      },
+      {
+        "id": "bottom-row-words-ae-or",
+        "title": "ผสม อ-ิ",
+        "mode": "word",
+        "order": 4,
+        "newKeys": [],
+        "contentSample": "ดิิ ดิ ออิิอ อิอด ดิ ดดิ ดิ อิด ดด อด ดิ"
+      },
+      {
+        "id": "bottom-row-left-reach-vowel",
+        "title": "ผสม ิ-ื",
+        "mode": "character",
+        "order": 5,
+        "newKeys": [],
+        "contentSample": "ด ิ ่ ื ด ิ ่ ื ด ิ ่ ื ด ิ ่ ื ด ิ ่ ื "
+      },
+      {
+        "id": "bottom-row-words-phi-i",
+        "title": "รวม 3 ปุ่ม",
+        "mode": "word",
+        "order": 6,
+        "newKeys": [],
+        "contentSample": "อือ อดอ ดิอดิ ดิิด ดออ่อ ดดดดื"
+      },
+      {
+        "id": "bottom-row-switch-left",
+        "title": "รวม 3 ปุ่ม แบบผสม",
+        "mode": "character",
+        "order": 7,
+        "newKeys": [],
+        "contentSample": "อ อ อ ื ื ื อ อ อ ิ ิ ิ ่ ่ อ ิ ด ่ ่ อ "
+      },
+      {
+        "id": "bottom-row-words-kapi",
+        "title": "สร้างคำมั่ว",
+        "mode": "word",
+        "order": 8,
+        "newKeys": [],
+        "contentSample": "ดื่อ อิอิด อดิ ด่ด อืด่ื อิืด อิออ ดื อิ"
+      },
+      {
+        "id": "bottom-row-left-combined",
+        "title": "สลับนิ้วชี้",
+        "mode": "character",
+        "order": 9,
+        "newKeys": [],
+        "contentSample": "ด อ ่ ื ด อ ่ ื ด อ ่ ื ด อ ่ ื ด อ ่ ื "
+      },
+      {
+        "id": "bottom-row-chapter-1-test",
+        "title": "บอส อ ิ ื",
+        "mode": "word",
+        "order": 10,
+        "newKeys": [],
+        "contentSample": "ดด่ ดดืด อด่ิอ อื อืดิ ออิ ด่ ดื่ อ่ิด อ"
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "slug": "lesson-beginner-2",
+    "title": "สระบนและสระอำ (สระอี ก สระอำ)",
+    "level": "beginner",
+    "order": 2,
+    "subLessonsCount": 10,
+    "subLessons": [
+      {
+        "id": "home-row-left-ring-pinky",
+        "title": "ฝึกปุ่ม สระอี",
+        "mode": "character",
+        "order": 1,
+        "newKeys": [
+          "ี"
+        ],
+        "contentSample": "่ ี ่ ด ่ ี ่ ด ่ ี ่ ด ่ ี ่ ด ่ ี ่ ด"
+      },
+      {
+        "id": "home-row-words-left-extended",
+        "title": "ฝึกปุ่ม ก",
+        "mode": "word",
+        "order": 2,
+        "newKeys": [
+          "ก"
+        ],
+        "contentSample": "กกกกก กกกกก กกกกก กกกก กก กกก "
+      },
+      {
+        "id": "home-row-right-ring-pinky",
+        "title": "ฝึกปุ่ม สระอำ",
+        "mode": "character",
+        "order": 3,
+        "newKeys": [
+          "ำ"
+        ],
+        "contentSample": "ก ำ ก ำ ก ำ ก ำ ก ำ ก ำ ก ำ ก ำ ก ำ ก ำ"
+      },
+      {
+        "id": "home-row-words-right-extended",
+        "title": "ผสม ี-ก",
+        "mode": "word",
+        "order": 4,
+        "newKeys": [],
+        "contentSample": "ก ก่ กก่ ก่กก ก่กี่ ก กก กี่ ก่ก่ กกี่ก "
+      },
+      {
+        "id": "home-row-left-hand-full",
+        "title": "ผสม ก-ำ",
+        "mode": "character",
+        "order": 5,
+        "newKeys": [],
+        "contentSample": "ก ก ก ำ ำ ำ ก ก ำ ก ำ ำ ก ก ำ ำ ก ำ ำ ก "
+      },
+      {
+        "id": "home-row-words-left-hand",
+        "title": "รวม 3 ปุ่ม",
+        "mode": "word",
+        "order": 6,
+        "newKeys": [],
+        "contentSample": "กก่ำ กก่ ำีำ่ก ก่กก่ ก่กี ำีก่ก ำีกี่ กก"
+      },
+      {
+        "id": "home-row-right-hand-full",
+        "title": "รวม 3 ปุ่ม แบบสุ่ม",
+        "mode": "character",
+        "order": 7,
+        "newKeys": [],
+        "contentSample": "ี ำ ก ี ำ ำ ี ่ ำ ก ก ่ ก ำ ี ก ำ ี ำ ี "
+      },
+      {
+        "id": "home-row-words-right-hand",
+        "title": "ทบทวนบท 1",
+        "mode": "word",
+        "order": 8,
+        "newKeys": [],
+        "contentSample": "พ่กำ่ พ่ ด่ก่ กพ่ ด่่ ำำ ดี ด่พ่ ด่ดำ พำ"
+      },
+      {
+        "id": "home-row-8-keys-drill",
+        "title": "สร้างคำมั่ว",
+        "mode": "word",
+        "order": 9,
+        "newKeys": [],
+        "contentSample": "ก่ก ำ่ก่ ำำี่ ก่ำ กกกีี ำีกี กำ ำีำกี ำ่"
+      },
+      {
+        "id": "home-row-chapter-2-test",
+        "title": "บอส ี ก ำ",
+        "mode": "word",
+        "order": 10,
+        "newKeys": [],
+        "contentSample": "ก่ำ่ กี่ ำ่กำ ำก่ กก่่ำ ำีีกี ำำำ ำี ำก "
+      }
+    ]
+  },
+  {
+    "id": 16,
+    "slug": "lesson-advanced-2",
+    "title": "คำศัพท์แป้นเหย้า",
+    "level": "advanced",
+    "order": 2,
+    "subLessonsCount": 12,
+    "subLessons": [
+      {
+        "id": "shift-top-right-reach",
+        "title": "สระอาพาเพลิน",
+        "mode": "word",
+        "order": 1,
+        "newKeys": [],
+        "contentSample": "อีกาบินมา ตามหาคุณอา มาศาลาริมน้ำ ลาล่าพ"
+      },
+      {
+        "id": "shift-words-khun-nat",
+        "title": "แม่กกสะกดกอ",
+        "mode": "word",
+        "order": 2,
+        "newKeys": [],
+        "contentSample": "รักเธอมากไม่อยากจาก ลากกระเป๋าเดินทาง รา"
+      },
+      {
+        "id": "shift-top-right-middle-ring",
+        "title": "แม่กดสะกดดอ",
+        "mode": "word",
+        "order": 3,
+        "newKeys": [],
+        "contentSample": "กดปุ่มติดตาม ผักสดสะอาด ลดราคาสินค้า มดก"
+      },
+      {
+        "id": "shift-top-right-pinky",
+        "title": "แม่กงสะกดงอ",
+        "mode": "word",
+        "order": 4,
+        "newKeys": [],
+        "contentSample": "กางเกงขายาว ทางเดินแห่งรัก นางเอกแสนสวย "
+      },
+      {
+        "id": "shift-words-ying-kot",
+        "title": "ไม้เอกเสกคำ",
+        "mode": "word",
+        "order": 5,
+        "newKeys": [],
+        "contentSample": "กิ่งก่าได้ทอง ด่าทอกันทำไม ป่าไม้ร่มรื่น"
+      },
+      {
+        "id": "shift-switch-right-hard",
+        "title": "ไม้โทโชว์พลัง",
+        "mode": "word",
+        "order": 6,
+        "newKeys": [],
+        "contentSample": "ก้าวหน้าต่อไป คุณป้าใจดี อ้าปากกว้างๆ ห้"
+      },
+      {
+        "id": "shift-words-thana",
+        "title": "สระเอเฮฮา",
+        "mode": "word",
+        "order": 7,
+        "newKeys": [],
+        "contentSample": "เกเรไม่ดี เดินเซไปมา เทน้ำทิ้ง ทุ่มเททำง"
+      },
+      {
+        "id": "shift-top-right-combined",
+        "title": "สระแอและแม่",
+        "mode": "word",
+        "order": 8,
+        "newKeys": [],
+        "contentSample": "แก้วน้ำแตก แฉความลับ ดูแลตัวเอง กาแฟรสเข"
+      },
+      {
+        "id": "shift-chapter-2-test",
+        "title": "สองพยางค์หรรษา",
+        "mode": "word",
+        "order": 9,
+        "newKeys": [],
+        "contentSample": "ดาราทีวี กากีสีฝุ่น วาจาไพเราะ ศาลาริมทา"
+      },
+      {
+        "id": "adv-home-extra-1",
+        "title": "สามพยางค์สร้างคำ",
+        "mode": "word",
+        "order": 10,
+        "newKeys": [],
+        "contentSample": "ภาราดาพี่ชาย วาสนาแข่งไม่ได้ สารภาพความจ"
+      },
+      {
+        "id": "adv-home-extra-2",
+        "title": "ประโยคแป้นเหย้า",
+        "mode": "word",
+        "order": 11,
+        "newKeys": [],
+        "contentSample": "กาก้าหัวเราะฮาเฮ ดาราคนนี้หน้าตาดี หลานม"
+      },
+      {
+        "id": "adv-home-boss",
+        "title": "บอสแป้นเหย้า",
+        "mode": "word",
+        "order": 12,
+        "newKeys": [],
+        "contentSample": "กาลเวลาไม่เคยคอยใคร วาสนาพานพบ ดาราดังระ"
+      }
+    ]
+  },
+  {
+    "id": 9,
+    "slug": "lesson-intermediate-2",
+    "title": "สระอุ สระอึ และ ค",
+    "level": "intermediate",
+    "order": 2,
+    "subLessonsCount": 10,
+    "subLessons": [
+      {
+        "id": "bottom-row-right-reach-vowel",
+        "title": "ฝึกปุ่ม สระอุ",
+        "mode": "character",
+        "order": 1,
+        "newKeys": [
+          "ุ"
+        ],
+        "contentSample": "ุ ุ ุ ุ ุ ุ ุ ุ ุ ุ ุ ุ ุ ุ ุ ุ ุ ุ ุ ุ "
+      },
+      {
+        "id": "bottom-row-words-mue-thue",
+        "title": "ฝึกปุ่ม สระอึ",
+        "mode": "word",
+        "order": 2,
+        "newKeys": [
+          "ึ"
+        ],
+        "contentSample": "าา่าึ าึ าึ่า่ าึึา าาึ า่ึา าึา่า"
+      },
+      {
+        "id": "bottom-row-right-index-middle",
+        "title": "ฝึกปุ่ม ค",
+        "mode": "character",
+        "order": 3,
+        "newKeys": [
+          "ค"
+        ],
+        "contentSample": "า ค า ค า ค า ค า ค า ค า ค า ค า ค า ค"
+      },
+      {
+        "id": "bottom-row-words-thor-mor",
+        "title": "ผสม ุ-ึ",
+        "mode": "word",
+        "order": 4,
+        "newKeys": [],
+        "contentSample": "กาึ่ กึาาก กึุ าากา กุ่ ก่าึก "
+      },
+      {
+        "id": "bottom-row-right-ring-pinky",
+        "title": "ผสม ึ-ค",
+        "mode": "character",
+        "order": 5,
+        "newKeys": [],
+        "contentSample": "่ ึ า ค ่ ึ า ค ่ ึ า ค ่ ึ า ค ่ ึ า ค "
+      },
+      {
+        "id": "bottom-row-words-fai-nai",
+        "title": "รวม 3 ปุ่ม",
+        "mode": "word",
+        "order": 6,
+        "newKeys": [],
+        "contentSample": "าึคคา าค่า คุคึ าาา่า คุคุ คุคุ คคึค คาึ"
+      },
+      {
+        "id": "bottom-row-switch-right",
+        "title": "รวม 3 ปุ่ม แบบสุ่ม",
+        "mode": "character",
+        "order": 7,
+        "newKeys": [],
+        "contentSample": "ึ า ึ ค ่ า ค ่ ค ึ า ่ า ุ ่ ึ ุ ค ่ ่ "
+      },
+      {
+        "id": "bottom-row-words-tammai",
+        "title": "ทวนบท 1",
+        "mode": "word",
+        "order": 8,
+        "newKeys": [],
+        "contentSample": "ดือ่ึ ด่ด อ่ อด ดืุ อ่ิ อือด ดุอึด อึ่อิ"
+      },
+      {
+        "id": "bottom-row-right-combined",
+        "title": "พิมพ์สลับแถว",
+        "mode": "character",
+        "order": 9,
+        "newKeys": [],
+        "contentSample": "ุ ุ ด ด ุ ค ค ค ด ค ุ ุ ุ ด ค ค อ อ อ ุ "
+      },
+      {
+        "id": "bottom-row-chapter-2-test",
+        "title": "บอส ุ ึ ค",
+        "mode": "word",
+        "order": 10,
+        "newKeys": [],
+        "contentSample": "าาึ า่่า า่่าุ คุค คาุ าึ คาึ่ า่ค าุ คค"
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "slug": "lesson-beginner-3",
+    "title": "พิชิตแป้นเหย้า (า ร ห)",
+    "level": "beginner",
+    "order": 3,
+    "subLessonsCount": 10,
+    "subLessons": [
+      {
+        "id": "home-row-center-reach",
+        "title": "ฝึกปุ่ม า",
+        "mode": "character",
+        "order": 1,
+        "newKeys": [
+          "า"
+        ],
+        "contentSample": "า า า า า า า า า า า า า า า า า า า า"
+      },
+      {
+        "id": "home-row-words-center",
+        "title": "ฝึกปุ่ม ร",
+        "mode": "word",
+        "order": 2,
+        "newKeys": [
+          "ร"
+        ],
+        "contentSample": "าาร รรร รราร ราารา รรรา รรร รราา"
+      },
+      {
+        "id": "home-row-switch-d-e",
+        "title": "ฝึกปุ่ม ห",
+        "mode": "character",
+        "order": 3,
+        "newKeys": [
+          "ห"
+        ],
+        "contentSample": "ห ห ห ห ห ห ห ห ห ห ห ห ห ห ห ห ห ห ห ห"
+      },
+      {
+        "id": "home-row-words-mixed-1",
+        "title": "ผสม า-ร",
+        "mode": "word",
+        "order": 4,
+        "newKeys": [],
+        "contentSample": "ราา าราาร ารราา ราาา รราร รรา ารร รรา รร"
+      },
+      {
+        "id": "home-row-switch-tones",
+        "title": "ผสม ร-ห",
+        "mode": "character",
+        "order": 5,
+        "newKeys": [],
+        "contentSample": "ห ห ร ร ห ร ร ร ห ห ร ร ห ห ห ร ห ห ร ห "
+      },
+      {
+        "id": "home-row-words-tones-2",
+        "title": "รวม 3 ปุ่ม",
+        "mode": "word",
+        "order": 6,
+        "newKeys": [],
+        "contentSample": "ร หห าาห าหาห รราหร า าร หรา รารห าหรหร "
+      },
+      {
+        "id": "home-row-full-drill",
+        "title": "รวม 3 ปุ่ม แบบสุ่ม",
+        "mode": "character",
+        "order": 7,
+        "newKeys": [],
+        "contentSample": "ร า ห ห ห ห า า า ร ร ร า า า ห ห ห ห ห "
+      },
+      {
+        "id": "home-row-words-full",
+        "title": "ทบทวนบทเก่า",
+        "mode": "word",
+        "order": 8,
+        "newKeys": [],
+        "contentSample": "รก าาห หห กหร กก รรห กหาา รหหาห กาหหา รก"
+      },
+      {
+        "id": "home-row-accuracy-drill",
+        "title": "ฝึกความแม่นยำ",
+        "mode": "character",
+        "order": 9,
+        "newKeys": [],
+        "contentSample": "ร า า า ห ห ห า ห ห ร ร า า ร ร ร า ห ห "
+      },
+      {
+        "id": "home-row-chapter-3-test",
+        "title": "บอส า ร ห",
+        "mode": "word",
+        "order": 10,
+        "newKeys": [],
+        "contentSample": "าารร าหรห าหห หาหรห รห รา หห หหา าา าารร"
+      }
+    ]
+  },
+  {
+    "id": 10,
+    "slug": "lesson-intermediate-3",
+    "title": "ท ม ใ แถวล่าง",
+    "level": "intermediate",
+    "order": 3,
+    "subLessonsCount": 10,
+    "subLessons": [
+      {
+        "id": "top-row-left-index-basic",
+        "title": "ฝึกปุ่ม ท",
+        "mode": "character",
+        "order": 1,
+        "newKeys": [
+          "ท"
+        ],
+        "contentSample": "่ ท ่ ท ่ ท ่ ท ่ ท ่ ท ่ ท ่ ท ่ ท ่ ท"
+      },
+      {
+        "id": "top-row-words-phu-thu",
+        "title": "ฝึกปุ่ม ม",
+        "mode": "word",
+        "order": 2,
+        "newKeys": [
+          "ม"
+        ],
+        "contentSample": "า มม มาา มามา มาาาม า มา มาม มามม"
+      },
+      {
+        "id": "top-row-left-reach-vowel",
+        "title": "ฝึกปุ่ม สระใอ",
+        "mode": "character",
+        "order": 3,
+        "newKeys": [
+          "ใ"
+        ],
+        "contentSample": "ส ใ ส ใ ส ใ ส ใ ส ใ ส ใ ส ใ ส ใ ส ใ ส ใ "
+      },
+      {
+        "id": "top-row-words-phu-hue",
+        "title": "ผสม ท-ม",
+        "mode": "word",
+        "order": 4,
+        "newKeys": [],
+        "contentSample": "มม่ทา ม่่ท ม่ ท่ มม า่่ทา ท่่ม ม่ ทม่า่ "
+      },
+      {
+        "id": "top-row-switch-left",
+        "title": "ผสม ม-ใ",
+        "mode": "character",
+        "order": 5,
+        "newKeys": [],
+        "contentSample": "า ม ส ใ า ม ส ใ า ม ส ใ า ม ส ใ า ม ส ใ "
+      },
+      {
+        "id": "top-row-words-phupha",
+        "title": "รวม 3 ปุ่ม",
+        "mode": "word",
+        "order": 6,
+        "newKeys": [],
+        "contentSample": "ใใใา่ ม่า่ ใ่่ ใใา ส่่ส ส่ใ ใา่มท ท่่ ส่"
+      },
+      {
+        "id": "top-row-jump-left-finger",
+        "title": "รวม 3 ปุ่ม แบบสุ่ม",
+        "mode": "character",
+        "order": 7,
+        "newKeys": [],
+        "contentSample": "ท ท า ่ ม ่ ท ม ส ส ใ ม ท ท า า ่ า ใ ่ "
+      },
+      {
+        "id": "top-row-words-phap",
+        "title": "ทวนบท 1-2",
+        "mode": "word",
+        "order": 8,
+        "newKeys": [],
+        "contentSample": "ม่ใม มใ ทืึ ใุ อ่ ใิ่ด ดื ทอุดอ อ่ท่ื อม"
+      },
+      {
+        "id": "top-row-left-combined",
+        "title": "ฝึกความแม่นยำ",
+        "mode": "character",
+        "order": 9,
+        "newKeys": [],
+        "contentSample": "ท ม ท ใ ท ม ท ใ ท ม ท ใ ท ม ท ใ ท ม ท ใ "
+      },
+      {
+        "id": "top-row-chapter-3-test",
+        "title": "บอส ท ม ใ",
+        "mode": "word",
+        "order": 10,
+        "newKeys": [],
+        "contentSample": "ม่่า า่่ ท่ ใใ่่ สา มทใ มม่่า มท ทใทใ าใ"
+      }
+    ]
+  },
+  {
+    "id": 17,
+    "slug": "lesson-advanced-3",
+    "title": "คำศัพท์แถวบน",
+    "level": "advanced",
+    "order": 3,
+    "subLessonsCount": 15,
+    "subLessons": [
+      {
+        "id": "shift-bottom-left-index-middle",
+        "title": "สระอีและอือ",
+        "mode": "word",
+        "order": 1,
+        "newKeys": [],
+        "contentSample": "วันนี้วันดี ตีกลองร้องเพลง มีเงินมีทอง ป"
+      },
+      {
+        "id": "shift-words-chan-ha",
+        "title": "สระอำและไอมั้ย",
+        "mode": "word",
+        "order": 2,
+        "newKeys": [],
+        "contentSample": "กำไลข้อมือ ทำการบ้าน แนะนำตัว รำวงวันสงก"
+      },
+      {
+        "id": "shift-bottom-karan",
+        "title": "ไม้หันอากาศ",
+        "mode": "word",
+        "order": 3,
+        "newKeys": [],
+        "contentSample": "เรารักกัน วันจันทร์สดใส วิ่งผลัดระวังล้ม"
+      },
+      {
+        "id": "shift-words-karan",
+        "title": "แม่กนคนเก่ง",
+        "mode": "word",
+        "order": 4,
+        "newKeys": [],
+        "contentSample": "กินข้าวหรือยัง นกบินบนฟ้า ก้อนหินดินทราย"
+      },
+      {
+        "id": "shift-bottom-rare-chars",
+        "title": "แม่เกยเลยลง",
+        "mode": "word",
+        "order": 5,
+        "newKeys": [],
+        "contentSample": "ค้าขายร่ำรวย เจ็บเจียนตาย คุณยายใจดี ของ"
+      },
+      {
+        "id": "shift-words-tao",
+        "title": "รอเรือลอลิง",
+        "mode": "word",
+        "order": 6,
+        "newKeys": [],
+        "contentSample": "เรารักโรงเรียน ตั้งใจเรียนรู้ รถยนต์วิ่ง"
+      },
+      {
+        "id": "shift-switch-bottom",
+        "title": "บอใบไม้ปอปลา",
+        "mode": "word",
+        "order": 7,
+        "newKeys": [],
+        "contentSample": "ทำบุญล้างบาป บอกเล่าเก้าสิบ ข้างบนข้างล่"
+      },
+      {
+        "id": "shift-words-chan",
+        "title": "พอพานฟอฟัน",
+        "mode": "word",
+        "order": 8,
+        "newKeys": [],
+        "contentSample": "พาไปหาหมอ พบปะสังสรรค์ พอมีพอกิน ไฟไหม้ฟ"
+      },
+      {
+        "id": "shift-bottom-combined",
+        "title": "ไม้ม้วนใจใส",
+        "mode": "word",
+        "order": 9,
+        "newKeys": [],
+        "contentSample": "ในน้ำมีปลา เข้าใจตรงกัน น้ำใสไหลเย็น ใบไ"
+      },
+      {
+        "id": "shift-chapter-3-test",
+        "title": "คำควบกล้ำ",
+        "mode": "word",
+        "order": 10,
+        "newKeys": [],
+        "contentSample": "กราบพระประธาน พริกขี้หนูเผ็ด ปรับปรุงเปล"
+      },
+      {
+        "id": "adv-top-extra-1",
+        "title": "คำที่มีตัวการันต์",
+        "mode": "word",
+        "order": 11,
+        "newKeys": [],
+        "contentSample": "สวนสัตว์ดุสิต ยักษ์ใหญ่วิ่งไล่ วันศุกร์ส"
+      },
+      {
+        "id": "adv-top-extra-2",
+        "title": "วลีแถวบน",
+        "mode": "word",
+        "order": 12,
+        "newKeys": [],
+        "contentSample": "ไปไหนมาครับ กินข้าวกันเถอะ วันพระไม่ได้ม"
+      },
+      {
+        "id": "adv-top-extra-3",
+        "title": "ประโยคสั้น",
+        "mode": "word",
+        "order": 13,
+        "newKeys": [],
+        "contentSample": "ฉันรักกินไก่ทอดหาดใหญ่ เราไปเที่ยวทะเลกั"
+      },
+      {
+        "id": "adv-top-extra-4",
+        "title": "ประโยคยาว",
+        "mode": "word",
+        "order": 14,
+        "newKeys": [],
+        "contentSample": "วันนี้วันดีปีใหม่ท้องฟ้าแจ่มใสพาใจสุขบาน"
+      },
+      {
+        "id": "adv-top-boss",
+        "title": "บอสแถวบน",
+        "mode": "word",
+        "order": 15,
+        "newKeys": [],
+        "contentSample": "ทานข้าวเย็นหรือยัง วันนี้อากาศดีจังเลยนะ"
+      }
+    ]
+  },
+  {
+    "id": 18,
+    "slug": "lesson-advanced-4",
+    "title": "คำศัพท์แถวล่าง",
+    "level": "advanced",
+    "order": 4,
+    "subLessonsCount": 11,
+    "subLessons": [
+      {
+        "id": "shift-middle-left-index-middle",
+        "title": "สระแอและแมว",
+        "mode": "word",
+        "order": 1,
+        "newKeys": [],
+        "contentSample": "แม่แมวดูแลลูก แฉความลับ แถจนสีข้างถลอก ล"
+      },
+      {
+        "id": "shift-words-oh-bo",
+        "title": "สระอิชิมดู",
+        "mode": "word",
+        "order": 2,
+        "newKeys": [],
+        "contentSample": "นกบินกลับรัง ก้อนหินดินทราย ช่วงชิงชัยชน"
+      },
+      {
+        "id": "shift-middle-right-ring-pinky",
+        "title": "สระอูดูงู",
+        "mode": "word",
+        "order": 3,
+        "newKeys": [],
+        "contentSample": "ดูหนังฟังเพลง ปูนาขาเก งูเลื้อยเข้าบ้าน "
+      },
+      {
+        "id": "shift-words-sueksa",
+        "title": "ทอทหารมอมา",
+        "mode": "word",
+        "order": 4,
+        "newKeys": [],
+        "contentSample": "ทำดีได้ดี ทาครีมกันแดด ทุบหม้อข้าว เทน้ำ"
+      },
+      {
+        "id": "shift-switch-middle-1",
+        "title": "ผอผึ้งฝอฝา",
+        "mode": "word",
+        "order": 5,
+        "newKeys": [],
+        "contentSample": "ผีหลอกวิญญาณหลอน หน้าผาสูงชัน ผักสวนครัว"
+      },
+      {
+        "id": "shift-words-osot",
+        "title": "อออ่างฮอนกฮูก",
+        "mode": "word",
+        "order": 6,
+        "newKeys": [],
+        "contentSample": "คุณอาใจดี อีกาตาแดง อูฐอยู่ในทะเลทราย เอ"
+      },
+      {
+        "id": "shift-switch-middle-2",
+        "title": "แม่กมชมเชย",
+        "mode": "word",
+        "order": 7,
+        "newKeys": [],
+        "contentSample": "กามเทพแผลงศร เดินตามผู้ใหญ่ สอบถามเส้นทา"
+      },
+      {
+        "id": "shift-words-chan-sorn",
+        "title": "สระเอือเรือใบ",
+        "mode": "word",
+        "order": 8,
+        "newKeys": [],
+        "contentSample": "พายเรือในอ่าง เสือซ่อนเล็บ เจือจางลงไป เ"
+      },
+      {
+        "id": "shift-middle-combined",
+        "title": "สระอัววัวตัว",
+        "mode": "word",
+        "order": 9,
+        "newKeys": [],
+        "contentSample": "ตัวใครตัวมัน เจ็บหัวปวดตับ วัวหายล้อมคอก"
+      },
+      {
+        "id": "shift-chapter-4-test",
+        "title": "คำผสมแถวล่าง",
+        "mode": "word",
+        "order": 10,
+        "newKeys": [],
+        "contentSample": "ดอกมะลิซ้อน กะทิชาวเกาะ ทะเลสีคราม เวลาเ"
+      },
+      {
+        "id": "adv-bottom-boss",
+        "title": "บอสแถวล่าง",
+        "mode": "word",
+        "order": 11,
+        "newKeys": [],
+        "contentSample": "แมวขโมยกินปลาทู แม่ไปซื้อของที่ตลาดนัด ข"
+      }
+    ]
+  },
+  {
+    "id": 11,
+    "slug": "lesson-intermediate-4",
+    "title": "ฝ ภ ถ เชื่อมบนล่าง",
+    "level": "intermediate",
+    "order": 4,
+    "subLessonsCount": 10,
+    "subLessons": [
+      {
+        "id": "top-row-right-index-middle",
+        "title": "ฝึกปุ่ม ฝ",
+        "mode": "character",
+        "order": 1,
+        "newKeys": [
+          "ฝ"
+        ],
+        "contentSample": "ว ฝ ว ฝ ว ฝ ว ฝ ว ฝ ว ฝ ว ฝ ว ฝ ว ฝ ว ฝ"
+      },
+      {
+        "id": "top-row-words-ta-kha",
+        "title": "ฝึกปุ่ม ภ",
+        "mode": "word",
+        "order": 2,
+        "newKeys": [
+          "ภ"
+        ],
+        "contentSample": "ดดภภ ดภภภภ ดดด ภภด ภภด ดดดภ ดภดดภ"
+      },
+      {
+        "id": "top-row-right-ring-pinky",
+        "title": "ฝึกปุ่ม ถ",
+        "mode": "character",
+        "order": 3,
+        "newKeys": [
+          "ถ"
+        ],
+        "contentSample": "ด ถ ด ถ ด ถ ด ถ ด ถ ด ถ ด ถ ด ถ ด ถ ด ถ"
+      },
+      {
+        "id": "top-row-words-ja-kha",
+        "title": "ผสม ภ-ถ",
+        "mode": "word",
+        "order": 4,
+        "newKeys": [],
+        "contentSample": "ภถดถด ดด ถดด ภด ภด ถดถด ภภถ ภดดดภ ถด ถด "
+      },
+      {
+        "id": "top-row-right-pinky-reach",
+        "title": "ผสม ฝ-ภ",
+        "mode": "character",
+        "order": 5,
+        "newKeys": [],
+        "contentSample": "ว ฝ ด ภ ว ฝ ด ภ ว ฝ ด ภ ว ฝ ด ภ ว ฝ ด ภ "
+      },
+      {
+        "id": "top-row-words-cha-chi",
+        "title": "รวม 3 ปุ่ม",
+        "mode": "word",
+        "order": 6,
+        "newKeys": [],
+        "contentSample": "ภวฝว ถดภถว ดวภ ดวถวด ถฝภดว ฝวภดด ภดว วภว"
+      },
+      {
+        "id": "top-row-switch-right",
+        "title": "รวม 3 ปุ่ม แบบสุ่ม",
+        "mode": "character",
+        "order": 7,
+        "newKeys": [],
+        "contentSample": "ฝ ถ ฝ ภ ฝ ภ ว ฝ ภ ภ ฝ ถ ด ด ฝ ด ฝ ภ ด ฝ "
+      },
+      {
+        "id": "top-row-words-chart",
+        "title": "ทวนบท 3",
+        "mode": "word",
+        "order": 8,
+        "newKeys": [],
+        "contentSample": "ถฝมฝฝ มฝทใม มท ถใ ภมภ ฝภ ถภ ภถฝมม มฝ ภใฝ"
+      },
+      {
+        "id": "top-row-right-combined",
+        "title": "สลับบนล่าง",
+        "mode": "character",
+        "order": 9,
+        "newKeys": [],
+        "contentSample": "ภ ภ ภ ฝ ภ ภ ถ ภ ภ ภ ฝ ฝ ฝ ถ ภ ภ ฝ ถ ถ ภ "
+      },
+      {
+        "id": "top-row-chapter-4-test",
+        "title": "บอส ฝ ภ ถ",
+        "mode": "word",
+        "order": 10,
+        "newKeys": [],
+        "contentSample": "ภดดฝถ ภฝภดภ ววดด ฝภถด ฝดดวด ววดฝ ฝดภภ วภ"
+      }
+    ]
+  },
+  {
+    "id": 4,
+    "slug": "lesson-beginner-4",
+    "title": "ขึ้นแถวบนซ้าย (ส น ไ)",
+    "level": "beginner",
+    "order": 4,
+    "subLessonsCount": 10,
+    "subLessons": [
+      {
+        "id": "upper-row-left-index",
+        "title": "ฝึกปุ่ม ส",
+        "mode": "character",
+        "order": 1,
+        "newKeys": [
+          "ส"
+        ],
+        "contentSample": "ส ส ส ส ส ส ส ส ส ส ส ส ส ส ส ส ส ส ส ส"
+      },
+      {
+        "id": "upper-row-words-left",
+        "title": "ฝึกปุ่ม น",
+        "mode": "word",
+        "order": 2,
+        "newKeys": [
+          "น"
+        ],
+        "contentSample": "นนนน นสน นนส นส สส สสน นนนน นสสสน"
+      },
+      {
+        "id": "upper-row-right-index",
+        "title": "ฝึกปุ่ม สระไ",
+        "mode": "character",
+        "order": 3,
+        "newKeys": [
+          "ไ"
+        ],
+        "contentSample": "ห ไ ห ไ ห ไ ห ไ ห ไ ห ไ ห ไ ห ไ ห ไ ห ไ"
+      },
+      {
+        "id": "upper-row-words-right",
+        "title": "ผสม ส-น",
+        "mode": "word",
+        "order": 4,
+        "newKeys": [],
+        "contentSample": "นนสน นสส สสสสส นสสน สสสนส นนน สนส สนน สส"
+      },
+      {
+        "id": "upper-row-vertical-switch",
+        "title": "ผสม น-ไ",
+        "mode": "character",
+        "order": 5,
+        "newKeys": [],
+        "contentSample": "ส ส น น น ไ ส ส น น ไ ส ส ส น น ส ส ส ห "
+      },
+      {
+        "id": "upper-row-words-vertical",
+        "title": "รวม 3 ปุ่ม",
+        "mode": "word",
+        "order": 6,
+        "newKeys": [],
+        "contentSample": "สนไ ไหนหน หห ไหนนห หห หนไห ไไ นสนนน นไสไ"
+      },
+      {
+        "id": "upper-row-vowels-drill",
+        "title": "รวม 3 ปุ่ม แบบสุ่ม",
+        "mode": "character",
+        "order": 7,
+        "newKeys": [],
+        "contentSample": "ส ส ห ส ไ ห ไ ห ไ ส ไ ส ส น ไ น ส น ไ ส "
+      },
+      {
+        "id": "upper-row-words-vowels",
+        "title": "ทบทวนบทเก่า",
+        "mode": "word",
+        "order": 8,
+        "newKeys": [],
+        "contentSample": "ไไสสห นาห าหสส าสส หหหา ไหา รไาสร หรสส ไ"
+      },
+      {
+        "id": "upper-row-index-mastery",
+        "title": "สร้างคำมั่ว",
+        "mode": "word",
+        "order": 9,
+        "newKeys": [],
+        "contentSample": "หน ไไไสห นหไหห ไนสหน หไส ไหน หห นสน ไไ ห"
+      },
+      {
+        "id": "upper-row-chapter-4-test",
+        "title": "บอส ส น ไ",
+        "mode": "word",
+        "order": 10,
+        "newKeys": [],
+        "contentSample": "หนไ สไไไ นนส หหสไ ไไสสน สไ นสหส สหนส ไส "
+      }
+    ]
+  },
+  {
+    "id": 12,
+    "slug": "lesson-intermediate-5",
+    "title": "ผ ป แ นิ้วก้อย",
+    "level": "intermediate",
+    "order": 5,
+    "subLessonsCount": 10,
+    "subLessons": [
+      {
+        "id": "review-bottom-row-drill",
+        "title": "ฝึกปุ่ม ผ",
+        "mode": "character",
+        "order": 1,
+        "newKeys": [
+          "ผ"
+        ],
+        "contentSample": "ฟ ผ ฟ ผ ฟ ผ ฟ ผ ฟ ผ ฟ ผ ฟ ผ ฟ ผ ฟ ผ ฟ ผ"
+      },
+      {
+        "id": "review-bottom-words-mae",
+        "title": "ฝึกปุ่ม ป",
+        "mode": "word",
+        "order": 2,
+        "newKeys": [
+          "ป"
+        ],
+        "contentSample": "ปหป หหปปห หหปหป ปห ปห ปปปหห ปห"
+      },
+      {
+        "id": "review-bottom-vowels",
+        "title": "ฝึกปุ่ม สระแอ",
+        "mode": "character",
+        "order": 3,
+        "newKeys": [
+          "แ"
+        ],
+        "contentSample": "ก แ ก แ ก แ ก แ ก แ ก แ ก แ ก แ ก แ ก แ"
+      },
+      {
+        "id": "review-bottom-words-jai",
+        "title": "ผสม ผ-ป",
+        "mode": "word",
+        "order": 4,
+        "newKeys": [],
+        "contentSample": "หผปหห ปปผห ปปผฟป ปฟฟห ฟฟฟห ฟหฟ หผผ ปปปผ "
+      },
+      {
+        "id": "review-bottom-switch-hard",
+        "title": "ผสม ป-แ",
+        "mode": "character",
+        "order": 5,
+        "newKeys": [],
+        "contentSample": "ห ป ก แ ห ป ก แ ห ป ก แ ห ป ก แ ห ป ก แ "
+      },
+      {
+        "id": "review-bottom-words-phi",
+        "title": "รวม 3 ปุ่ม",
+        "mode": "word",
+        "order": 6,
+        "newKeys": [],
+        "contentSample": "หป กหฟ กกป ฟหผหก ผปหกฟ ฟปหป กปผ กผแ กกฟ "
+      },
+      {
+        "id": "review-bottom-jump-fast",
+        "title": "รวม 3 ปุ่ม แบบสุ่ม",
+        "mode": "character",
+        "order": 7,
+        "newKeys": [],
+        "contentSample": "ห ผ ผ ป ป ป ผ ผ ฟ แ แ ป ฟ ก ก ผ ป ผ ป ผ "
+      },
+      {
+        "id": "review-bottom-words-tammai",
+        "title": "ทวนบท 4",
+        "mode": "word",
+        "order": 8,
+        "newKeys": [],
+        "contentSample": "ผฝแผป ภป ภป ฝภ ผปภภ ผถผ ถป แป แภ ถถถฝ ฝฝ"
+      },
+      {
+        "id": "review-bottom-full-drill",
+        "title": "สลับนิ้วยาก",
+        "mode": "character",
+        "order": 9,
+        "newKeys": [],
+        "contentSample": "แ ป ป ผ ผ ป ผ ป ป ผ ผ แ แ ป ป ป แ แ ผ ผ "
+      },
+      {
+        "id": "review-bottom-exam",
+        "title": "บอส ผ ป แ",
+        "mode": "word",
+        "order": 10,
+        "newKeys": [],
+        "contentSample": "ปหฟผ ปป หปฟห กกปแ กหแกป หกหฟผ ผกกผก ผห ห"
+      }
+    ]
+  },
+  {
+    "id": 19,
+    "slug": "lesson-advanced-5",
+    "title": "เครื่องหมายพื้นฐาน",
+    "level": "advanced",
+    "order": 5,
+    "subLessonsCount": 13,
+    "subLessons": [
+      {
+        "id": "shift-vertical-switch",
+        "title": "ไม้ยมก",
+        "mode": "word",
+        "order": 1,
+        "newKeys": [],
+        "contentSample": "เดินดีๆ ระวังล้ม วิ่งเร็วๆ หน่อย แต่งตัว"
+      },
+      {
+        "id": "shift-words-ruek",
+        "title": "ไม้ยมกในประโยค",
+        "mode": "word",
+        "order": 2,
+        "newKeys": [],
+        "contentSample": "เดินไปๆ มาๆ น่าเวียนหัว พูดๆ ไปเถอะไม่มี"
+      },
+      {
+        "id": "shift-horizontal-switch",
+        "title": "ไปยาลน้อย",
+        "mode": "word",
+        "order": 3,
+        "newKeys": [],
+        "contentSample": "กรุงเทพฯ เมืองหลวง โปรดเกล้าฯ แต่งตั้ง ท"
+      },
+      {
+        "id": "shift-words-yart",
+        "title": "มหัพภาคหรือจุด",
+        "mode": "word",
+        "order": 4,
+        "newKeys": [],
+        "contentSample": "เดือน ต.ค. และ ม.ค. พุทธศักราช พ.ศ. ส่ง "
+      },
+      {
+        "id": "thai-numbers-1-5",
+        "title": "จุลภาคหรือลูกน้ำ",
+        "mode": "word",
+        "order": 5,
+        "newKeys": [],
+        "contentSample": "นับหนึ่ง, สอง, สาม แม่สีมี แดง, เขียว, เ"
+      },
+      {
+        "id": "thai-numbers-words-1",
+        "title": "อัญประกาศ",
+        "mode": "word",
+        "order": 6,
+        "newKeys": [],
+        "contentSample": "เขากล่าวว่า \"สวัสดีครับ\" เธอพูดว่า \"ขอบค"
+      },
+      {
+        "id": "thai-numbers-6-0",
+        "title": "นขลิขิตหรือวงเล็บ",
+        "mode": "word",
+        "order": 7,
+        "newKeys": [],
+        "contentSample": "ข้อ (ก) ถูกทุกข้อ (ข) ผิดบางข้อ (หมายเหต"
+      },
+      {
+        "id": "thai-numbers-words-2",
+        "title": "ยัติภังค์",
+        "mode": "word",
+        "order": 8,
+        "newKeys": [],
+        "contentSample": "รถไฟสาย กรุงเทพ-เชียงใหม่ เสื้อลาย แดง-ด"
+      },
+      {
+        "id": "thai-numbers-combined",
+        "title": "เครื่องหมายทับ",
+        "mode": "word",
+        "order": 9,
+        "newKeys": [],
+        "contentSample": "บ้านเลขที่ 123/4 ชั้น 5 ห้อง 6 ป.6/1 อำเ"
+      },
+      {
+        "id": "shift-chapter-5-test",
+        "title": "ผสมเครื่องหมาย",
+        "mode": "word",
+        "order": 10,
+        "newKeys": [],
+        "contentSample": "เรื่องนี้เกิดขึ้นจริงๆ นะ (เขาบอกมาแบบนั"
+      },
+      {
+        "id": "adv-punc-extra-1",
+        "title": "เครื่องหมายตกใจ",
+        "mode": "word",
+        "order": 11,
+        "newKeys": [],
+        "contentSample": "โอ้โห! สวยจังเลย ระวัง! รถชน ช่วยด้วย! ข"
+      },
+      {
+        "id": "adv-punc-extra-2",
+        "title": "เครื่องหมายคำถาม",
+        "mode": "word",
+        "order": 12,
+        "newKeys": [],
+        "contentSample": "เรื่องจริงเหรอ? ใครเป็นคนทำ? ที่ไหนมีขาย"
+      },
+      {
+        "id": "adv-punc-boss",
+        "title": "บอสเครื่องหมาย",
+        "mode": "word",
+        "order": 13,
+        "newKeys": [],
+        "contentSample": "เด็กๆ เล่นกันสนุกสนาน \"ระวังตัวด้วยนะลูก"
+      }
+    ]
+  },
+  {
+    "id": 5,
+    "slug": "lesson-beginner-5",
+    "title": "พิชิตแถวบนขวา (ฟ ว ย)",
+    "level": "beginner",
+    "order": 5,
+    "subLessonsCount": 10,
+    "subLessons": [
+      {
+        "id": "upper-row-left-middle-ring",
+        "title": "ฝึกปุ่ม ฟ",
+        "mode": "character",
+        "order": 1,
+        "newKeys": [
+          "ฟ"
+        ],
+        "contentSample": "ฟ ฟ ฟ ฟ ฟ ฟ ฟ ฟ ฟ ฟ ฟ ฟ ฟ ฟ ฟ ฟ ฟ ฟ ฟ ฟ"
+      },
+      {
+        "id": "upper-row-words-left-extended",
+        "title": "ฝึกปุ่ม ว",
+        "mode": "word",
+        "order": 2,
+        "newKeys": [
+          "ว"
+        ],
+        "contentSample": "ว วว ววว วววว ววววว ว วว ววว วววว"
+      },
+      {
+        "id": "upper-row-right-middle-ring",
+        "title": "ฝึกปุ่ม ย",
+        "mode": "character",
+        "order": 3,
+        "newKeys": [
+          "ย"
+        ],
+        "contentSample": "ว ย ว ย ว ย ว ย ว ย ว ย ว ย ว ย ว ย ว ย"
+      },
+      {
+        "id": "upper-row-words-right-extended",
+        "title": "ผสม ฟ-ว",
+        "mode": "word",
+        "order": 4,
+        "newKeys": [],
+        "contentSample": "ววฟฟ วฟฟว วฟว ฟวฟ วฟฟ ววว วววว ฟววว ฟว ว"
+      },
+      {
+        "id": "upper-row-vertical-switch-2",
+        "title": "ผสม ว-ย",
+        "mode": "character",
+        "order": 5,
+        "newKeys": [],
+        "contentSample": "ว ย ย ว ย ว ย ย ว ย ย ว ว ย ย ว ว ว ย ย "
+      },
+      {
+        "id": "upper-row-words-vertical-2",
+        "title": "รวม 3 ปุ่ม",
+        "mode": "word",
+        "order": 6,
+        "newKeys": [],
+        "contentSample": "วยฟ วยยว ยฟยฟ ฟว ยยฟวฟ ยว ยฟ วฟ วฟ ยฟฟยว"
+      },
+      {
+        "id": "upper-row-vowels-ai-am",
+        "title": "รวม 3 ปุ่ม แบบสุ่ม",
+        "mode": "character",
+        "order": 7,
+        "newKeys": [],
+        "contentSample": "ฟ ฟ ฟ ย ว ย ฟ ว ว ว ฟ ฟ ฟ ว ฟ ว ว ว ย ว "
+      },
+      {
+        "id": "upper-row-words-vowels-2",
+        "title": "ทบทวนบทเก่า",
+        "mode": "word",
+        "order": 8,
+        "newKeys": [],
+        "contentSample": "นยฟนย ฟสสยน ยยฟนย ยน ฟยน ยฟยฟ วฟนส ววนสว"
+      },
+      {
+        "id": "upper-row-middle-ring-mastery",
+        "title": "สร้างคำมั่ว",
+        "mode": "word",
+        "order": 9,
+        "newKeys": [],
+        "contentSample": "วฟวย วย ววฟ ฟฟฟย ยฟ วฟฟฟว วยฟย ยยว ฟฟฟฟว"
+      },
+      {
+        "id": "upper-row-chapter-5-test",
+        "title": "บอส ฟ ว ย",
+        "mode": "word",
+        "order": 10,
+        "newKeys": [],
+        "contentSample": "ฟวว วฟยย ฟฟฟ วฟ วยฟยฟ วยยยว วฟ ฟฟฟว ววย "
+      }
+    ]
+  },
+  {
+    "id": 13,
+    "slug": "lesson-intermediate-6",
+    "title": "ต จ ข แถวบนขวา",
+    "level": "intermediate",
+    "order": 6,
+    "subLessonsCount": 10,
+    "subLessons": [
+      {
+        "id": "review-top-row-drill",
+        "title": "ฝึกปุ่ม ต",
+        "mode": "character",
+        "order": 1,
+        "newKeys": [
+          "ต"
+        ],
+        "contentSample": "ส ต ส ต ส ต ส ต ส ต ส ต ส ต ส ต ส ต ส ต"
+      },
+      {
+        "id": "review-top-row-words-phukhao",
+        "title": "ฝึกปุ่ม จ",
+        "mode": "word",
+        "order": 2,
+        "newKeys": [
+          "จ"
+        ],
+        "contentSample": "จวววว วจววจ จจว วววจจ จจจว จจจ"
+      },
+      {
+        "id": "review-top-vowels",
+        "title": "ฝึกปุ่ม ข",
+        "mode": "character",
+        "order": 3,
+        "newKeys": [
+          "ข"
+        ],
+        "contentSample": "ว ข ว ข ว ข ว ข ว ข ว ข ว ข ว ข ว ข ว ข"
+      },
+      {
+        "id": "review-top-words-thura",
+        "title": "ผสม ต-จ",
+        "mode": "word",
+        "order": 4,
+        "newKeys": [],
+        "contentSample": "จวจจส ตวสตว สตวส จตจตส ววต ววสจจ ตตจ สสต"
+      },
+      {
+        "id": "review-top-switch-hard",
+        "title": "ผสม จ-ข",
+        "mode": "character",
+        "order": 5,
+        "newKeys": [],
+        "contentSample": "ว จ ว ข ว จ ว ข ว จ ว ข ว จ ว ข ว จ ว ข "
+      },
+      {
+        "id": "review-top-words-phop",
+        "title": "รวม 3 ปุ่ม",
+        "mode": "word",
+        "order": 6,
+        "newKeys": [],
+        "contentSample": "ข จส ขจจ จววส จวตวว ว จว จขจ จจขจ วขตวต "
+      },
+      {
+        "id": "review-top-jump-fast",
+        "title": "รวม 3 ปุ่ม แบบสุ่ม",
+        "mode": "character",
+        "order": 7,
+        "newKeys": [],
+        "contentSample": "ต ส ว ต ข ว ส ว ส ต ส ว ว จ ส ข ว จ ว ว "
+      },
+      {
+        "id": "review-top-words-kata",
+        "title": "ทวนบท 5",
+        "mode": "word",
+        "order": 8,
+        "newKeys": [],
+        "contentSample": "ผปจ ผปผ ตปปจ ขตปผป แผจข จผปขจ ปตขผข จผ ผ"
+      },
+      {
+        "id": "review-top-full-drill",
+        "title": "สลับนิ้วก้อย",
+        "mode": "character",
+        "order": 9,
+        "newKeys": [],
+        "contentSample": "จ จ จ ว ว ว จ ข จ ข ข ข ว ว ว ข ข ข จ ข "
+      },
+      {
+        "id": "review-top-exam",
+        "title": "บอส ต จ ข",
+        "mode": "word",
+        "order": 10,
+        "newKeys": [],
+        "contentSample": "ขว ขจวสจ จขขส จตขส สตจ สตจสส จวขจจ สว สว"
+      }
+    ]
+  },
+  {
+    "id": 20,
+    "slug": "lesson-advanced-6",
+    "title": "เครื่องหมายขั้นสูง",
+    "level": "advanced",
+    "order": 6,
+    "subLessonsCount": 10,
+    "subLessons": [
+      {
+        "id": "shift-speed-drill-1",
+        "title": "ตัวการันต์",
+        "mode": "word",
+        "order": 1,
+        "newKeys": [],
+        "contentSample": "วันเสาร์และวันอาทิตย์ ดวงจันทร์วันเพ็ญ ส"
+      },
+      {
+        "id": "formal-words-law",
+        "title": "ไม้ไต่คู้",
+        "mode": "word",
+        "order": 2,
+        "newKeys": [],
+        "contentSample": "ก็เป็นอย่างนั้นแหละ เห็นกันอยู่หลัดๆ น้ำ"
+      },
+      {
+        "id": "shift-speed-drill-2",
+        "title": "คำทับศัพท์",
+        "mode": "word",
+        "order": 3,
+        "newKeys": [],
+        "contentSample": "คอมพิวเตอร์สมัยใหม่ ท่องโลกอินเทอร์เน็ต "
+      },
+      {
+        "id": "formal-words-org",
+        "title": "ตัวฤาตัวฦา",
+        "mode": "word",
+        "order": 4,
+        "newKeys": [],
+        "contentSample": "ฤดูฝนชุ่มฉ่ำ ฤษีบำเพ็ญเพียร พฤกษานานาพัน"
+      },
+      {
+        "id": "shift-symbols-drill",
+        "title": "หญิงใหญ่ฐาน",
+        "mode": "word",
+        "order": 5,
+        "newKeys": [],
+        "contentSample": "ผู้หญิงคนนั้น บ้านหลังใหญ่ หญ้าขึ้นรก เจ"
+      },
+      {
+        "id": "formal-words-bkk",
+        "title": "ฎาฏัก",
+        "mode": "word",
+        "order": 6,
+        "newKeys": [],
+        "contentSample": "กฎกติกา กบฏแผ่นดิน ปรากฏกาย มงกุฎดอกส้ม "
+      },
+      {
+        "id": "formal-sentence-1",
+        "title": "เฌอผู้เฒ่า",
+        "mode": "word",
+        "order": 7,
+        "newKeys": [],
+        "contentSample": "น้องเฌอเอม ผู้เฒ่าเล่านิทาน พัฒนาชนบท วั"
+      },
+      {
+        "id": "formal-sentence-2",
+        "title": "เครื่องหมายคำนวณ",
+        "mode": "word",
+        "order": 8,
+        "newKeys": [],
+        "contentSample": "บวก ลบ คูณ หาร ผลลัพธ์เท่ากับ ห้าสิบเปอร"
+      },
+      {
+        "id": "formal-sentence-3",
+        "title": "ไปยาลใหญ่",
+        "mode": "word",
+        "order": 9,
+        "newKeys": [],
+        "contentSample": "ผลไม้ไทยมี เงาะ ทุเรียน มังคุด ฯลฯ สัตว์"
+      },
+      {
+        "id": "formal-sentence-4",
+        "title": "บอสเครื่องหมายยาก",
+        "mode": "word",
+        "order": 10,
+        "newKeys": [],
+        "contentSample": "วันจันทร์ที่ทำการไปรษณีย์หยุด ฤดูฝนอากาศ"
+      }
+    ]
+  },
+  {
+    "id": 6,
+    "slug": "lesson-beginner-6",
+    "title": "สระเปิดปิด (สระอะ ไม้หัน สระเ)",
+    "level": "beginner",
+    "order": 6,
+    "subLessonsCount": 10,
+    "subLessons": [
+      {
+        "id": "upper-row-right-pinky-reach",
+        "title": "ฝึกปุ่ม สระะ",
+        "mode": "character",
+        "order": 1,
+        "newKeys": [
+          "ะ"
+        ],
+        "contentSample": "ด ะ ด ะ ด ะ ด ะ ด ะ ด ะ ด ะ ด ะ ด ะ ด ะ"
+      },
+      {
+        "id": "upper-row-words-right-reach",
+        "title": "ฝึกปุ่ม ไม้หัน",
+        "mode": "word",
+        "order": 2,
+        "newKeys": [
+          "ั"
+        ],
+        "contentSample": "ด ดา ดัา ดาัา าดาัด า ด่ า่่ ดดาา"
+      },
+      {
+        "id": "upper-row-left-pinky",
+        "title": "ฝึกปุ่ม สระเ",
+        "mode": "character",
+        "order": 3,
+        "newKeys": [
+          "เ"
+        ],
+        "contentSample": "ด เ ด เ ด เ ด เ ด เ ด เ ด เ ด เ ด เ ด เ"
+      },
+      {
+        "id": "upper-row-words-left-pinky",
+        "title": "ผสม ะ-ั",
+        "mode": "word",
+        "order": 4,
+        "newKeys": [],
+        "contentSample": "ด่ัดั ดดััด ะ่ด ะั ดดั ดด่ด ด่ัะ ด่ะัั ะ"
+      },
+      {
+        "id": "upper-row-switch-right",
+        "title": "ผสม ั-เ",
+        "mode": "character",
+        "order": 5,
+        "newKeys": [],
+        "contentSample": "่ ่ ่ เ ่ ่ ่ ั ั ั ่ เ เ ด ด ่ ่ ั ั ั "
+      },
+      {
+        "id": "upper-row-words-mixed",
+        "title": "รวม 3 ปุ่ม",
+        "mode": "word",
+        "order": 6,
+        "newKeys": [],
+        "contentSample": "ดััดด ะะะด ดดั ดััด่ เเัดั เเ เเ เ่ดั่ ด"
+      },
+      {
+        "id": "upper-row-jump-drill",
+        "title": "รวม 3 ปุ่ม แบบสุ่ม",
+        "mode": "character",
+        "order": 7,
+        "newKeys": [],
+        "contentSample": "ั ะ ด เ ่ ่ ะ ด ะ ่ ะ ด เ ะ ่ ะ ด ด ด ด "
+      },
+      {
+        "id": "upper-row-words-jump",
+        "title": "ทบทวนคำสระ",
+        "mode": "word",
+        "order": 8,
+        "newKeys": [],
+        "contentSample": "ก ะะ ะีี ะกีั เะััะ ะ ะั ะีเ กัีก กกเัั "
+      },
+      {
+        "id": "upper-row-full-drill",
+        "title": "สร้างคำมั่ว",
+        "mode": "word",
+        "order": 9,
+        "newKeys": [],
+        "contentSample": "ะั่ด ด่่ ะเัเ ด่ ดั เ่ เัั ะ่ะัเ เะ่ัเ เ"
+      },
+      {
+        "id": "upper-row-chapter-6-test",
+        "title": "บอส ะ ั เ",
+        "mode": "word",
+        "order": 10,
+        "newKeys": [],
+        "contentSample": "ะั เดัะ ดั เะ ะัด่่ เั ดัดดะ เะัด่ ดะเดเ"
+      }
+    ]
+  },
+  {
+    "id": 7,
+    "slug": "lesson-beginner-7",
+    "title": "วรรณยุกต์และสระลอย (ไม้โท สระอิ สระอือ)",
+    "level": "beginner",
+    "order": 7,
+    "subLessonsCount": 10,
+    "subLessons": [
+      {
+        "id": "review-home-row-speed",
+        "title": "ฝึกปุ่ม ไม้โท",
+        "mode": "character",
+        "order": 1,
+        "newKeys": [
+          "้"
+        ],
+        "contentSample": "่ ้ ่ ด ่ ้ ่ ด ่ ้ ่ ด ่ ้ ่ ด ่ ้ ่ ด"
+      },
+      {
+        "id": "review-words-home-row",
+        "title": "ฝึกปุ่ม สระิ",
+        "mode": "word",
+        "order": 2,
+        "newKeys": [
+          "ิ"
+        ],
+        "contentSample": "ดิ ดดด ดิ ดิดิ ดิิดด ดิดิ ดิิด"
+      },
+      {
+        "id": "review-upper-row-speed",
+        "title": "ฝึกปุ่ม สระื",
+        "mode": "character",
+        "order": 3,
+        "newKeys": [
+          "ื"
+        ],
+        "contentSample": "่ ื ่ ด ่ ื ่ ด ่ ื ่ ด ่ ื ่ ด ่ ื ่ ด"
+      },
+      {
+        "id": "review-words-upper-row",
+        "title": "ผสม ้-ิ",
+        "mode": "word",
+        "order": 4,
+        "newKeys": [],
+        "contentSample": "ด ด่ ดิด ด้ิด ด่ด้่ ด ดด ดดด ดด้ิ ดิด้ิ "
+      },
+      {
+        "id": "review-switch-rows-drill",
+        "title": "ผสม ิ-ื",
+        "mode": "character",
+        "order": 5,
+        "newKeys": [],
+        "contentSample": "ิ ิ ิ ด ด ื ื ด ด ด ื ื ่ ื ิ ื ื ื ่ ่ "
+      },
+      {
+        "id": "review-words-mixed-1",
+        "title": "รวม 3 ปุ่ม",
+        "mode": "word",
+        "order": 6,
+        "newKeys": [],
+        "contentSample": "ดดื ดด่ดื ดดด ดด ด้ืดด ดด่ ด้ด่ ดด ดดิิด"
+      },
+      {
+        "id": "review-pinky-focus",
+        "title": "รวม 3 ปุ่ม แบบสุ่ม",
+        "mode": "character",
+        "order": 7,
+        "newKeys": [],
+        "contentSample": "ด ื ื ่ ิ ่ ื ่ ่ ่ ้ ่ ่ ด ่ ่ ด ด ้ ื "
+      },
+      {
+        "id": "review-words-mixed-2",
+        "title": "ทบทวนสระทั้งหมด",
+        "mode": "word",
+        "order": 8,
+        "newKeys": [],
+        "contentSample": "าเดะะ เะดเ ดัเดด า้ิะ าืา้ั ะัืา ดดั ดิ้"
+      },
+      {
+        "id": "beginner-final-drill",
+        "title": "รวมทุกปุ่ม",
+        "mode": "character",
+        "order": 9,
+        "newKeys": [],
+        "contentSample": "่ น ส น น ก ร ส ำ ็ ี ห ไ ด พ ี ็ ก ำ ำ "
+      },
+      {
+        "id": "beginner-final-exam",
+        "title": "บอสใหญ่",
+        "mode": "word",
+        "order": 10,
+        "newKeys": [],
+        "contentSample": "กี ฟนสส ฟีฟี่ นาก่่ สฟ สร กไำี ว่ำ ดีส น"
+      }
+    ]
+  },
+  {
+    "id": 21,
+    "slug": "lesson-advanced-7",
+    "title": "ประโยคความเร็ว",
+    "level": "advanced",
+    "order": 7,
+    "subLessonsCount": 16,
+    "subLessons": [
+      {
+        "id": "advanced-final-warmup",
+        "title": "ประโยคบอกเล่า",
+        "mode": "word",
+        "order": 1,
+        "newKeys": [],
+        "contentSample": "ฉันชื่อสมชาย ยินดีที่ได้รู้จักครับ เธอชื"
+      },
+      {
+        "id": "advanced-final-royal-words",
+        "title": "ประโยคคำถาม",
+        "mode": "word",
+        "order": 2,
+        "newKeys": [],
+        "contentSample": "คุณกินข้าวเช้าหรือยังครับ จะออกไปข้างนอก"
+      },
+      {
+        "id": "advanced-final-proper-names",
+        "title": "ประโยคปฏิเสธ",
+        "mode": "word",
+        "order": 3,
+        "newKeys": [],
+        "contentSample": "ฉันไม่รู้อะไรเลยจริงๆ เรื่องนี้ไม่ใช่ควา"
+      },
+      {
+        "id": "advanced-final-essay-1",
+        "title": "ประโยคขอร้อง",
+        "mode": "word",
+        "order": 4,
+        "newKeys": [],
+        "contentSample": "ช่วยหยิบของให้หน่อยได้ไหม ขอทางเดินหน่อย"
+      },
+      {
+        "id": "advanced-final-essay-2",
+        "title": "สำนวนไทย",
+        "mode": "word",
+        "order": 5,
+        "newKeys": [],
+        "contentSample": "ไก่งามเพราะขน คนงามเพราะแต่ง น้ำขึ้นให้ร"
+      },
+      {
+        "id": "advanced-final-essay-3",
+        "title": "คำคมสอนใจ",
+        "mode": "word",
+        "order": 6,
+        "newKeys": [],
+        "contentSample": "ความพยายามอยู่ที่ไหน ความสำเร็จอยู่ที่นั"
+      },
+      {
+        "id": "advanced-final-essay-4",
+        "title": "เพลงชาติไทย",
+        "mode": "word",
+        "order": 7,
+        "newKeys": [],
+        "contentSample": "ประเทศไทยรวมเลือดเนื้อชาติเชื้อไทย เป็นป"
+      },
+      {
+        "id": "advanced-final-poem",
+        "title": "บทสนทนา",
+        "mode": "word",
+        "order": 8,
+        "newKeys": [],
+        "contentSample": "ฮัลโหล สวัสดีครับ สบายดีไหมครับ ผมสบายดี"
+      },
+      {
+        "id": "advanced-final-the-end",
+        "title": "ประโยคลิ้นพัน",
+        "mode": "word",
+        "order": 9,
+        "newKeys": [],
+        "contentSample": "เช้าฟาดผัดฟัก เย็นฟาดฟักผัด ยานัดหมอมีแก"
+      },
+      {
+        "id": "advanced-final-bonus",
+        "title": "ข่าวสั้นทันโลก",
+        "mode": "word",
+        "order": 10,
+        "newKeys": [],
+        "contentSample": "ราคาทองคำวันนี้ปรับตัวสูงขึ้นอย่างต่อเนื"
+      },
+      {
+        "id": "adv-quick-extra-1",
+        "title": "ลิ้นพันระดับสอง",
+        "mode": "word",
+        "order": 11,
+        "newKeys": [],
+        "contentSample": "กาก้ากิกี้กููกู เดินดีดีเดี๋ยวล้ม ยายกิน"
+      },
+      {
+        "id": "adv-quick-extra-2",
+        "title": "ลิ้นพันระดับสาม",
+        "mode": "word",
+        "order": 12,
+        "newKeys": [],
+        "contentSample": "หมูหมึกกุ้งหุงอุ่นตุ๋นต้มนึ่ง ใครขายไข่ไ"
+      },
+      {
+        "id": "adv-quick-extra-3",
+        "title": "คำขวัญ",
+        "mode": "word",
+        "order": 13,
+        "newKeys": [],
+        "contentSample": "เด็กเอ๋ยเด็กดี ต้องมีหน้าที่สิบอย่างด้วย"
+      },
+      {
+        "id": "adv-quick-extra-4",
+        "title": "กลอนสั้น",
+        "mode": "word",
+        "order": 14,
+        "newKeys": [],
+        "contentSample": "แล้วสอนว่าอย่าไว้ใจมนุษย์ มันแสนสุดลึกล้"
+      },
+      {
+        "id": "adv-quick-extra-5",
+        "title": "ปรัชญาชีวิต",
+        "mode": "word",
+        "order": 15,
+        "newKeys": [],
+        "contentSample": "ระยะทางพิสูจน์ม้า กาลเวลาพิสูจน์คน ความด"
+      },
+      {
+        "id": "adv-quick-boss",
+        "title": "บอสประโยคความเร็ว",
+        "mode": "word",
+        "order": 16,
+        "newKeys": [],
+        "contentSample": "ขอให้ทุกคนมีความสุขกับการฝึกพิมพ์ดีด และ"
+      }
+    ]
+  },
+  {
+    "id": 14,
+    "slug": "lesson-intermediate-7",
+    "title": "ช ตัวสุดท้าย และทบทวน",
+    "level": "intermediate",
+    "order": 7,
+    "subLessonsCount": 10,
+    "subLessons": [
+      {
+        "id": "intermediate-final-bottom-drill",
+        "title": "ฝึกปุ่ม ช",
+        "mode": "character",
+        "order": 1,
+        "newKeys": [
+          "ช"
+        ],
+        "contentSample": "ว ช ว ช ว ช ว ช ว ช ว ช ว ช ว ช ว ช ว ช"
+      },
+      {
+        "id": "intermediate-final-bottom-words",
+        "title": "ฝึกปุ่ม ช (Word)",
+        "mode": "word",
+        "order": 2,
+        "newKeys": [],
+        "contentSample": "ชวชช วชชชว วชว ชชวว วชว ชชววช "
+      },
+      {
+        "id": "intermediate-final-top-drill",
+        "title": "ผสม ช-ข",
+        "mode": "character",
+        "order": 3,
+        "newKeys": [],
+        "contentSample": "ข ข ว ช ว ช ช ว ว ว ข ข ข ว ช ช ช ว ข ข "
+      },
+      {
+        "id": "intermediate-final-top-words",
+        "title": "ทบทวนก้อยบน",
+        "mode": "word",
+        "order": 4,
+        "newKeys": [],
+        "contentSample": "จวววว ววขว วชจช วจขขว ขขว วววจ จวจ ววจช "
+      },
+      {
+        "id": "intermediate-final-jump-rows",
+        "title": "ทวนนิ้วชี้",
+        "mode": "character",
+        "order": 5,
+        "newKeys": [],
+        "contentSample": "่ ่ อ อ ่ ่ อ อ อ ่ อ อ อ ิ ิ ด ิ ิ อ อ "
+      },
+      {
+        "id": "intermediate-final-words-cross",
+        "title": "ทวนแถวล่าง",
+        "mode": "word",
+        "order": 6,
+        "newKeys": [],
+        "contentSample": "ใือือ ฝิิแ ฝฝอ ฝิืใ ฝิอใิ ใแแืแ ใิฝื แื "
+      },
+      {
+        "id": "intermediate-final-jump-far",
+        "title": "ทวนแถวบน",
+        "mode": "word",
+        "order": 7,
+        "newKeys": [],
+        "contentSample": "ค ภถ ชถึ ถุคึ ถขึึถ ค คข จภึ ถุุภ ถุึภค "
+      },
+      {
+        "id": "intermediate-final-words-hard",
+        "title": "รวมสลับแถว",
+        "mode": "character",
+        "order": 8,
+        "newKeys": [],
+        "contentSample": "ุ ถ ป ุ ผ ภ ผ ึ ถ ภ แ แ แ ภ ภ ต ุ ป ึ ป "
+      },
+      {
+        "id": "intermediate-final-drill-all",
+        "title": "รวมญาติระดับกลาง",
+        "mode": "character",
+        "order": 9,
+        "newKeys": [],
+        "contentSample": "ภ แ ิ ต ต ถ แ ช อ ุ ต ถ ค ึ แ ช ท แ ฝ ท "
+      },
+      {
+        "id": "intermediate-final-boss",
+        "title": "บอสระดับกลาง",
+        "mode": "word",
+        "order": 10,
+        "newKeys": [],
+        "contentSample": "ถุมุม อืึคุ ปึึต ถุื ภอุภ ปุมตึ ถป จฝุือ"
+      }
+    ]
+  }
+]

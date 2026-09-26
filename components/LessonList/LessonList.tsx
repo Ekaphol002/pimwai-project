@@ -1,6 +1,6 @@
 "use client";
 
-import { Play, RotateCcw, Star } from 'lucide-react';
+import { Play, RotateCcw, Star, Award, ArrowRight, Check } from 'lucide-react';
 import Link from 'next/link';
 
 // --- 1. Interfaces (ปรับปรุงใหม่ให้รับข้อมูลจาก DB ได้) ---
@@ -127,7 +127,7 @@ function InteractiveBar({
       isClickable = true;
     } else if (isNextUp) {
       // ปกติสีเทา แต่ Hover แล้วเป็นสีเหลือง
-      colorClass = 'bg-gray-200 hover:bg-yellow-400'; 
+      colorClass = 'bg-gray-200 hover:bg-yellow-400';
       isClickable = true;
     }
   }
@@ -187,9 +187,61 @@ export default function LessonList({ title, lessons }: LessonListProps) {
   return (
     <div className="w-[90%] bg-[#5cb5db] rounded-b-lg p-6 pt-1 text-white shadow-xl text-left font-logo ml-11">
       <hr className="border-1 mt-4 mb-4" />
+
       <h2 className="text-2xl mb-4 font-bold animate-fadeInDown">
         {title}
       </h2>
+
+      {/* 🏆 Victory Celebration Banner (อยู่ใต้หัวข้อแบบฝึกหัด และสีป้ายปลดล็อกเปลี่ยนตามสกิลบัฟ) */}
+      {lessons.length > 0 && lessons.every(l => l.status === 'completed') && (() => {
+        const isBeginner = title.includes('เริ่มต้น') || title.includes('Beginner');
+        const isIntermediate = title.includes('ปานกลาง') || title.includes('Intermediate');
+        const nextHref = isBeginner ? '/lessons?level=intermediate' : isIntermediate ? '/lessons?level=advanced' : '/lessons';
+        const nextLabel = 'ระดับต่อไป';
+        const buffName = isBeginner ? 'เกราะป้องกัน Double Shield' : isIntermediate ? 'คำทองคำ Golden Words +15%' : 'สถานะปรมาจารย์พิมพ์ไว';
+
+        // สีป้ายปลดล็อกตามสกิล: เขียว (เกราะป้องกัน), ส้ม/ทอง (คำทองคำ), ม่วง (บัฟระดับสูง)
+        const badgeColor = isBeginner
+          ? 'bg-emerald-500 text-white border-emerald-400'
+          : isIntermediate
+            ? 'bg-amber-500 text-white border-amber-400'
+            : 'bg-purple-600 text-white border-purple-500';
+
+        return (
+          <div className="mb-4 p-3 px-4 rounded-lg bg-white text-gray-800 animate-fadeInDown flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4 flex-1 min-w-0">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold shadow-xs">
+                <Check className="w-5 h-5 stroke-[2.5]" />
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <h3 className="text-base sm:text-lg font-bold text-gray-800 tracking-tight">
+                    สำเร็จการฝึกฝน{title.replace('แบบฝึกหัด - ', '')}ครบทุกบทเรียน
+                  </h3>
+                  <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${badgeColor}`}>
+                    ปลดล็อก {buffName}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 mt-0.5 font-medium truncate">
+                  {isBeginner && 'คุณผ่านเกณฑ์ความแม่นยำแป้นเหย้าทั้งหมดแล้ว พร้อมเริ่มบทเรียนในระดับถัดไป'}
+                  {isIntermediate && 'คุณเชี่ยวชาญการก้าวนิ้วข้ามแถวทั้งหมดแล้ว พร้อมฝึกฝนประโยคระดับสูง'}
+                  {!isBeginner && !isIntermediate && 'คุณสำเร็จหลักสูตรพิมพ์สัมผัสไทยครบทุกระดับอย่างสมบูรณ์'}
+                </p>
+              </div>
+            </div>
+
+            <div className="shrink-0">
+              <Link href={nextHref}>
+                <button className="flex items-center justify-center gap-1 w-28 h-8 text-sm font-bold rounded-lg transition transform duration-200 hover:scale-105 bg-yellow-400 text-yellow-900 hover:bg-yellow-500 cursor-pointer shadow-xs">
+                  <Play className="w-3.5 h-3.5 mr-0.5" fill="currentColor" />
+                  {nextLabel}
+                </button>
+              </Link>
+            </div>
+          </div>
+        );
+      })()}
 
       <div className="flex flex-col gap-4">
         {lessons.map((unit, index) => (
@@ -253,8 +305,8 @@ export default function LessonList({ title, lessons }: LessonListProps) {
                   const displayWpm = subLesson.wpm || 0;
                   const displayAcc = subLesson.acc || 0;
                   const subLessonLabel = `${cleanTitle(unit.title)} ${subIndex + 1}`;
-                  const isNextUp = subLesson.status === 'not_started' && 
-                                   (subIndex === 0 || unit.subLessons![subIndex - 1].status === 'completed');
+                  const isNextUp = subLesson.status === 'not_started' &&
+                    (subIndex === 0 || unit.subLessons![subIndex - 1].status === 'completed');
 
                   return (
                     <InteractiveBar

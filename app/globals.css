@@ -617,3 +617,12 @@ input::-ms-reveal,
 input::-ms-clear {
   display: none;
 }
+
+/* ซ่อน scrollbar แต่ยังเลื่อนได้ (no-scrollbar) */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

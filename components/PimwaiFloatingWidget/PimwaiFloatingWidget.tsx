@@ -6,13 +6,14 @@ import {
     X,
     Sparkles,
     Trophy,
-    Gamepad2
+    Gamepad2,
+    BookOpen
 } from 'lucide-react';
 
 export default function PimwaiFloatingWidget() {
     const [isOpen, setIsOpen] = useState(false);
     const [isVisible, setIsVisible] = useState(true);
-    const [activeTab, setActiveTab] = useState<'ranks' | 'farm'>('ranks');
+    const [activeTab, setActiveTab] = useState<'curriculum' | 'ranks' | 'farm'>('curriculum');
 
     // ตรวจสอบสถานะการปิดซ่อน และเปิดรับ Event จากส่วนอื่นๆ ของเว็บ (เช่น เมนู Navbar)
     useEffect(() => {
@@ -100,7 +101,7 @@ export default function PimwaiFloatingWidget() {
             {isOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150 select-none">
                     <div
-                        className="bg-white rounded-3xl max-w-xl w-full shadow-2xl border border-gray-100 relative animate-in zoom-in-95 duration-150 max-h-[88vh] flex flex-col overflow-hidden"
+                        className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-gray-100 relative animate-in zoom-in-95 duration-150 max-h-[88vh] flex flex-col overflow-hidden"
                     >
                         {/* Modal Header */}
                         <div className="p-5 pb-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-slate-50 via-white to-sky-50/40">
@@ -127,7 +128,7 @@ export default function PimwaiFloatingWidget() {
                                         </span>
                                     </div>
                                     <p className="text-xs text-gray-500 font-medium mt-0.5">
-                                        สรุปข้อมูลแรงค์ใหม่ 4-7 และวิธีเล่นโหมดฟาร์มเวล
+                                        สรุปข้อมูลบทเรียนใหม่ 210 ด่าน, ระบบแรงค์ 4-7 และคู่มือพิมพ์ด่วน
                                     </p>
                                 </div>
                             </div>
@@ -143,156 +144,238 @@ export default function PimwaiFloatingWidget() {
                             </button>
                         </div>
 
-                        {/* Modal Tab Navigation */}
-                        <div className="flex items-center gap-2 px-5 pt-3 border-b border-gray-100 bg-gray-50/70">
+                        {/* Modal Tab Navigation - ซ่อน scrollbar และแบ่งสัดส่วนเต็มแถวพอดี */}
+                        <div className="grid grid-cols-3 gap-1 px-5 pt-3 border-b border-gray-100 bg-gray-50/70">
+                            <button
+                                type="button"
+                                onClick={() => setActiveTab('curriculum')}
+                                className={`flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-t-xl font-bold text-xs sm:text-sm transition-all cursor-pointer border-b-2 text-center ${activeTab === 'curriculum'
+                                    ? 'bg-white text-indigo-600 border-indigo-600 shadow-xs'
+                                    : 'text-gray-500 hover:text-gray-800 border-transparent hover:bg-gray-100/60'
+                                    }`}
+                            >
+                                <BookOpen size={15} className="shrink-0" />
+                                <span className="truncate">บทเรียนใหม่ 210 ด่าน</span>
+                            </button>
+
                             <button
                                 type="button"
                                 onClick={() => setActiveTab('ranks')}
-                                className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl font-bold text-xs sm:text-sm transition-all cursor-pointer border-b-2 ${activeTab === 'ranks'
+                                className={`flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-t-xl font-bold text-xs sm:text-sm transition-all cursor-pointer border-b-2 text-center ${activeTab === 'ranks'
                                     ? 'bg-white text-[#5cb5db] border-[#5cb5db] shadow-xs'
                                     : 'text-gray-500 hover:text-gray-800 border-transparent hover:bg-gray-100/60'
                                     }`}
                             >
-                                <Trophy size={16} />
-                                <span>เพิ่มแรงค์ใหม่ 4, 5, 6, 7</span>
+                                <Trophy size={15} className="shrink-0" />
+                                <span className="truncate">แรงค์ใหม่ 4 - 7</span>
                             </button>
 
                             <button
                                 type="button"
                                 onClick={() => setActiveTab('farm')}
-                                className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl font-bold text-xs sm:text-sm transition-all cursor-pointer border-b-2 ${activeTab === 'farm'
+                                className={`flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-t-xl font-bold text-xs sm:text-sm transition-all cursor-pointer border-b-2 text-center ${activeTab === 'farm'
                                     ? 'bg-white text-emerald-600 border-emerald-500 shadow-xs'
                                     : 'text-gray-500 hover:text-gray-800 border-transparent hover:bg-gray-100/60'
                                     }`}
                             >
-                                <Gamepad2 size={16} />
-                                <span>วิธีเล่นโหมดพิมพ์ด่วน</span>
+                                <Gamepad2 size={15} className="shrink-0" />
+                                <span className="truncate">วิธีเล่นโหมดพิมพ์ด่วน</span>
                             </button>
                         </div>
 
                         {/* Modal Content Area (Scrollable Text-focused) */}
-                        <div className="flex-1 overflow-y-auto p-5 space-y-4 text-gray-700 max-h-[calc(88vh-130px)]">
+                        <div className="flex-1 overflow-y-auto p-5 space-y-4 text-gray-700 max-h-[calc(88vh-130px)] no-scrollbar">
+
+                            {/* ============================================================ */}
+                            {/* TAB 0: 📚 อัปเดตใหญ่บทเรียนพิมพ์สัมผัส 21 บท 210 ด่าน */}
+                            {/* ============================================================ */}
+                            {activeTab === 'curriculum' && (
+                                <div className="space-y-4 animate-in fade-in duration-150 text-xs sm:text-sm leading-relaxed">
+                                    {/* หัวข้อนำเสนอ คลีน โมเดิร์น ไม่เอากล่องทึบ */}
+                                    <div className="pb-1 border-b border-gray-100">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-indigo-50 text-indigo-600">
+                                                <Sparkles size={14} />
+                                            </span>
+                                            <h4 className="text-base font-black text-gray-800 tracking-tight">
+                                                ปรับปรุงเนื้อหาบทเรียนใหม่ครบทุกระดับ (Total Remaster)
+                                            </h4>
+                                        </div>
+                                        <p className="text-gray-600 text-xs sm:text-sm leading-normal pl-8">
+                                            อัปเดตบทเรียนพิมพ์สัมผัสภาษาไทยใหม่ทั้งหมด 21 บทเรียน รวม 210 ด่านย่อย เปลี่ยนจากคำสุ่มผสมที่ไม่มีความหมาย มาเป็น <strong>คำศัพท์จริงและประโยคที่มีความหมายต่อเนื่อง 100%</strong> เพื่อให้พิมพ์สนุก จำแป้นได้คล่องมือ และนำไปใช้งานจริงได้ทันที
+                                        </p>
+                                    </div>
+
+                                    {/* รายละเอียด 3 ระดับ แบบเรียบหรู คลีน ไม่ใส่กล่อง */}
+                                    <div className="space-y-3 pl-2">
+                                        <div className="flex items-start gap-3">
+                                            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-500 text-white font-bold text-xs flex items-center justify-center mt-0.5">
+                                                1
+                                            </span>
+                                            <div>
+                                                <span className="font-bold text-gray-800 text-sm">ระดับเริ่มต้น (Beginner 70 ด่าน)</span>
+                                                <p className="text-gray-500 text-xs mt-0.5">
+                                                    เน้นแป้นเหย้าและแถวบน ฝึกสเต็ปสองมือประสาน เคาะคำศัพท์จริงใกล้ตัวโดยไม่มองแป้น
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-start gap-3">
+                                            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-500 text-white font-bold text-xs flex items-center justify-center mt-0.5">
+                                                2
+                                            </span>
+                                            <div>
+                                                <span className="font-bold text-gray-800 text-sm">ระดับกลาง (Intermediate 70 ด่าน)</span>
+                                                <p className="text-gray-500 text-xs mt-0.5">
+                                                    ก้าวนิ้วลงแถวล่างและสลับนิ้วก้อยอย่างแม่นยำ พร้อมฝึกพิมพ์วลีและการเชื่อมคำเร็ว
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-start gap-3">
+                                            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-purple-600 text-white font-bold text-xs flex items-center justify-center mt-0.5">
+                                                3
+                                            </span>
+                                            <div>
+                                                <span className="font-bold text-gray-800 text-sm">ระดับสูง (Advanced 70 ด่าน)</span>
+                                                <p className="text-gray-500 text-xs mt-0.5">
+                                                    คำไทยใช้บ่อย เครื่องหมายวรรคตอน สปีดคอมโบ และบทความยาวฝึกพิมพ์ความเร็วสูง
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* หมายเหตุเรื่องความก้าวหน้าเดิม (แบบข้อความเน้น ไม่เป็นกล่องหนา) */}
+                                    <div className="pt-2 border-t border-gray-100 flex items-center gap-2 text-xs text-gray-600">
+                                        <span className="text-emerald-600 font-bold">✓ สถิติเดิมคงอยู่ครบ:</span>
+                                        <span>ด่านที่เคยผ่านแล้วยังคงผ่านตามเดิม ดาวและคะแนนไม่หาย สามารถเข้าเล่นเพื่อสัมผัสเนื้อหาชุดใหม่ได้เลย</span>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* ============================================================ */}
                             {/* TAB 1: 🏆 เพิ่มแรงค์ใหม่ 4, 5, 6, 7 (NEW RANKS) */}
                             {/* ============================================================ */}
                             {activeTab === 'ranks' && (
-                                <div className="space-y-3.5 animate-in fade-in duration-150">
-                                    <div className="bg-sky-50 border border-sky-100 rounded-2xl p-3.5 text-xs text-sky-900 leading-relaxed">
-                                        <div className="font-bold flex items-center gap-1.5 text-sky-800 mb-1">
-                                            <Sparkles size={14} className="text-sky-600" />
-                                            <span>ระบบแรงค์ใหม่สูงสุดถึง Rank 7</span>
+                                <div className="space-y-4 animate-in fade-in duration-150 text-xs sm:text-sm">
+                                    {/* Header Text ไม่เอากล่องทึบ */}
+                                    <div className="pb-1 border-b border-gray-100">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-sky-50 text-[#5cb5db]">
+                                                <Trophy size={14} />
+                                            </span>
+                                            <h4 className="text-base font-black text-gray-800 tracking-tight">
+                                                ระบบแรงค์ใหม่สูงสุดถึง Rank 7
+                                            </h4>
                                         </div>
-                                        เพิ่ม 4 ระดับแรงค์ใหม่สำหรับผู้เล่นขั้นสูง ยิ่งแรงค์สูง ยิ่งได้ตัวคูณ EXP พื้นฐานและเพดานตัวคูณคอมโบสูงขึ้น
+                                        <p className="text-gray-600 text-xs sm:text-sm leading-normal pl-8">
+                                            ปลดล็อก 4 ขั้นแรงค์ระดับตำนานสำหรับผู้เล่นสายแข่งขัน ยิ่งระดับสูงขึ้น ยิ่งได้รับ <strong>ตัวคูณ EXP พื้นฐาน</strong> และ <strong>เพดานตัวคูณคอมโบ</strong> สูงขึ้นแบบก้าวกระโดด
+                                        </p>
                                     </div>
 
-                                    {/* List of New Ranks (Rank 4, 5, 6, 7) */}
-                                    <div className="space-y-3">
+                                    {/* รายการแรงค์ 4-7 แบบคลีน สบายตา ไม่มีกรอบกล่องหนา */}
+                                    <div className="space-y-3.5 divide-y divide-gray-100">
 
                                         {/* Rank 4 */}
-                                        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 flex items-center gap-3.5 hover:bg-slate-100/70 transition-colors">
-                                            <div className="w-14 h-14 relative shrink-0 bg-white rounded-xl p-1 shadow-xs border border-slate-200 flex items-center justify-center">
+                                        <div className="pt-2 first:pt-0 flex items-center gap-3.5">
+                                            <div className="w-12 h-12 relative shrink-0 flex items-center justify-center">
                                                 <Image
                                                     src="/Rank4.png"
                                                     alt="Rank 4"
-                                                    width={50}
-                                                    height={50}
-                                                    className="object-contain"
+                                                    width={46}
+                                                    height={46}
+                                                    className="object-contain drop-shadow-xs"
                                                 />
                                             </div>
-                                            <div className="flex-1 text-xs">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-black text-slate-800 text-sm">
+                                            <div className="flex-1 min-w-0 text-xs">
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <span className="font-bold text-slate-800 text-sm">
                                                         Rank 4: Obsidian Titan
                                                     </span>
-                                                    <span className="text-[10px] font-bold px-2 py-0.5 bg-slate-200 text-slate-700 rounded-full">
-                                                        ผู้พิทักษ์ศิลาเงิน
+                                                    <span className="text-[10px] font-semibold text-slate-500">
+                                                        (ผู้พิทักษ์ศิลาเงิน)
                                                     </span>
                                                 </div>
-                                                <p className="text-gray-600 mt-1 leading-normal">
-                                                    • <strong>EXP สะสม:</strong> 24,000 - 54,000 XP (5,000 XP ต่อดาว)<br />
-                                                    • <strong>สิทธิประโยชน์:</strong> ตัวคูณพื้นฐาน x2.00 | เพดานตัวคูณสูงสุด x6.0
+                                                <p className="text-gray-500 mt-0.5 leading-relaxed">
+                                                    EXP 24k - 54k (5,000 XP/ดาว) • <span className="text-slate-700 font-semibold">ตัวคูณพื้นฐาน x2.00 | เพดานคอมโบ x6.0</span>
                                                 </p>
                                             </div>
                                         </div>
 
                                         {/* Rank 5 */}
-                                        <div className="bg-emerald-50/50 border border-emerald-200 rounded-2xl p-3.5 flex items-center gap-3.5 hover:bg-emerald-50 transition-colors">
-                                            <div className="w-14 h-14 relative shrink-0 bg-white rounded-xl p-1 shadow-xs border border-emerald-200 flex items-center justify-center">
+                                        <div className="pt-3 flex items-center gap-3.5">
+                                            <div className="w-12 h-12 relative shrink-0 flex items-center justify-center">
                                                 <Image
                                                     src="/Rank5.png"
                                                     alt="Rank 5"
-                                                    width={50}
-                                                    height={50}
-                                                    className="object-contain"
+                                                    width={46}
+                                                    height={46}
+                                                    className="object-contain drop-shadow-xs"
                                                 />
                                             </div>
-                                            <div className="flex-1 text-xs">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-black text-emerald-900 text-sm">
+                                            <div className="flex-1 min-w-0 text-xs">
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <span className="font-bold text-emerald-900 text-sm">
                                                         Rank 5: Venom Sorcerer
                                                     </span>
-                                                    <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">
-                                                        จอมเวทโอสถพิษ
+                                                    <span className="text-[10px] font-semibold text-emerald-600">
+                                                        (จอมเวทโอสถพิษ)
                                                     </span>
                                                 </div>
-                                                <p className="text-gray-600 mt-1 leading-normal">
-                                                    • <strong>EXP สะสม:</strong> 54,000 - 114,000 XP (10,000 XP ต่อดาว)<br />
-                                                    • <strong>สิทธิประโยชน์:</strong> ตัวคูณพื้นฐาน x2.50 | เพดานตัวคูณสูงสุด x8.0
+                                                <p className="text-gray-500 mt-0.5 leading-relaxed">
+                                                    EXP 54k - 114k (10,000 XP/ดาว) • <span className="text-emerald-700 font-semibold">ตัวคูณพื้นฐาน x2.50 | เพดานคอมโบ x8.0</span>
                                                 </p>
                                             </div>
                                         </div>
 
                                         {/* Rank 6 */}
-                                        <div className="bg-rose-50/50 border border-rose-200 rounded-2xl p-3.5 flex items-center gap-3.5 hover:bg-rose-50 transition-colors">
-                                            <div className="w-14 h-14 relative shrink-0 bg-white rounded-xl p-1 shadow-xs border border-rose-200 flex items-center justify-center">
+                                        <div className="pt-3 flex items-center gap-3.5">
+                                            <div className="w-12 h-12 relative shrink-0 flex items-center justify-center">
                                                 <Image
                                                     src="/Rank6.png"
                                                     alt="Rank 6"
-                                                    width={50}
-                                                    height={50}
-                                                    className="object-contain"
+                                                    width={46}
+                                                    height={46}
+                                                    className="object-contain drop-shadow-xs"
                                                 />
                                             </div>
-                                            <div className="flex-1 text-xs">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-black text-rose-900 text-sm">
+                                            <div className="flex-1 min-w-0 text-xs">
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <span className="font-bold text-rose-900 text-sm">
                                                         Rank 6: Crimson Overlord
                                                     </span>
-                                                    <span className="text-[10px] font-bold px-2 py-0.5 bg-rose-100 text-rose-800 rounded-full">
-                                                        จอมทัพเพลิงทับทิม
+                                                    <span className="text-[10px] font-semibold text-rose-600">
+                                                        (จอมทัพเพลิงทับทิม)
                                                     </span>
                                                 </div>
-                                                <p className="text-gray-600 mt-1 leading-normal">
-                                                    • <strong>EXP สะสม:</strong> 114,000 - 234,000 XP (20,000 XP ต่อดาว)<br />
-                                                    • <strong>สิทธิประโยชน์:</strong> ตัวคูณพื้นฐาน x3.00 | เพดานตัวคูณสูงสุด x10.0
+                                                <p className="text-gray-500 mt-0.5 leading-relaxed">
+                                                    EXP 114k - 234k (20,000 XP/ดาว) • <span className="text-rose-700 font-semibold">ตัวคูณพื้นฐาน x3.00 | เพดานคอมโบ x10.0</span>
                                                 </p>
                                             </div>
                                         </div>
 
                                         {/* Rank 7 */}
-                                        <div className="bg-purple-50/70 border-2 border-purple-200 rounded-2xl p-3.5 flex items-center gap-3.5 hover:bg-purple-50 transition-colors">
-                                            <div className="w-14 h-14 relative shrink-0 bg-white rounded-xl p-1 shadow-xs border border-purple-200 flex items-center justify-center">
+                                        <div className="pt-3 flex items-center gap-3.5">
+                                            <div className="w-12 h-12 relative shrink-0 flex items-center justify-center">
                                                 <Image
                                                     src="/Rank7.png"
                                                     alt="Rank 7"
-                                                    width={50}
-                                                    height={50}
-                                                    className="object-contain"
+                                                    width={46}
+                                                    height={46}
+                                                    className="object-contain drop-shadow-xs"
                                                 />
                                             </div>
-                                            <div className="flex-1 text-xs">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-black text-purple-950 text-sm">
+                                            <div className="flex-1 min-w-0 text-xs">
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <span className="font-bold text-purple-950 text-sm">
                                                         Rank 7: Cosmic Astra
                                                     </span>
-                                                    <span className="text-[10px] font-black px-2 py-0.5 bg-gradient-to-r from-purple-600 to-pink-500 text-white rounded-full shadow-xs">
+                                                    <span className="text-[10px] font-bold px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full">
                                                         👑 TOP 10 เท่านั้น
                                                     </span>
                                                 </div>
-                                                <p className="text-gray-600 mt-1 leading-normal">
-                                                    • <strong>เงื่อนไข:</strong> EXP 234,000+ และต้องติด <strong>TOP 10 เซิร์ฟเวอร์</strong><br />
-                                                    • <strong>สิทธิประโยชน์:</strong> ตัวคูณพื้นฐาน x4.00 | เพดานตัวคูณสูงสุด x12.0
+                                                <p className="text-gray-500 mt-0.5 leading-relaxed">
+                                                    EXP 234,000+ และติด TOP 10 • <span className="text-purple-700 font-bold">ตัวคูณพื้นฐาน x4.00 | เพดานคอมโบ x12.0</span>
                                                 </p>
                                             </div>
                                         </div>
@@ -300,10 +383,9 @@ export default function PimwaiFloatingWidget() {
                                     </div>
 
                                     {/* Star explanation */}
-                                    <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs text-gray-600">
-                                        <p className="leading-relaxed">
-                                            ⭐ <strong>ระบบดาว:</strong> ทุก 1 ดาวที่เพิ่มขึ้น จะบวกตัวคูณพื้นฐานเพิ่มขึ้น <strong>+0.05x</strong> ต่อดาว
-                                        </p>
+                                    <div className="pt-2 border-t border-gray-100 flex items-center gap-2 text-xs text-gray-500">
+                                        <span className="text-amber-500 font-bold">⭐ ระบบดาว:</span>
+                                        <span>ทุก 1 ดาวที่เพิ่มขึ้น จะบวกตัวคูณพื้นฐานเพิ่มขึ้น <strong>+0.05x</strong> ต่อดาว</span>
                                     </div>
                                 </div>
                             )}
@@ -312,55 +394,70 @@ export default function PimwaiFloatingWidget() {
                             {/* TAB 2: 🌾 วิธีเล่นโหมดฟาร์มเวล (FARM MODE GUIDE) */}
                             {/* ============================================================ */}
                             {activeTab === 'farm' && (
-                                <div className="space-y-3.5 text-xs animate-in fade-in duration-150">
-
-                                    {/* 1. เลือกโหมด */}
-                                    <div className="bg-slate-50 border border-gray-200 rounded-2xl p-3.5">
-                                        <h4 className="font-black text-gray-800 text-sm mb-1.5 flex items-center gap-1.5">
-                                            <span>🎮 1. รูปแบบโหมดฟาร์มที่เลือกเล่นได้</span>
-                                        </h4>
-                                        <ul className="space-y-1 text-gray-600 pl-4 list-disc">
-                                            <li><strong>Zen Mode:</strong> พิมพ์อิสระเรื่อยๆ ไม่จำกัดเวลา พิมพ์เพลินรับ EXP ตามจำนวนคำ</li>
-                                            <li><strong>Words Mode:</strong> เลือกพิมพ์ 10, 25, 50, หรือ 100 คำ จบรอบไวพร้อมรับแต้มโบนัส</li>
-                                            <li><strong>Time Mode:</strong> จับเวลา 15, 30, 60, หรือ 120 วินาที ท้าทายความเร็ว WPM</li>
-                                        </ul>
-                                    </div>
-
-                                    {/* 2. ระบบสะสมคอมโบและตัวคูณ */}
-                                    <div className="bg-slate-50 border border-gray-200 rounded-2xl p-3.5">
-                                        <h4 className="font-black text-gray-800 text-sm mb-1.5 flex items-center gap-1.5">
-                                            <span>⚡ 2. การสะสมคอมโบ & ตัวคูณ EXP</span>
-                                        </h4>
-                                        <ul className="space-y-1 text-gray-600 pl-4 list-disc">
-                                            <li><strong>พิมพ์ถูกต่อเนื่อง:</strong> ทุกตัวอักษรและทุกคำที่พิมพ์ถูก จะช่วยสะสมคอมโบเร่งตัวคูณ EXP ให้พุ่งสูงขึ้น</li>
-                                            <li><strong>กด Spacebar จบคำ:</strong> จะได้รับโบนัสประจำคำ ยิ่งตัวคูณสูง แต้มคำยิ่งเพิ่มขึ้น</li>
-                                            <li><strong>คำทองคำ (Golden Words):</strong> สุ่มปรากฏคำสีทอง พิมพ์จบรับโบนัสทันที <strong>+30 EXP</strong></li>
-                                            <li><strong>Fever Mode:</strong> เมื่อทำครบ 50 คอมโบติดกัน เข้าสู่โหมดฟีเวอร์ <strong>รับ EXP x2 ทันที</strong></li>
-                                        </ul>
-                                    </div>
-
-                                    {/* 3. บัฟติดตัวจากบทเรียน */}
-                                    <div className="bg-slate-50 border border-gray-200 rounded-2xl p-3.5">
-                                        <h4 className="font-black text-gray-800 text-sm mb-1.5 flex items-center gap-1.5">
-                                            <span>🛡️ 3. บัฟติดตัวที่ได้จากการผ่านบทเรียน</span>
-                                        </h4>
-                                        <ul className="space-y-1 text-gray-600 pl-4 list-disc">
-                                            <li><strong>ผ่านบทเรียนระดับเริ่มต้น:</strong> ได้รับเกราะกันพลาด 2 ครั้ง ป้องกันคอมโบหลุด</li>
-                                            <li><strong>ผ่านบทเรียนระดับกลาง:</strong> เพิ่มโอกาสสุ่มพบคำทองคำโบนัส 15%</li>
-                                            <li><strong>ผ่านบทเรียนระดับสูง:</strong> ได้รับตัวคูณถาวร +0.5x และปลดล็อกโหมด Fever x2</li>
-                                        </ul>
-                                    </div>
-
-                                    {/* 4. สตรีคและเควส */}
-                                    <div className="bg-slate-50 border border-gray-200 rounded-2xl p-3.5">
-                                        <h4 className="font-black text-gray-800 text-sm mb-1.5 flex items-center gap-1.5">
-                                            <span>🔥 4. การซิงค์เควสรายวันและสตรีคไฟ</span>
-                                        </h4>
-                                        <p className="text-gray-600 leading-relaxed">
-                                            ทุกการพิมพ์ในโหมดฟาร์มจะนำไปคำนวณและซิงค์เข้ากับ <strong>เควสรายวัน</strong> และช่วยรักษาระดับ <strong>สตรีคไฟประจำวัน</strong> ให้อัตโนมัติ ไม่ต้องกลัวสตรีคหลุด
+                                <div className="space-y-4 animate-in fade-in duration-150 text-xs sm:text-sm">
+                                    {/* Header */}
+                                    <div className="pb-1 border-b border-gray-100">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600">
+                                                <Gamepad2 size={14} />
+                                            </span>
+                                            <h4 className="text-base font-black text-gray-800 tracking-tight">
+                                                คู่มือและเคล็ดลับการเล่นโหมดพิมพ์ด่วน (Farm)
+                                            </h4>
+                                        </div>
+                                        <p className="text-gray-600 text-xs sm:text-sm leading-normal pl-8">
+                                            โหมดฝึกซ้อมอิสระที่เน้นความสนุก ความลื่นไหล และรับ EXP มหาศาลตามความเร็วและความแม่นยำ
                                         </p>
                                     </div>
 
+                                    {/* รายละเอียด 4 หัวข้อ แบบคลีน ลิสต์เรียบหรู ไม่เอากล่องทึบ */}
+                                    <div className="space-y-3.5 pl-2">
+                                        <div>
+                                            <h5 className="font-bold text-gray-800 text-sm flex items-center gap-2">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                                1. รูปแบบโหมดที่เลือกเล่นได้
+                                            </h5>
+                                            <p className="text-gray-500 text-xs mt-1 pl-3.5 leading-relaxed">
+                                                • <strong>Zen Mode:</strong> พิมพ์อิสระเรื่อยๆ ไม่จำกัดเวลา รับ EXP ตามจำนวนคำที่เคาะ<br />
+                                                • <strong>Words Mode:</strong> เลือกพิมพ์ 10, 25, 50, หรือ 100 คำ จบรอบไวพร้อมรับโบนัสจบเซ็ต<br />
+                                                • <strong>Time Mode:</strong> ท้าทายความเร็ว 15, 30, 60, หรือ 120 วินาที วัด WPM สูงสุด
+                                            </p>
+                                        </div>
+
+                                        <div>
+                                            <h5 className="font-bold text-gray-800 text-sm flex items-center gap-2">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                                2. การสะสมคอมโบ & ตัวคูณ EXP
+                                            </h5>
+                                            <p className="text-gray-500 text-xs mt-1 pl-3.5 leading-relaxed">
+                                                • พิมพ์ถูกต้องต่อเนื่องเพื่อเร่งตัวคูณคอมโบให้สูงขึ้น ยิ่งคอมโบเยอะแต้มยิ่งพุ่ง<br />
+                                                • <strong>คำทองคำ (Golden Words):</strong> สุ่มคำสีทอง พิมพ์จบรับโบนัสทันที <strong>+30 EXP</strong><br />
+                                                • <strong>Fever Mode:</strong> ครบ 50 คอมโบติดกัน เข้าสู่โหมดฟีเวอร์ <strong>รับ EXP x2 ทันที</strong>
+                                            </p>
+                                        </div>
+
+                                        <div>
+                                            <h5 className="font-bold text-gray-800 text-sm flex items-center gap-2">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                                                3. บัฟพิเศษที่ได้จากบทเรียน
+                                            </h5>
+                                            <p className="text-gray-500 text-xs mt-1 pl-3.5 leading-relaxed">
+                                                • <strong>ผ่านระดับเริ่มต้น:</strong> รับเกราะกันพลาด 2 ครั้ง ป้องกันคอมโบหลุด<br />
+                                                • <strong>ผ่านระดับกลาง:</strong> เพิ่มโอกาสสุ่มพบคำทองคำโบนัส 15%<br />
+                                                • <strong>ผ่านระดับสูง:</strong> ได้รับตัวคูณถาวร +0.5x และปลดล็อกโหมด Fever x2
+                                            </p>
+                                        </div>
+
+                                        <div>
+                                            <h5 className="font-bold text-gray-800 text-sm flex items-center gap-2">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                                4. ซิงค์เควสและสตรีคประจำวัน
+                                            </h5>
+                                            <p className="text-gray-500 text-xs mt-1 pl-3.5 leading-relaxed">
+                                                ทุกนาทีและทุกรอบที่เล่นในโหมดฟาร์มจะถูกนับรวมเข้า <strong>เควสประจำวัน</strong> และช่วยรักษาระดับ <strong>สตรีคไฟประจำวัน</strong> ให้อัตโนมัติ
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
 

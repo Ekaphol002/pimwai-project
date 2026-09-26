@@ -122,7 +122,6 @@ export default function LessonMenuBar({ selectedLevel, quests }: LessonMenuBarPr
 
         {/* --- (ส่วนขวา) Quests & Circular Progress --- */}
         <div className="flex items-center gap-3">
-
           {/* 1. รายการเควส */}
           <div className={`hidden lg:flex items-center gap-1 border-2 rounded-full p-2 px-4 ${isTier2 ? 'border-amber-300 bg-amber-50/50 shadow-xs' : 'border-gray-200'}`}>
             {isTier2 && (
