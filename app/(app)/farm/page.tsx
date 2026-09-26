@@ -1956,8 +1956,11 @@ export default function FarmPage() {
                     </div>
                 )}
 
-                {/* 🔍 SEO Semantic Section (Googlebot Crawl Content): ข้อความคุณภาพสูงที่บอทและผู้ใช้ใช้อ่าน */}
-                <section className="w-full mt-10 mb-6 pt-8 border-t border-gray-200/80 text-gray-600 text-xs sm:text-sm leading-relaxed">
+                {/* 🔍 SEO Semantic Section (Googlebot Crawl Content): ซ่อนอัตโนมัติเมื่อเริ่มพิมพ์ (Focus Mode) ไม่เกะกะสายตา */}
+                <section className={`w-full mt-10 mb-6 pt-8 border-t border-gray-200/80 text-gray-600 text-xs sm:text-sm leading-relaxed transition-all duration-300 ease-in-out ${isFocusMode
+                    ? 'opacity-0 pointer-events-none translate-y-4'
+                    : 'opacity-100 translate-y-0'
+                    }`}>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="bg-white/70 p-4 rounded-2xl border border-gray-100 shadow-xs">
                             <h2 className="font-bold text-gray-800 text-sm mb-2 flex items-center gap-1.5">
