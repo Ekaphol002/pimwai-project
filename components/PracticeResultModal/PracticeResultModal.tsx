@@ -219,8 +219,8 @@ export default function PracticeResultModal({
                   <span>
                     {isTestMode
                       ? "แม่นยำสูง (Accuracy Bonus)"
-                      : (xpBreakdown.grinder === 100 ? "ขยันจัด! ครบ 20 ด่าน" :
-                        xpBreakdown.grinder === 50 ? "ขยันมาก! ครบ 10 ด่าน" :
+                      : (xpBreakdown.grinder >= 50 ? "ขยันจัด! ครบ 20 ด่าน" :
+                        xpBreakdown.grinder >= 30 ? "ขยันมาก! ครบ 10 ด่าน" :
                           "เครื่องร้อน! ครบ 5 ด่าน")
                     }
                   </span>
@@ -234,8 +234,8 @@ export default function PracticeResultModal({
                   <span>
                     {isTestMode
                       ? "ความเร็ว (Speed XP)"
-                      : (xpBreakdown.wpm >= 20 ? "นิ้วไฟลุก! (>50 WPM)" :
-                        xpBreakdown.wpm >= 10 ? "พิมพ์เร็วพริ้ว (>40 WPM)" :
+                      : (xpBreakdown.wpm >= 10 ? "นิ้วไฟลุก! (>50 WPM)" :
+                        xpBreakdown.wpm >= 5 ? "พิมพ์เร็วพริ้ว (>40 WPM)" :
                           "สปีดกำลังดี (>30 WPM)")
                     }
                   </span>

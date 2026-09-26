@@ -4,42 +4,47 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getRankFromExp } from '@/lib/rankUtils';
 
-// Config ค่า EXP และโบนัสต่างๆ
+// Config ค่า EXP และโบนัสต่างๆ ให้สมดุลกับ 7 แรงค์ และเปิดทางให้ฟาร์มต่อในโหมดพิมพ์ด่วน
+// Rank 1: 0 - 3,000 XP
+// Rank 2: 3,000 - 9,000 XP
+// Rank 3: 9,000 - 24,000 XP (ผู้เล่นจบทั้ง 21 บทเรียน 210 ด่านจะอยู่ที่ประมาณ Rank 2 ปลายๆ ถึง Rank 3 ต้นๆ ~9,000-14,000 XP)
+// Rank 4-7: 24,000 - 234,000+ XP ออกแบบไว้สำหรับประลองและฟาร์มในโหมดพิมพ์ด่วน (Farm Mode)
 const EXP_CONFIG = {
-    BASE_CLEAR: 20,
-    PER_STAR: 10,
-    BONUS_3_STARS: 40,
-    REPLAY_SCORE: 15,
-    PERFECT_BONUS: 10,
-    QUEST_REWARD: 80,
+    BASE_CLEAR: 15,
+    PER_STAR: 5,
+    BONUS_3_STARS: 20,       // 3 ดาว: Base 15 + 20 = 35 XP (ก่อนคูณระดับ)
+    REPLAY_SCORE: 5,         // เล่นด่านเดิมซ้ำเมื่อทำสถิติดีขึ้น ได้ 5 XP (ป้องกันการปั๊มด่านแรก ให้ไปฟาร์มพิมพ์ด่วน)
+    PERFECT_BONUS: 5,        // ความแม่นยำ 100% ได้ +5 XP
+    QUEST_REWARD: 50,        // รางวัลเควสรายวัน 50 XP
 
-    // 🌟 โบนัสใหม่
-    FIRST_WIN_REWARD: 50,    // ประเดิมชัยชนะแรก
+    // 🌟 โบนัสเสริมรายวันและฝีมือ
+    FIRST_WIN_REWARD: 25,    // ประเดิมด่านแรกของวัน
     WPM_MILESTONES: {        // รางวัลเจ้าความเร็ว
-        FAST: 30,   // > 30 WPM ได้ +5
-        FASTER: 40, // > 50 WPM ได้ +10
-        FASTEST: 50 // > 80 WPM ได้ +20
+        FAST: 30,   // > 30 WPM ได้ +3
+        FASTER: 40, // > 40 WPM ได้ +5
+        FASTEST: 50 // > 50 WPM ได้ +10
     },
     WPM_BONUS: {
-        FAST: 5,
-        FASTER: 10,
-        FASTEST: 20
+        FAST: 3,
+        FASTER: 5,
+        FASTEST: 10
     },
-    GRINDER_MILESTONES: {    // โบนัสคนขยัน (เล่นครบกี่ด่าน)
-        LEVEL_1: 5,  // ครบ 5 ด่าน +20
-        LEVEL_2: 10, // ครบ 10 ด่าน +50
-        LEVEL_3: 20  // ครบ 20 ด่าน +100
+    GRINDER_MILESTONES: {    // โบนัสคนขยันรายวัน (เล่นครบกี่ด่าน)
+        LEVEL_1: 5,  // ครบ 5 ด่าน +15
+        LEVEL_2: 10, // ครบ 10 ด่าน +30
+        LEVEL_3: 20  // ครบ 20 ด่าน +50
     },
     GRINDER_BONUS: {
-        LEVEL_1: 20,
-        LEVEL_2: 50,
-        LEVEL_3: 100
+        LEVEL_1: 15,
+        LEVEL_2: 30,
+        LEVEL_3: 50
     },
 
+    // ตัวคูณระดับความยากของบทเรียน
     MULTIPLIER: {
-        beginner: 1.0,
-        intermediate: 1.2,
-        advanced: 1.5
+        beginner: 1.0,       // เริ่มต้น: 3 ดาว = ~35-40 XP / ด่าน
+        intermediate: 1.3,   // ปานกลาง: 3 ดาว = ~45-55 XP / ด่าน
+        advanced: 1.7        // ขั้นสูง: 3 ดาว = ~60-70 XP / ด่าน
     }
 };
 
