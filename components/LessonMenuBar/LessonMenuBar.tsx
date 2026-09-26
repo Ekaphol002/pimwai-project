@@ -63,8 +63,34 @@ export default function LessonMenuBar({ selectedLevel, quests }: LessonMenuBarPr
     }
   }, [selectedLevel]);
 
+  useEffect(() => {
+    // บันทึกระดับล่าสุดที่ผู้ใช้เปิดไว้ลง localStorage
+    if (selectedLevel) {
+      try {
+        localStorage.setItem('pimwai_last_active_level', selectedLevel);
+      } catch (e) {}
+    }
+  }, [selectedLevel]);
+
+  useEffect(() => {
+    // ถ้าไม่มี query parameter level ใน URL แต่เคยเปิดระดับอื่นค้างไว้ในเครื่อง ให้สลับไปยังระดับนั้นอัตโนมัติ
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (!urlParams.get('level')) {
+        const savedLevel = localStorage.getItem('pimwai_last_active_level');
+        if (savedLevel && savedLevel !== selectedLevel && levels.some(l => l.id === savedLevel)) {
+          router.replace(`?level=${savedLevel}`);
+        }
+      }
+    } catch (e) {}
+  }, []);
+
   const handleSelectLevel = (levelId: string) => {
     if (levelId === selectedLevel) return;
+
+    try {
+      localStorage.setItem('pimwai_last_active_level', levelId);
+    } catch (e) {}
 
     setTargetLevel(levelId);
     startTransition(() => {

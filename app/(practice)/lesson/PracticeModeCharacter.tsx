@@ -231,7 +231,7 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
       event.preventDefault();
 
       // เล่นเสียงคีย์บอร์ดที่ผู้ใช้เลือกไว้
-      soundManager.playKeySound();
+      soundManager.playKeySound(undefined, event);
 
       const shiftPressed = event.shiftKey;
 

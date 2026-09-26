@@ -150,7 +150,14 @@ class SoundManager {
         return this.selectedTracks;
     }
 
-    public playKeySound(soundId?: string) {
+    public playKeySound(soundId?: string, event?: KeyboardEvent) {
+        if (event) {
+            // ถ้ากดค้างไว้ (repeat) ไม่ต้องเล่นเสียงรัวๆ
+            if (event.repeat) return;
+            // ถ้าเป็นปุ่ม Shift, Control, Alt, Meta หรือ CapsLock ไม่ต้องส่งเสียงพิมพ์
+            if (['Shift', 'Control', 'Alt', 'Meta', 'CapsLock'].includes(event.key)) return;
+        }
+
         const id = soundId || this.currentKeyboardSound;
         if (id === 'none') return;
 

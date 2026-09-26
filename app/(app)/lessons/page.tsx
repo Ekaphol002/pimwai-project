@@ -17,10 +17,6 @@ interface PageProps {
 }
 
 export default async function LessonsPage({ searchParams }: PageProps) {
-  // 1. รอรับค่า level จาก URL
-  const resolvedSearchParams = await searchParams;
-  const selectedLevel = (resolvedSearchParams?.level as string) || 'beginner';
-
   // 1. ดึง Session และ User อย่างปลอดภัย
   let user: any = null;
   let userId: string | null = null;
@@ -45,7 +41,40 @@ export default async function LessonsPage({ searchParams }: PageProps) {
     console.error("Session lookup error in LessonsPage:", err);
   }
 
-  // 2. ดึงข้อมูลบทเรียนหลัก (ดึงเฉพาะ userProgress ของผู้ใช้คนนี้เท่านั้น ไม่โหลดของคนอื่นทั้งเซิร์ฟเวอร์)
+  // 2. ตรวจสอบระดับที่ผู้ใช้เล่นค้างไว้อัตโนมัติ (Auto-detect level)
+  const resolvedSearchParams = await searchParams;
+  let selectedLevel = (resolvedSearchParams?.level as string) || null;
+
+  if (!selectedLevel) {
+    if (userId) {
+      try {
+        // หาด่านล่าสุดที่เล่นค้างไว้หรือเพิ่งเล่น
+        const latestProgress = await prisma.lessonProgress.findFirst({
+          where: { userId },
+          orderBy: { updatedAt: 'desc' },
+          include: {
+            subLesson: {
+              include: {
+                lesson: true
+              }
+            }
+          }
+        });
+
+        const userLevel = latestProgress?.subLesson?.lesson?.level;
+        if (userLevel && ['beginner', 'intermediate', 'advanced'].includes(userLevel)) {
+          selectedLevel = userLevel;
+        }
+      } catch (e) {
+        console.error("Auto level lookup error:", e);
+      }
+    }
+    if (!selectedLevel) {
+      selectedLevel = 'beginner';
+    }
+  }
+
+  // 3. ดึงข้อมูลบทเรียนหลัก (ดึงเฉพาะ userProgress ของผู้ใช้คนนี้เท่านั้น ไม่โหลดของคนอื่นทั้งเซิร์ฟเวอร์)
   let rawLessons: any[] = [];
   try {
     rawLessons = await prisma.lesson.findMany({

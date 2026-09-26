@@ -322,12 +322,18 @@ export default function PracticeModeWord({
         setStartTime(Date.now());
       }
 
+      if (event.key === 'Shift') {
+        return;
+      }
+
+      if (event.repeat) return;
+
       const typedKeyCode = event.code;
       const typedKey = event.key;
       setPressedKey(typedKeyCode);
 
       // เล่นเสียงคีย์บอร์ดที่ผู้ใช้เลือกไว้
-      soundManager.playKeySound();
+      soundManager.playKeySound(undefined, event);
 
       // ป้องกัน Default action เช่น Spacebar เลื่อนหน้าจอ
       if (typedKey === ' ' || typedKey.length === 1) {

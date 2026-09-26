@@ -231,10 +231,12 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
         return;
       }
 
+      if (e.key === 'Shift') return;
+
       const typedKey = e.key;
 
       // เล่นเสียงคีย์บอร์ดที่ผู้ใช้เลือกไว้
-      soundManager.playKeySound();
+      soundManager.playKeySound(undefined, e);
 
       if (typedKey === ' ' || typedKey.length === 1) e.preventDefault();
 

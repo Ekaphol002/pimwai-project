@@ -716,7 +716,7 @@ export default function FarmPage() {
 
             if (typedChar.length === 1) {
                 e.preventDefault();
-                if (isSoundOn) soundManager.playKeySound();
+                if (isSoundOn) soundManager.playKeySound(undefined, e);
 
                 setTotalKeystrokes(prev => prev + 1);
 
