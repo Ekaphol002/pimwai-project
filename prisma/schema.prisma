@@ -68,6 +68,7 @@ model User {
   showInLeaderboard Boolean   @default(true) // ✅ เปิด/ปิด การแสดงตัวตนใน Leaderboard
   keyboardSound     String    @default("click") // ✅ ธีมเสียงแป้นพิมพ์ ('none' | 'click' | 'mechanical' | 'soft')
   isAvatarLocked    Boolean   @default(false) // ✅ ถูกล็อกไม่ให้เปลี่ยนรูปโปรไฟล์
+  antiCheatNotice   String?   @db.Text // 🚨 ข้อความเตือนความประพฤติ/ระบบตรวจจับความผิดปกติ (แสดงครั้งเดียว)
 
   // --- NextAuth Relations ---
   accounts Account[]

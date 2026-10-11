@@ -120,6 +120,18 @@ export async function GET() {
             console.error('Error calculating lesson perks:', perkErr);
         }
 
+        // ตรวจสอบ antiCheatNotice (แจ้งเตือนครั้งเดียว)
+        let antiCheatNotice: string | null = null;
+        try {
+            const noticeRow: any = await prisma.$queryRawUnsafe(
+                `SELECT "antiCheatNotice" FROM "User" WHERE id = $1 LIMIT 1`,
+                user.id
+            );
+            if (noticeRow && noticeRow[0] && noticeRow[0].antiCheatNotice) {
+                antiCheatNotice = noticeRow[0].antiCheatNotice;
+            }
+        } catch (e) { }
+
         // ไม่ส่ง password hash กลับไป
         const { password, ...safeUser } = user;
 
@@ -133,8 +145,10 @@ export async function GET() {
                 showInLeaderboard: rawUser.showInLeaderboard ?? true,
                 keyboardSound: rawUser.keyboardSound || 'click',
                 lastNameChangedAt: rawUser.lastNameChangedAt || null,
-                lessonPerks: perks
+                lessonPerks: perks,
+                antiCheatNotice
             },
+            antiCheatNotice,
             lessonPerks: perks,
             canChangeName,
             nextAvailableDate,

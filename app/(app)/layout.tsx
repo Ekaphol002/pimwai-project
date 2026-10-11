@@ -1,7 +1,7 @@
-// app/(main)/layout.tsx
 import Navbar from "@/components/Navbar/Navbar";
 import Footer from '@/components/Footer/Footer';
 import PimwaiFloatingWidget from "@/components/PimwaiFloatingWidget/PimwaiFloatingWidget";
+import AntiCheatNoticeModal from "@/components/AntiCheatNoticeModal/AntiCheatNoticeModal";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -16,6 +16,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         </main>
         <Footer />
         <PimwaiFloatingWidget />
+        <AntiCheatNoticeModal />
       </div>
     </div>
   );
