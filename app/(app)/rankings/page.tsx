@@ -407,9 +407,9 @@ export default function LeaderboardPage() {
                                                     </div>
                                                 </div>
 
-                                                <div className="flex items-center gap-4 sm:gap-8">
+                                                <div className="flex items-center gap-2 sm:gap-3">
                                                     {mode === 'rank' && (
-                                                        <div className="hidden md:flex flex-col items-center justify-center w-16 shrink-0">
+                                                        <div className="hidden md:flex flex-col items-center justify-center w-14 shrink-0">
                                                             {userRank === 7 ? (
                                                                 <>
                                                                     <img src="/Rank7.png" onError={(e) => e.currentTarget.src = '/Rank1.png'} className="h-10 object-contain drop-shadow-xs" />
@@ -436,14 +436,37 @@ export default function LeaderboardPage() {
                                                         </div>
                                                     )}
 
-                                                    <div className="text-right flex flex-col items-end justify-center min-w-[100px] sm:min-w-[125px] shrink-0">
-                                                        <div className={`flex items-center gap-1 text-xl sm:text-2xl font-black logo-font ${isMe ? 'text-white' : (mode === 'streak' ? 'text-orange-500' : 'text-[#5cb5db]')}`}>
-                                                            {mode === 'streak' && <Flame size={20} fill="currentColor" />}
-                                                            {mode === 'speed' ? user.displayVal1 : (mode === 'streak' ? user.displayVal1 : user.displayVal2.toLocaleString())}
-                                                        </div>
-                                                        <div className={`text-[9px] sm:text-[10px] uppercase font-bold tracking-widest ${isMe ? 'text-white/80' : 'text-gray-400'}`}>
-                                                            {mode === 'speed' ? `WPM • ${user.displayVal2}% ACC` : (mode === 'streak' ? 'วัน' : 'EXP')}
-                                                        </div>
+                                                    <div className={`text-right flex flex-col items-end justify-center shrink-0 ${mode === 'speed' ? 'min-w-[140px] sm:min-w-[175px]' : 'min-w-[85px] sm:min-w-[110px]'}`}>
+                                                        {mode === 'speed' ? (
+                                                            <div className="flex items-baseline gap-4 sm:gap-5 justify-end">
+                                                                <div className="flex items-baseline gap-1">
+                                                                    <span className={`text-xl sm:text-2xl font-black logo-font ${isMe ? 'text-white' : 'text-[#5cb5db]'}`}>
+                                                                        {user.displayVal1}
+                                                                    </span>
+                                                                    <span className={`text-[10px] sm:text-xs font-semibold uppercase tracking-wider ${isMe ? 'text-white/80' : 'text-gray-400'}`}>
+                                                                        wpm
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex items-baseline gap-1">
+                                                                    <span className={`text-xl sm:text-2xl font-black logo-font ${isMe ? 'text-white' : 'text-emerald-500'}`}>
+                                                                        {user.displayVal2}%
+                                                                    </span>
+                                                                    <span className={`text-[10px] sm:text-xs font-semibold uppercase tracking-wider ${isMe ? 'text-white/80' : 'text-gray-400'}`}>
+                                                                        acc
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <>
+                                                                <div className={`flex items-center gap-1 text-xl sm:text-2xl font-black logo-font ${isMe ? 'text-white' : (mode === 'streak' ? 'text-orange-500' : 'text-[#5cb5db]')}`}>
+                                                                    {mode === 'streak' && <Flame size={20} fill="currentColor" />}
+                                                                    {mode === 'streak' ? user.displayVal1 : user.displayVal2.toLocaleString()}
+                                                                </div>
+                                                                <div className={`text-[9px] sm:text-[10px] uppercase font-bold tracking-widest ${isMe ? 'text-white/80' : 'text-gray-400'}`}>
+                                                                    {mode === 'streak' ? 'วัน' : 'EXP'}
+                                                                </div>
+                                                            </>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -474,13 +497,13 @@ export default function LeaderboardPage() {
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-4 sm:gap-8">
+                                <div className="flex items-center gap-2 sm:gap-3">
                                     {mode === 'rank' && (() => {
                                         const myExp = myRankData.displayVal2 || 0;
                                         const isMyTop10 = myRankData.rankOrder !== null && myRankData.rankOrder <= 10;
                                         const myRankInfo = calculateRankInfo(myExp, isMyTop10);
                                         return (
-                                            <div className="hidden sm:flex flex-col items-center justify-center w-16 shrink-0">
+                                            <div className="hidden sm:flex flex-col items-center justify-center w-14 shrink-0">
                                                 {myRankInfo.rank === 7 ? (
                                                     <>
                                                         <img src="/Rank7.png" onError={(e) => e.currentTarget.src = '/Rank1.png'} className="h-10 object-contain drop-shadow-xs" />
@@ -506,18 +529,41 @@ export default function LeaderboardPage() {
                                         );
                                     })()}
 
-                                    <div className="flex flex-col items-end min-w-[100px] sm:min-w-[125px] shrink-0">
-                                        <div className={`flex items-end gap-1 ${mode === 'streak' ? 'text-orange-500' : 'text-gray-800'}`}>
-                                            {mode === 'streak' && <Flame size={24} fill="currentColor" className="mb-1" />}
-                                            <span className="text-2xl sm:text-3xl font-black logo-font">
-                                                {mode === 'speed' ? myRankData.displayVal1 : (mode === 'streak' ? myRankData.displayVal1 : myRankData.displayVal2.toLocaleString())}
-                                            </span>
-                                            <span className="text-xs sm:text-sm text-gray-500 font-bold mb-1">{mode === 'speed' ? 'WPM' : (mode === 'streak' ? 'วัน' : 'EXP')}</span>
-                                        </div>
-                                        {mode !== 'streak' && (
-                                            <span className="text-[10px] sm:text-xs text-[#5cb5db] font-bold uppercase mt-1">
-                                                {mode === 'speed' ? `${myRankData.displayVal2}% Accuracy` : 'Total Score'}
-                                            </span>
+                                    <div className={`flex flex-col items-end shrink-0 ${mode === 'speed' ? 'min-w-[140px] sm:min-w-[175px]' : 'min-w-[85px] sm:min-w-[110px]'}`}>
+                                        {mode === 'speed' ? (
+                                            <div className="flex items-baseline gap-4 sm:gap-5 justify-end">
+                                                <div className="flex items-baseline gap-1">
+                                                    <span className="text-2xl sm:text-3xl font-black text-[#5cb5db] logo-font">
+                                                        {myRankData.displayVal1}
+                                                    </span>
+                                                    <span className="text-[10px] sm:text-xs font-semibold lowercase tracking-wider text-gray-400">
+                                                        wpm
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-baseline gap-1">
+                                                    <span className="text-2xl sm:text-3xl font-black text-emerald-500 logo-font">
+                                                        {myRankData.displayVal2}%
+                                                    </span>
+                                                    <span className="text-[10px] sm:text-xs font-semibold lowercase tracking-wider text-gray-400">
+                                                        acc
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <div className={`flex items-end gap-1 ${mode === 'streak' ? 'text-orange-500' : 'text-gray-800'}`}>
+                                                    {mode === 'streak' && <Flame size={24} fill="currentColor" className="mb-1" />}
+                                                    <span className="text-2xl sm:text-3xl font-black logo-font">
+                                                        {mode === 'streak' ? myRankData.displayVal1 : myRankData.displayVal2.toLocaleString()}
+                                                    </span>
+                                                    <span className="text-xs sm:text-sm text-gray-500 font-bold mb-1">{mode === 'streak' ? 'วัน' : 'EXP'}</span>
+                                                </div>
+                                                {mode !== 'streak' && (
+                                                    <span className="text-[10px] sm:text-xs text-[#5cb5db] font-bold uppercase mt-1">
+                                                        Total Score
+                                                    </span>
+                                                )}
+                                            </>
                                         )}
                                     </div>
                                 </div>

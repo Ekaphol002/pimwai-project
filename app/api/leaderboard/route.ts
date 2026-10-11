@@ -39,7 +39,7 @@ export async function GET(request: Request) {
                     { accuracy: 'desc' },
                     { createdAt: 'desc' }
                 ],
-                take: 200,
+                take: 1000,
                 include: {
                     user: { select: { id: true, username: true, name: true, rank: true, currentExp: true, image: true, showInLeaderboard: true } }
                 }
