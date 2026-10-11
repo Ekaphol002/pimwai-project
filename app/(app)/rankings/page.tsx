@@ -409,32 +409,34 @@ export default function LeaderboardPage() {
 
                                                 <div className="flex items-center gap-4 sm:gap-8">
                                                     {mode === 'rank' && (
-                                                        userRank === 7 ? (
-                                                            <div className="hidden md:flex flex-col items-center">
-                                                                <img src="/Rank7.png" onError={(e) => e.currentTarget.src = '/Rank1.png'} className="h-10 object-contain drop-shadow-xs" />
-                                                                <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider mt-0.5 shadow-xs ${isMe ? 'bg-white text-purple-700' : 'bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-500 text-white'}`}>
-                                                                    TOP 10
-                                                                </span>
-                                                            </div>
-                                                        ) : (
-                                                            <div className={`hidden md:flex flex-col items-center ${isMe ? 'opacity-100' : 'opacity-90'}`}>
-                                                                <img src={`/Rank${userRank}.png`} onError={(e) => e.currentTarget.src = '/Rank1.png'} className="h-10 object-contain drop-shadow-xs" />
-                                                                <div className="flex gap-0.5 mt-1">
-                                                                    {[1, 2, 3, 4, 5].map((starNum) => (
-                                                                        <Star
-                                                                            key={starNum}
-                                                                            size={10}
-                                                                            className={starNum <= userStars
-                                                                                ? (isMe ? "fill-yellow-300 text-yellow-300 drop-shadow-xs" : "fill-yellow-400 text-yellow-400")
-                                                                                : (isMe ? "fill-white/30 text-white/30" : "fill-gray-200 text-gray-200")}
-                                                                        />
-                                                                    ))}
+                                                        <div className="hidden md:flex flex-col items-center justify-center w-16 shrink-0">
+                                                            {userRank === 7 ? (
+                                                                <>
+                                                                    <img src="/Rank7.png" onError={(e) => e.currentTarget.src = '/Rank1.png'} className="h-10 object-contain drop-shadow-xs" />
+                                                                    <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider mt-0.5 shadow-xs ${isMe ? 'bg-white text-purple-700' : 'bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-500 text-white'}`}>
+                                                                        TOP 10
+                                                                    </span>
+                                                                </>
+                                                            ) : (
+                                                                <div className={`flex flex-col items-center justify-center ${isMe ? 'opacity-100' : 'opacity-90'}`}>
+                                                                    <img src={`/Rank${userRank}.png`} onError={(e) => e.currentTarget.src = '/Rank1.png'} className="h-10 object-contain drop-shadow-xs" />
+                                                                    <div className="flex gap-0.5 mt-1">
+                                                                        {[1, 2, 3, 4, 5].map((starNum) => (
+                                                                            <Star
+                                                                                key={starNum}
+                                                                                size={10}
+                                                                                className={starNum <= userStars
+                                                                                    ? (isMe ? "fill-yellow-300 text-yellow-300 drop-shadow-xs" : "fill-yellow-400 text-yellow-400")
+                                                                                    : (isMe ? "fill-white/30 text-white/30" : "fill-gray-200 text-gray-200")}
+                                                                            />
+                                                                        ))}
+                                                                    </div>
                                                                 </div>
-                                                            </div>
-                                                        )
+                                                            )}
+                                                        </div>
                                                     )}
 
-                                                    <div className="text-right flex flex-col items-end justify-center">
+                                                    <div className="text-right flex flex-col items-end justify-center min-w-[100px] sm:min-w-[125px] shrink-0">
                                                         <div className={`flex items-center gap-1 text-xl sm:text-2xl font-black logo-font ${isMe ? 'text-white' : (mode === 'streak' ? 'text-orange-500' : 'text-[#5cb5db]')}`}>
                                                             {mode === 'streak' && <Flame size={20} fill="currentColor" />}
                                                             {mode === 'speed' ? user.displayVal1 : (mode === 'streak' ? user.displayVal1 : user.displayVal2.toLocaleString())}
@@ -472,35 +474,39 @@ export default function LeaderboardPage() {
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-4 sm:gap-6">
+                                <div className="flex items-center gap-4 sm:gap-8">
                                     {mode === 'rank' && (() => {
                                         const myExp = myRankData.displayVal2 || 0;
                                         const isMyTop10 = myRankData.rankOrder !== null && myRankData.rankOrder <= 10;
                                         const myRankInfo = calculateRankInfo(myExp, isMyTop10);
-                                        return myRankInfo.rank === 7 ? (
-                                            <div className="hidden sm:flex flex-col items-center">
-                                                <img src="/Rank7.png" onError={(e) => e.currentTarget.src = '/Rank1.png'} className="h-10 object-contain drop-shadow-xs" />
-                                                <span className="text-[8px] font-black px-2 py-0.5 bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-500 text-white rounded-full uppercase tracking-wider mt-0.5 shadow-xs">
-                                                    TOP 10
-                                                </span>
-                                            </div>
-                                        ) : (
-                                            <div className="hidden sm:flex flex-col items-center">
-                                                <img src={`/Rank${myRankInfo.rank}.png`} onError={(e) => e.currentTarget.src = '/Rank1.png'} className="h-10 object-contain drop-shadow-xs" />
-                                                <div className="flex gap-0.5 mt-1">
-                                                    {[1, 2, 3, 4, 5].map((starNum) => (
-                                                        <Star
-                                                            key={starNum}
-                                                            size={10}
-                                                            className={starNum <= myRankInfo.stars ? "fill-yellow-400 text-yellow-400" : "fill-gray-200 text-gray-200"}
-                                                        />
-                                                    ))}
-                                                </div>
+                                        return (
+                                            <div className="hidden sm:flex flex-col items-center justify-center w-16 shrink-0">
+                                                {myRankInfo.rank === 7 ? (
+                                                    <>
+                                                        <img src="/Rank7.png" onError={(e) => e.currentTarget.src = '/Rank1.png'} className="h-10 object-contain drop-shadow-xs" />
+                                                        <span className="text-[8px] font-black px-2 py-0.5 bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-500 text-white rounded-full uppercase tracking-wider mt-0.5 shadow-xs">
+                                                            TOP 10
+                                                        </span>
+                                                    </>
+                                                ) : (
+                                                    <div className="flex flex-col items-center justify-center">
+                                                        <img src={`/Rank${myRankInfo.rank}.png`} onError={(e) => e.currentTarget.src = '/Rank1.png'} className="h-10 object-contain drop-shadow-xs" />
+                                                        <div className="flex gap-0.5 mt-1">
+                                                            {[1, 2, 3, 4, 5].map((starNum) => (
+                                                                <Star
+                                                                    key={starNum}
+                                                                    size={10}
+                                                                    className={starNum <= myRankInfo.stars ? "fill-yellow-400 text-yellow-400" : "fill-gray-200 text-gray-200"}
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         );
                                     })()}
 
-                                    <div className="flex flex-col items-end">
+                                    <div className="flex flex-col items-end min-w-[100px] sm:min-w-[125px] shrink-0">
                                         <div className={`flex items-end gap-1 ${mode === 'streak' ? 'text-orange-500' : 'text-gray-800'}`}>
                                             {mode === 'streak' && <Flame size={24} fill="currentColor" className="mb-1" />}
                                             <span className="text-2xl sm:text-3xl font-black logo-font">
