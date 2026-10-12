@@ -179,8 +179,10 @@ export default function FarmPage() {
     const wordElementsRef = useRef<(HTMLSpanElement | null)[]>([]);
     const typedPartRef = useRef<HTMLSpanElement>(null);
     const pendingSyncExpRef = useRef<number>(0);
+    const isSyncingRef = useRef<boolean>(false);
     const lastSyncTimeRef = useRef<number>(Date.now());
     const maxExpCharIdxRef = useRef<number>(0);
+    const wordExpEarnedRef = useRef<number>(0); // สะสม EXP ที่ได้จากตัวอักษรในคำปัจจุบัน เพื่อนำไปสรุปรวมแสดงตอนเคาะจบคำ
     const currentRoundStartingWordsRef = useRef<{ word: string; isGolden: boolean }[]>([]);
 
     // 🔒 Anti-Exploit Tracking Refs
@@ -356,6 +358,7 @@ export default function FarmPage() {
         setActiveWordIdx(0);
         setInputBuffer("");
         maxExpCharIdxRef.current = 0;
+        wordExpEarnedRef.current = 0;
         setCompletedWordsStatus([]);
         setTypedWordsHistory([]);
         setCombo(0);
@@ -397,6 +400,7 @@ export default function FarmPage() {
         setActiveWordIdx(0);
         setInputBuffer("");
         maxExpCharIdxRef.current = 0;
+        wordExpEarnedRef.current = 0;
         setCompletedWordsStatus([]);
         setTypedWordsHistory([]);
         setCombo(0);
@@ -487,35 +491,50 @@ export default function FarmPage() {
         return () => clearInterval(interval);
     }, [isFeverActive]);
 
-    // 6. ซิงค์ EXP สะสมขึ้นฐานข้อมูลอัตโนมัติ (Background Sync ทุกๆ 50+ EXP หรือเมื่อจบเกม)
+    // 6. ซิงค์ EXP สะสมขึ้นฐานข้อมูลอัตโนมัติ (Background Sync พร้อมระบบ Queue & Retry ป้องกัน EXP ตกหล่น)
     const syncExpToDatabase = useCallback(async (expToSync: number) => {
         if (expToSync <= 0) return;
-
-        const timeSpentSeconds = Math.max(1, Math.round((Date.now() - (lastSyncTimeRef.current || Date.now())) / 1000));
-        lastSyncTimeRef.current = Date.now();
 
         // 🌟 บันทึกลง LocalStorage เสมอ (สำหรับ Guest และเป็น Local Backup ของผู้ใช้)
         try {
             localStorage.setItem('pimwai_guest_exp', String(userTotalExpRef.current));
         } catch (e) { }
 
-        // ถ้าล็อกอินอยู่ ให้ส่งไปบันทึกลง Database ของเซิร์ฟเวอร์
-        if (session?.user) {
-            try {
-                await fetch('/api/farm/save', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        expEarned: expToSync,
-                        wpm: currentWpm,
-                        accuracy: accuracy,
-                        wordsCount: activeWordIdx,
-                        timeSpentSeconds: timeSpentSeconds
-                    })
-                });
-            } catch (e) {
-                console.error("Sync farm exp error:", e);
+        // ถ้าไม่มี session หรือกำลัง sync อยู่ ให้เก็บ EXP สะสมไว้ใน pendingSyncExpRef เพื่อส่งรอบถัดไป
+        if (!session?.user) return;
+        if (isSyncingRef.current) {
+            pendingSyncExpRef.current += expToSync;
+            return;
+        }
+
+        isSyncingRef.current = true;
+        const timeSpentSeconds = Math.max(1, Math.round((Date.now() - (lastSyncTimeRef.current || Date.now())) / 1000));
+        lastSyncTimeRef.current = Date.now();
+
+        try {
+            const res = await fetch('/api/farm/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    expEarned: expToSync,
+                    wpm: currentWpm,
+                    accuracy: accuracy,
+                    wordsCount: activeWordIdx,
+                    timeSpentSeconds: timeSpentSeconds
+                })
+            });
+
+            const data = await res.json().catch(() => null);
+            if (!res.ok || !data?.success) {
+                // 🔄 Re-queue: หากติด Rate Limit (429) หรือเซิร์ฟเวอร์ตอบกลับไม่สำเร็จ ให้นำ EXP ก้อนนี้ทบกลับเข้าคิว
+                pendingSyncExpRef.current += expToSync;
             }
+        } catch (e) {
+            // 🔄 Re-queue: เครือข่ายหลุดหรือ error ให้นำกลับเข้าคิวส่งรอบถัดไป
+            pendingSyncExpRef.current += expToSync;
+            console.error("Sync farm exp error (re-queued):", e);
+        } finally {
+            isSyncingRef.current = false;
         }
     }, [session, currentWpm, accuracy, activeWordIdx]);
 
@@ -614,9 +633,7 @@ export default function FarmPage() {
                         }
 
                         if (bountyExp > 0) {
-                            if (isFeverActiveRef.current) {
-                                bountyExp *= 2; // บัฟ Fever Mode คูณสองให้ด้วย!
-                            }
+                            // ไม่คูณซ้อน Fever (*= 2) แต่ให้เป็นโบนัส Flat Bounty เพื่อป้องกันคะแนนระเบิด
                             setRoundExpEarned(prev => prev + bountyExp);
                             setSessionExpEarned(prev => prev + bountyExp);
                             setUserTotalExp(prev => {
@@ -631,18 +648,32 @@ export default function FarmPage() {
                             });
                             pendingSyncExpRef.current += bountyExp;
 
-                            // 🎈 แสดงข้อความลอยบนหัวคำโดยตรง (+EXP)
-                            triggerWordFloater(
-                                activeWordIdx,
-                                isGoldenBounty ? 'golden_bounty' : 'bounty',
-                                `+${bountyExp} EXP`,
-                                bountyExp
-                            );
-
                             if (pendingSyncExpRef.current >= 50) {
                                 syncExpToDatabase(pendingSyncExpRef.current);
                                 pendingSyncExpRef.current = 0;
                             }
+                        }
+
+                        // 🎈 แสดง EXP รวมทั้งหมดที่ได้จากคำนี้ (ทั้งจากตัวอักษร + โบนัสจบคำ) ลอยขึ้นบนหัวคำทุกคำที่พิมพ์ถูก!
+                        const totalWordExp = wordExpEarnedRef.current + bountyExp;
+                        if (totalWordExp > 0) {
+                            triggerWordFloater(
+                                activeWordIdx,
+                                isGoldenBounty ? 'golden_bounty' : 'bounty',
+                                `+${totalWordExp} EXP`,
+                                totalWordExp
+                            );
+                        }
+                    } else {
+                        // กรณีคำนี้เคยได้โบนัสไปแล้ว หรือมีกดแก้แต่พิมพ์ถูกครบ: ก็ยังแสดง EXP รวมที่ได้จากคำนี้ขึ้นมาให้เห็นชัดเจน
+                        const totalWordExp = wordExpEarnedRef.current;
+                        if (totalWordExp > 0) {
+                            triggerWordFloater(
+                                activeWordIdx,
+                                targetWordObj.isGolden ? 'golden_bounty' : 'bounty',
+                                `+${totalWordExp} EXP`,
+                                totalWordExp
+                            );
                         }
                     }
                 }
@@ -679,6 +710,7 @@ export default function FarmPage() {
                 setActiveWordIdx(prev => prev + 1);
                 setInputBuffer("");
                 maxExpCharIdxRef.current = 0;
+                wordExpEarnedRef.current = 0;
                 return;
             }
 
@@ -756,13 +788,14 @@ export default function FarmPage() {
                         maxExpCharIdxRef.current = nextCharIdx + 1;
                         let charExpGain = Math.max(1, Math.round(1 * newMul));
 
-                        // ถ้าอยู่ใน Fever Mode: รับ EXP x2!
+                        // ถ้าอยู่ใน Fever Mode: ให้บัฟบวกคงที่ +2 EXP ต่อตัวอักษร แทนการคูณเบิ้ลทั้งก้อน (*= 2)
                         if (isFeverActiveRef.current) {
-                            charExpGain *= 2;
+                            charExpGain += 2;
                         }
 
                         setRoundExpEarned(prev => prev + charExpGain);
                         setSessionExpEarned(prev => prev + charExpGain);
+                        wordExpEarnedRef.current += charExpGain;
                         setUserTotalExp(prev => {
                             const nextTotal = prev + charExpGain;
                             userTotalExpRef.current = nextTotal;

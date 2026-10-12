@@ -25,9 +25,9 @@ export async function POST(request: Request) {
         const userId = session.user.id || session.user.email;
         const now = Date.now();
 
-        // 🛡️ 1. Rate Limit: ห้ามส่งถี่เกินไป (อย่างน้อย 3 วินาทีต่อคำขอ)
+        // 🛡️ 1. Rate Limit: ป้องกันบอทสแปม (อย่างน้อย 1 วินาทีต่อคำขอ)
         const lastTime = lastRequestTimeMap.get(userId);
-        if (lastTime && (now - lastTime) < 3000) {
+        if (lastTime && (now - lastTime) < 1000) {
             return NextResponse.json({
                 success: false,
                 error: "Too many requests. Please slow down."
@@ -50,10 +50,8 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Suspicious typing speed detected" }, { status: 400 });
         }
 
-        // 🛡️ 3. Anti-Cheat: EXP ต้องสมเหตุสมผลกับเวลาที่ใช้ (ไม่เกิน 60 EXP ต่อวินาทีอย่างยิ่งยวดยาม Fever x Multiplier สูงสุด)
-        const actualSeconds = Math.max(1, Number(timeSpentSeconds) || 1);
-        const maxAllowedExp = Math.max(100, actualSeconds * 60);
-        const safeExp = Math.min(numExp, maxAllowedExp, 500); // แคปสูงสุดต่อ 1 sync ไม่เกิน 500 EXP
+        // 🛡️ 3. Anti-Cheat: รองรับผู้เล่น Rank สูงที่คูณแต้มเยอะและสะสมคิวมาส่ง (แคปสูงสุดต่อ 1 ครั้งที่ 2,500 EXP)
+        const safeExp = Math.min(numExp, 2500);
 
         const user = await prisma.user.findFirst({
             where: {
@@ -94,21 +92,6 @@ export async function POST(request: Request) {
                 rank: true,
                 currentExp: true,
                 stars: true
-            }
-        });
-
-        // 🌟 บันทึกกิจกรรมเพื่อจุดไฟ / รักษา Streak และอัปเดตสถิติรายวัน
-        const safeDuration = Math.min(600, Math.max(1, Number(timeSpentSeconds) || Math.round((Number(wordsCount) || 10) / Math.max(0.5, (Number(wpm) || 30) / 60))));
-        const safeWpm = Math.min(300, Math.max(0, Math.round(Number(wpm) || 0)));
-        const safeAccuracy = Math.min(100, Math.max(0, Math.round(Number(accuracy) || 100)));
-
-        await prisma.speedTestResult.create({
-            data: {
-                userId: user.id,
-                duration: safeDuration,
-                wpm: safeWpm,
-                accuracy: safeAccuracy,
-                mistakes: {}
             }
         });
 
