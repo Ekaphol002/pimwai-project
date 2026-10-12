@@ -87,7 +87,6 @@ export const metadata: Metadata = {
 };
 
 import GlobalAudioPlayer from "@/components/GlobalAudioPlayer/GlobalAudioPlayer";
-import AntiCheatNoticeModal from "@/components/AntiCheatNoticeModal/AntiCheatNoticeModal";
 
 export default function RootLayout({
   children,
@@ -128,7 +127,6 @@ export default function RootLayout({
         <Providers>
           {children}
           <GlobalAudioPlayer />
-          <AntiCheatNoticeModal />
         </Providers>
       </body>
     </html>
