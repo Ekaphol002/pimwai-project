@@ -569,6 +569,19 @@ export default function AdminDashboardPage() {
                                                 {item.content}
                                             </p>
 
+                                            {item.imageUrl && (
+                                                <div className="mt-1">
+                                                    <a href={item.imageUrl} target="_blank" rel="noopener noreferrer" className="inline-block group">
+                                                        <img
+                                                            src={item.imageUrl}
+                                                            alt="Feedback Attachment"
+                                                            className="max-h-56 max-w-sm rounded-xl border border-gray-200 object-cover shadow-xs group-hover:opacity-90 transition"
+                                                        />
+                                                        <span className="text-[11px] text-[#5cb5db] font-bold block mt-1">🔍 คลิกเพื่อดูรูปภาพขนาดเต็ม</span>
+                                                    </a>
+                                                </div>
+                                            )}
+
                                             <div className="flex items-center gap-3 text-xs text-gray-400 mt-1">
                                                 <span>ผู้ส่ง: <strong className="text-gray-600">{item.user?.username || item.user?.name || 'บุคคลทั่วไป'}</strong> ({item.user?.email || '-'})</span>
                                                 <span>•</span>

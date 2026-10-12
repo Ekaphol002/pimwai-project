@@ -100,6 +100,7 @@ model Feedback {
   category  String   @default("suggestion") // 'suggestion' | 'bug' | 'feature' | 'other'
   title     String
   content   String   @db.Text
+  imageUrl  String?  @db.Text // แนบรูปภาพหลักฐาน เช่น ภาพอุทธรณ์คะแนน หรือภาพแคปหน้าจอบั๊ก
   status    String   @default("pending") // 'pending' | 'reviewed' | 'resolved'
   createdAt DateTime @default(now())
 

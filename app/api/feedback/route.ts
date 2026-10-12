@@ -8,7 +8,7 @@ export async function POST(request: Request) {
     try {
         const session = await getServerSession(authOptions);
         const body = await request.json();
-        const { title, content, category = 'suggestion' } = body;
+        const { title, content, category = 'suggestion', imageUrl } = body;
 
         if (!title || !content) {
             return NextResponse.json({ success: false, error: 'กรุณากรอกหัวข้อและเนื้อหาข้อเสนอแนะ' }, { status: 400 });
@@ -32,6 +32,7 @@ export async function POST(request: Request) {
                 title: title.trim(),
                 content: content.trim(),
                 category,
+                imageUrl: imageUrl ? String(imageUrl).trim() : null,
                 userId
             }
         });
