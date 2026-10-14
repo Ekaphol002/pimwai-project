@@ -219,7 +219,17 @@ export async function POST(request: Request) {
             const totalExpGained = baseLessonExp + questBonus + wpmBonus + grinderBonus + firstWinBonus;
 
             const currentTotalExp = (user.currentExp || 0) + totalExpGained;
-            const newRank = getRankFromExp(currentTotalExp);
+            let isTop10 = false;
+            if (currentTotalExp >= 234000) {
+                const higherCount = await tx.user.count({
+                    where: {
+                        id: { not: userId },
+                        currentExp: { gt: currentTotalExp }
+                    }
+                });
+                isTop10 = higherCount < 10;
+            }
+            const newRank = getRankFromExp(currentTotalExp, isTop10);
 
             let starsToAdd = 0;
             if (isFirstClear) {

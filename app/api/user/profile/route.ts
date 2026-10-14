@@ -132,6 +132,38 @@ export async function GET() {
             }
         } catch (e) { }
 
+        // ตรวจสอบสถานะ Top 10 บนเซิร์ฟเวอร์
+        let isTop10 = false;
+        try {
+            if ((user.currentExp || 0) >= 234000) {
+                const higherCount = await prisma.user.count({
+                    where: {
+                        currentExp: { gt: user.currentExp || 0 }
+                    }
+                });
+                isTop10 = higherCount < 10;
+            }
+
+            // 1. ถ้าติด Top 10 และ EXP ถึงเกณฑ์ (234,000+) แต่ใน DB ยังไม่ใช่ 7 -> ปรับขึ้นเป็น Rank 7 ทันที
+            if (isTop10 && (user.currentExp || 0) >= 234000 && user.rank !== 7) {
+                await prisma.user.update({
+                    where: { id: user.id },
+                    data: { rank: 7 }
+                });
+                user.rank = 7;
+            }
+            // 2. ถ้าหลุดจาก Top 10 (มีคนแซงจนตกไปอันดับ 11+) แต่ใน DB เป็น 7 -> ปรับกลับลงมาเป็น Rank 6 (5 ดาว)
+            else if (!isTop10 && user.rank === 7) {
+                await prisma.user.update({
+                    where: { id: user.id },
+                    data: { rank: 6 }
+                });
+                user.rank = 6;
+            }
+        } catch (e) {
+            console.error('Error verifying Top 10 rank status:', e);
+        }
+
         // ไม่ส่ง password hash กลับไป
         const { password, ...safeUser } = user;
 
@@ -146,8 +178,10 @@ export async function GET() {
                 keyboardSound: rawUser.keyboardSound || 'click',
                 lastNameChangedAt: rawUser.lastNameChangedAt || null,
                 lessonPerks: perks,
-                antiCheatNotice
+                antiCheatNotice,
+                isTop10
             },
+            isTop10,
             antiCheatNotice,
             lessonPerks: perks,
             canChangeName,

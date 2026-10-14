@@ -73,7 +73,17 @@ export async function POST(request: Request) {
       let updatedUser = user;
       if (earnedXP > 0) {
         const currentTotalExp = (user.currentExp || 0) + earnedXP;
-        const newRank = getRankFromExp(currentTotalExp);
+        let isTop10 = false;
+        if (currentTotalExp >= 234000) {
+          const higherCount = await tx.user.count({
+            where: {
+              id: { not: user.id },
+              currentExp: { gt: currentTotalExp }
+            }
+          });
+          isTop10 = higherCount < 10;
+        }
+        const newRank = getRankFromExp(currentTotalExp, isTop10);
 
         updatedUser = await tx.user.update({
           where: { id: user.id },

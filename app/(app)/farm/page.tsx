@@ -34,6 +34,7 @@ import { soundManager } from '@/lib/soundEffects';
 import { thaiKeyDisplayMap, thaiShiftKeyDisplayMap } from '@/lib/keyMaps';
 import toast, { Toaster } from 'react-hot-toast';
 import { MONKEYTYPE_THAI_WORDS } from '@/lib/thaiWords';
+import RankUpOverlay from '@/components/PracticeResultModal/RankUpOverlay';
 
 // คลังคำภาษาไทยมาตรฐาน Monkeytype (1,000 คำความถี่สูง ตรงตาม Monkeytype Official)
 const BASE_THAI_WORDS = MONKEYTYPE_THAI_WORDS;
@@ -99,7 +100,13 @@ export default function FarmPage() {
 
     // Database & User EXP State
     const [userTotalExp, setUserTotalExp] = useState<number>(0);
+    const [isTop10User, setIsTop10User] = useState<boolean>(false);
+    const isTop10UserRef = useRef<boolean>(false);
     const [isUserLoaded, setIsUserLoaded] = useState<boolean>(false);
+    const [rankUpData, setRankUpData] = useState<{ prevRank: number; currentRank: number; currentRankName: string } | null>(null);
+    const [starUpData, setStarUpData] = useState<{ rank: number; stars: number } | null>(null);
+    const lastSeenRankRef = useRef<number | null>(null);
+    const lastSeenStarsRef = useRef<number | null>(null);
 
     // 🎖️ Lesson Perks System
     const [realLessonPerks, setRealLessonPerks] = useState<{
@@ -267,6 +274,37 @@ export default function FarmPage() {
         return () => window.removeEventListener('resize', handleResize);
     }, [updateCaretPosition]);
 
+    // 🎯 ตรวจจับการเลื่อนแรงค์ และการขึ้นดาวอัตโนมัติระหว่างเล่น
+    useEffect(() => {
+        if (!isUserLoaded || lastSeenRankRef.current === null) return;
+        const currentInfo = calculateRankInfo(userTotalExp, isTop10User);
+
+        // 1. ตรวจจับ Rank Up
+        if (currentInfo.rank > lastSeenRankRef.current) {
+            const prevR = lastSeenRankRef.current;
+            lastSeenRankRef.current = currentInfo.rank;
+            lastSeenStarsRef.current = currentInfo.stars;
+            setRankUpData({
+                prevRank: prevR,
+                currentRank: currentInfo.rank,
+                currentRankName: currentInfo.thaiRankName || currentInfo.rankName
+            });
+        }
+        // 2. ตรวจจับ Star Up (เฉพาะ Rank 1 - 6 ที่มีระบบดาว)
+        else if (
+            currentInfo.rank === lastSeenRankRef.current &&
+            currentInfo.rank < 7 &&
+            lastSeenStarsRef.current !== null &&
+            currentInfo.stars > lastSeenStarsRef.current
+        ) {
+            lastSeenStarsRef.current = currentInfo.stars;
+            setStarUpData({
+                rank: currentInfo.rank,
+                stars: currentInfo.stars
+            });
+        }
+    }, [userTotalExp, isTop10User, isUserLoaded]);
+
     // 1. Fetch User Profile เมื่อเปิดหน้าเว็บ (รวม Lesson Perks และ Guest Mode)
     useEffect(() => {
         fetch('/api/user/profile')
@@ -296,6 +334,11 @@ export default function FarmPage() {
 
                     setUserTotalExp(exp);
                     userTotalExpRef.current = exp;
+
+                    const isTop10 = Boolean(data.isTop10 || data.user?.isTop10 || data.user?.rank === 7);
+                    setIsTop10User(isTop10);
+                    isTop10UserRef.current = isTop10;
+
                     const perks = data.lessonPerks || data.user.lessonPerks || {
                         beginner: false,
                         intermediate: false,
@@ -309,7 +352,9 @@ export default function FarmPage() {
                         shieldsLeftRef.current = 2;
                     }
                     // อัปเดตตัวคูณเริ่มต้นตามโปรไฟล์จริง
-                    const rInfo = calculateRankInfo(exp);
+                    const rInfo = calculateRankInfo(exp, isTop10);
+                    lastSeenRankRef.current = rInfo.rank;
+                    lastSeenStarsRef.current = rInfo.stars;
                     const rCfg = getRankMultiplierConfig(rInfo.rank, rInfo.stars);
                     const baseMul = rCfg.totalBaseMultiplier + (perks.advanced ? 0.5 : 0);
                     setMultiplier(baseMul);
@@ -322,6 +367,7 @@ export default function FarmPage() {
                         setUserTotalExp(guestExp);
                         userTotalExpRef.current = guestExp;
                         const rInfo = calculateRankInfo(guestExp);
+                        lastSeenRankRef.current = rInfo.rank;
                         const rCfg = getRankMultiplierConfig(rInfo.rank, rInfo.stars);
                         setMultiplier(rCfg.totalBaseMultiplier);
                     } catch (e) {
@@ -374,7 +420,7 @@ export default function FarmPage() {
         setFeverTimeLeft(0);
 
         // คำนวณ Base Multiplier จาก Rank ปัจจุบัน
-        const rInfo = calculateRankInfo(userTotalExpRef.current);
+        const rInfo = calculateRankInfo(userTotalExpRef.current, isTop10UserRef.current);
         const rCfg = getRankMultiplierConfig(rInfo.rank, rInfo.stars);
         const baseMul = rCfg.totalBaseMultiplier + (lessonPerksRef.current.advanced ? 0.5 : 0);
         const initialMul = Number((baseMul + (newWords[0]?.isGolden ? 1.0 : 0)).toFixed(2));
@@ -413,7 +459,7 @@ export default function FarmPage() {
         setIsFeverActive(false);
         setFeverTimeLeft(0);
 
-        const rInfo = calculateRankInfo(userTotalExpRef.current);
+        const rInfo = calculateRankInfo(userTotalExpRef.current, isTop10UserRef.current);
         const rCfg = getRankMultiplierConfig(rInfo.rank, rInfo.stars);
         const baseMul = rCfg.totalBaseMultiplier + (lessonPerksRef.current.advanced ? 0.5 : 0);
         const initialMul = Number((baseMul + (wordsToRepeat[0]?.isGolden ? 1.0 : 0)).toFixed(2));
@@ -528,6 +574,9 @@ export default function FarmPage() {
             if (!res.ok || !data?.success) {
                 // 🔄 Re-queue: หากติด Rate Limit (429) หรือเซิร์ฟเวอร์ตอบกลับไม่สำเร็จ ให้นำ EXP ก้อนนี้ทบกลับเข้าคิว
                 pendingSyncExpRef.current += expToSync;
+            } else if (data?.updatedUser?.rank === 7) {
+                setIsTop10User(true);
+                isTop10UserRef.current = true;
             }
         } catch (e) {
             // 🔄 Re-queue: เครือข่ายหลุดหรือ error ให้นำกลับเข้าคิวส่งรอบถัดไป
@@ -565,7 +614,7 @@ export default function FarmPage() {
             }
 
             // คำนวณ Base Multiplier & Cap ตาม Rank ปัจจุบัน
-            const rInfo = calculateRankInfo(userTotalExpRef.current);
+            const rInfo = calculateRankInfo(userTotalExpRef.current, isTop10UserRef.current);
             const rCfg = getRankMultiplierConfig(rInfo.rank, rInfo.stars);
             const baseRankMul = rCfg.totalBaseMultiplier + (lessonPerksRef.current.advanced ? 0.5 : 0);
             const maxCap = rCfg.maxMultiplierCap + (lessonPerksRef.current.advanced ? 10.0 : 0);
@@ -916,7 +965,7 @@ export default function FarmPage() {
         maxBarExp,
         badgeBg,
         isTop10Eligible
-    } = calculateRankInfo(userTotalExp);
+    } = calculateRankInfo(userTotalExp, isTop10User);
 
     // 📊 คำนวณสถิติเมื่อจบเกมสำหรับแสดงผลหน้า Result สไตล์ Monkeytype (แสดงข้อมูลตรงตามโหมดจริง)
     const finalElapsedSec = mode === 'time'
@@ -2028,6 +2077,25 @@ export default function FarmPage() {
                 </section>
 
             </main>
+
+            {/* 👑 Rank Up & Star Up Animation Overlay */}
+            {rankUpData && (
+                <RankUpOverlay
+                    prevRank={rankUpData.prevRank}
+                    currentRank={rankUpData.currentRank}
+                    currentRankName={rankUpData.currentRankName}
+                    mode="rank"
+                    onClose={() => setRankUpData(null)}
+                />
+            )}
+            {starUpData && !rankUpData && (
+                <RankUpOverlay
+                    currentRank={starUpData.rank}
+                    currentStars={starUpData.stars}
+                    mode="star"
+                    onClose={() => setStarUpData(null)}
+                />
+            )}
         </div>
     );
 }
