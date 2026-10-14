@@ -103,17 +103,17 @@ export default function RankUpOverlay({
                 />
             </div>
 
-            <div className="relative z-10 flex flex-col items-center max-w-3xl sm:max-w-4xl w-full my-auto max-h-[96vh] justify-center py-4 px-4">
+            <div className="relative z-10 flex flex-col items-center max-w-2xl sm:max-w-4xl w-full my-auto max-h-[96vh] justify-center py-4 px-4">
 
-                {/* Main Heading (Pure Glowing Grand Typography) */}
+                {/* Main Heading (Pure Glowing Typography - Grand & Punchy) */}
                 {activeMode === 'rank' ? (
                     <div className="flex flex-col items-center animate-slideUpFade">
                         <div className="flex items-center gap-2 mb-1">
-                            <Sparkles size={18} className="text-yellow-400 fill-yellow-400 animate-pulse" />
+                            <Sparkles size={20} className="text-yellow-400 fill-yellow-400 animate-pulse" />
                             <span className="text-xs sm:text-sm font-black tracking-[0.3em] uppercase text-yellow-300 drop-shadow-[0_0_12px_rgba(250,204,21,0.6)]">
                                 TIER PROMOTION
                             </span>
-                            <Sparkles size={18} className="text-yellow-400 fill-yellow-400 animate-pulse" />
+                            <Sparkles size={20} className="text-yellow-400 fill-yellow-400 animate-pulse" />
                         </div>
                         <h2 className="text-4xl sm:text-6xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-200 via-amber-400 to-yellow-600 tracking-wider drop-shadow-[0_4px_30px_rgba(250,204,21,0.6)] logo-font">
                             RANK UP!
@@ -122,11 +122,11 @@ export default function RankUpOverlay({
                 ) : (
                     <div className="flex flex-col items-center animate-slideUpFade">
                         <div className="flex items-center gap-2 mb-1">
-                            <Star size={18} className="text-yellow-400 fill-yellow-400 animate-pulse" />
+                            <Star size={20} className="text-yellow-400 fill-yellow-400 animate-pulse" />
                             <span className="text-xs sm:text-sm font-black tracking-[0.3em] uppercase text-yellow-300 drop-shadow-[0_0_12px_rgba(250,204,21,0.6)]">
                                 STAR ADVANCEMENT
                             </span>
-                            <Star size={18} className="text-yellow-400 fill-yellow-400 animate-pulse" />
+                            <Star size={20} className="text-yellow-400 fill-yellow-400 animate-pulse" />
                         </div>
                         <h2 className="text-4xl sm:text-6xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-200 via-amber-300 to-yellow-500 tracking-wider drop-shadow-[0_4px_30px_rgba(250,204,21,0.6)] logo-font">
                             STAR UP!
@@ -134,8 +134,8 @@ export default function RankUpOverlay({
                     </div>
                 )}
 
-                {/* Central Animation Stage (Enlarged & Grand) */}
-                <div key={animKey} className="relative w-[320px] h-[190px] sm:w-[520px] sm:h-[260px] flex items-center justify-center my-2 sm:my-3">
+                {/* Central Animation Stage (Bigger Keyboard & Impressive Presence) */}
+                <div key={animKey} className="relative w-[320px] h-[190px] sm:w-[520px] sm:h-[260px] md:h-[280px] flex items-center justify-center my-2 sm:my-3">
                     {activeMode === 'rank' ? (
                         <>
                             {/* Old Rank (Rotating & Fading Out) */}
@@ -147,7 +147,7 @@ export default function RankUpOverlay({
                                         height={280}
                                         alt="Old Rank"
                                         priority
-                                        className="object-contain max-h-[160px] sm:max-h-[220px] w-auto filter grayscale opacity-40 drop-shadow-md"
+                                        className="object-contain max-h-[160px] sm:max-h-[220px] md:max-h-[250px] w-auto filter grayscale opacity-40 drop-shadow-md"
                                     />
                                 </div>
                             )}
@@ -162,7 +162,7 @@ export default function RankUpOverlay({
                                         height={340}
                                         alt="New Rank"
                                         priority
-                                        className="object-contain max-h-[175px] sm:max-h-[245px] w-auto drop-shadow-[0_0_40px_rgba(255,255,255,0.75)]"
+                                        className="object-contain max-h-[180px] sm:max-h-[240px] md:max-h-[270px] w-auto drop-shadow-[0_0_45px_rgba(255,255,255,0.7)]"
                                     />
                                 </div>
                             )}
@@ -170,37 +170,37 @@ export default function RankUpOverlay({
                     ) : (
                         /* Star Up Mode: Shows current keyboard with star impact */
                         <div className="flex flex-col items-center justify-center animate-slideUpFade">
-                            <div className="relative flex items-center justify-center mb-1.5">
-                                <div className={`absolute inset-0 ${theme.glow} blur-[55px] rounded-full pointer-events-none`}></div>
+                            <div className="relative flex items-center justify-center mb-2">
+                                <div className={`absolute inset-0 ${theme.glow} blur-[60px] rounded-full pointer-events-none`}></div>
                                 <Image
                                     src={`/Rank${curRank}.png`}
                                     width={480}
-                                    height={300}
+                                    height={280}
                                     alt="Rank Keyboard"
                                     priority
-                                    className="object-contain max-h-[140px] sm:max-h-[195px] w-auto drop-shadow-[0_0_30px_rgba(255,255,255,0.6)]"
+                                    className="object-contain max-h-[145px] sm:max-h-[200px] md:max-h-[225px] w-auto drop-shadow-[0_0_35px_rgba(255,255,255,0.6)]"
                                 />
                             </div>
 
                             {/* 5 Stars Stamping Row */}
-                            <div className="flex items-center gap-2.5 sm:gap-4 mt-1.5 sm:mt-2">
+                            <div className="flex items-center gap-2.5 sm:gap-4 mt-2">
                                 {[1, 2, 3, 4, 5].map((s) => {
                                     const isNewlyStamped = s === curStars;
                                     const isFilled = s <= curStars;
                                     return (
                                         <div key={s} className="relative flex items-center justify-center">
                                             <Star
-                                                size={30}
+                                                size={32}
                                                 className={`transition-all duration-300 ${
                                                     isFilled
-                                                        ? 'fill-yellow-400 text-yellow-300 drop-shadow-[0_0_12px_rgba(250,204,21,0.85)]'
+                                                        ? 'fill-yellow-400 text-yellow-300 drop-shadow-[0_0_14px_rgba(250,204,21,0.85)]'
                                                         : 'fill-white/10 text-white/20'
                                                 }`}
                                             />
                                             {isNewlyStamped && showNewRank && (
                                                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                                                     <Star
-                                                        size={30}
+                                                        size={32}
                                                         className="fill-yellow-300 text-yellow-100 animate-star-stamp drop-shadow-[0_0_30px_rgba(255,255,255,1)]"
                                                     />
                                                 </div>
@@ -215,24 +215,24 @@ export default function RankUpOverlay({
 
                 {/* Pure Typography Name & Details: Thai on Top, English Headline on Bottom */}
                 {showNewRank && (
-                    <div className="flex flex-col items-center animate-slideUpFade text-center select-none mt-1 sm:mt-2">
+                    <div className="flex flex-col items-center animate-slideUpFade text-center select-none mt-2">
                         {/* 1. Thai Name (Top Label) */}
                         <span className="text-sm sm:text-base font-bold tracking-widest text-amber-300 drop-shadow-[0_0_10px_rgba(251,191,36,0.6)]">
                             {tierInfo.thaiName}
                         </span>
 
                         {/* 2. English Name (Main Big Headline) - NO DOT, ON SAME LINE */}
-                        <h3 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-wide mt-1 drop-shadow-[0_4px_25px_rgba(255,255,255,0.75)] logo-font uppercase whitespace-nowrap flex items-center justify-center gap-2.5 sm:gap-3.5">
+                        <h3 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-wide mt-1 drop-shadow-[0_4px_25px_rgba(255,255,255,0.7)] logo-font uppercase whitespace-nowrap flex items-center justify-center gap-2 sm:gap-3.5">
                             <span>{tierInfo.name}</span>
                             {activeMode === 'star' && (
-                                <span className="text-yellow-300 drop-shadow-[0_0_15px_rgba(250,204,21,0.75)]">
+                                <span className="text-yellow-300 drop-shadow-[0_0_14px_rgba(250,204,21,0.7)]">
                                     ★ {curStars}
                                 </span>
                             )}
                         </h3>
 
                         {/* Multiplier Details */}
-                        <div className="flex items-center gap-2 sm:gap-2.5 mt-1.5 sm:mt-2 text-xs sm:text-sm text-amber-200/90 font-semibold drop-shadow-sm flex-wrap justify-center">
+                        <div className="flex items-center gap-2 sm:gap-3 mt-2 text-xs sm:text-sm md:text-base text-amber-200/90 font-semibold drop-shadow-sm flex-wrap justify-center">
                             <span>Base x{(multConfig.totalBaseMultiplier).toFixed(2)}</span>
                             <span className="text-white/40">•</span>
                             <span>Max Cap x{multConfig.maxMultiplierCap.toFixed(1)}</span>
