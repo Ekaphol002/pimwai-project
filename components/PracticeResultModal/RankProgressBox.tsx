@@ -57,8 +57,9 @@ export default function RankProgressBox({ totalExp, earnedExp, shouldAnimate }: 
         };
     }, [totalExp, shouldAnimate, previousTotalExp]);
 
-    // 4. Rank Up Logic
+    // 4. Rank Up & Star Up Logic
     const [showRankUp, setShowRankUp] = useState(false);
+    const [showStarUp, setShowStarUp] = useState(false);
 
     const prevInfo = calculateRankInfo(previousTotalExp);
     const currentInfo = calculateRankInfo(totalExp);
@@ -66,15 +67,23 @@ export default function RankProgressBox({ totalExp, earnedExp, shouldAnimate }: 
     useEffect(() => {
         if (!shouldAnimate) return;
 
-        // เช็คว่ามีการอัพ Rank หรือไม่
+        // 1. เช็คว่ามีการอัพ Rank หรือไม่ (Rank Up)
         if (currentInfo.rank > prevInfo.rank) {
-            // รอให้หลอด EXP วิ่งเสร็จก่อน (ประมาณ 1.5s) แล้วค่อยขึ้น Rank Up
+            // รอให้หลอด EXP วิ่งเสร็จก่อน (ประมาณ 1.6s) แล้วค่อยขึ้น Rank Up
             const timer = setTimeout(() => {
                 setShowRankUp(true);
             }, 1600);
             return () => clearTimeout(timer);
         }
-    }, [shouldAnimate, currentInfo.rank, prevInfo.rank]);
+        // 2. เช็คว่ามีการเลื่อนขั้นดาวหรือไม่ (Star Up - เฉพาะ Rank 1 - 6)
+        else if (currentInfo.rank === prevInfo.rank && currentInfo.rank < 7 && currentInfo.stars > prevInfo.stars) {
+            // รอให้หลอด EXP วิ่งเสร็จก่อน (ประมาณ 1.6s) แล้วค่อยขึ้น Star Up
+            const timer = setTimeout(() => {
+                setShowStarUp(true);
+            }, 1600);
+            return () => clearTimeout(timer);
+        }
+    }, [shouldAnimate, currentInfo.rank, prevInfo.rank, currentInfo.stars, prevInfo.stars]);
 
     // คำนวณค่าสำหรับแสดงผล (ใช้ displayExp เพื่อให้เห็นหลอดขยับ)
     const { rank, rankName, thaiRankName, stars, currentBarExp, maxBarExp, badgeBg } = calculateRankInfo(displayExp);
@@ -186,13 +195,23 @@ export default function RankProgressBox({ totalExp, earnedExp, shouldAnimate }: 
                 </div>
             </div>
 
-            {/* 🔥 RANK UP OVERLAY 🔥 */}
+            {/* 🔥 RANK UP & STAR UP OVERLAYS 🔥 */}
             {showRankUp && (
                 <RankUpOverlay
                     prevRank={prevInfo.rank}
                     currentRank={currentInfo.rank}
-                    currentRankName={currentInfo.rankName}
+                    currentRankName={currentInfo.thaiRankName || currentInfo.rankName}
+                    mode="rank"
+                    currentStars={0}
                     onClose={() => setShowRankUp(false)}
+                />
+            )}
+            {showStarUp && !showRankUp && (
+                <RankUpOverlay
+                    currentRank={currentInfo.rank}
+                    currentStars={currentInfo.stars}
+                    mode="star"
+                    onClose={() => setShowStarUp(false)}
                 />
             )}
         </>
