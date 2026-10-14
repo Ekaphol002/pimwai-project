@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { getRankFromExp } from '@/lib/rankUtils';
+import { getRankFromExp, calculateRankInfo } from '@/lib/rankUtils';
 
 // 🛡️ In-memory rate limiting map (userId -> timestamp of last request)
 const lastRequestTimeMap = new Map<string, number>();
@@ -25,11 +25,12 @@ export async function POST(request: Request) {
         const userId = session.user.id || session.user.email;
         const now = Date.now();
 
-        // 🛡️ 1. Rate Limit: ป้องกันบอทสแปม (อย่างน้อย 1 วินาทีต่อคำขอ)
+        // 🛡️ 1. Rate Limit: ป้องกันบอทสแปมรัวคำขอ (500ms ต่อคำขอ เพื่อรองรับการ Sync ขณะพิมพ์เร็ว)
         const lastTime = lastRequestTimeMap.get(userId);
-        if (lastTime && (now - lastTime) < 1000) {
+        if (lastTime && (now - lastTime) < 500) {
             return NextResponse.json({
                 success: false,
+                rateLimited: true,
                 error: "Too many requests. Please slow down."
             }, { status: 429 });
         }
@@ -50,8 +51,8 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Suspicious typing speed detected" }, { status: 400 });
         }
 
-        // 🛡️ 3. Anti-Cheat: รองรับผู้เล่น Rank สูงที่คูณแต้มเยอะและสะสมคิวมาส่ง (แคปสูงสุดต่อ 1 ครั้งที่ 2,500 EXP)
-        const safeExp = Math.min(numExp, 2500);
+        // 🛡️ 3. Anti-Cheat: รองรับผู้เล่น Rank สูงที่คูณแต้มเยอะและสะสมคิวมาส่ง (แคปสูงสุดต่อ 1 ครั้งที่ 100,000 EXP)
+        const safeExp = Math.min(numExp, 100000);
 
         const user = await prisma.user.findFirst({
             where: {
@@ -78,13 +79,14 @@ export async function POST(request: Request) {
             isTop10 = higherCount < 10;
         }
 
-        const newRank = getRankFromExp(newTotalExp, isTop10);
+        const rankInfo = calculateRankInfo(newTotalExp, isTop10);
 
         const updatedUser = await prisma.user.update({
             where: { id: user.id },
             data: {
                 currentExp: newTotalExp,
-                rank: newRank,
+                rank: rankInfo.rank,
+                stars: rankInfo.stars,
                 lastPlayedAt: new Date()
             },
             select: {

@@ -537,20 +537,28 @@ export default function FarmPage() {
         return () => clearInterval(interval);
     }, [isFeverActive]);
 
-    // 6. ซิงค์ EXP สะสมขึ้นฐานข้อมูลอัตโนมัติ (Background Sync พร้อมระบบ Queue & Retry ป้องกัน EXP ตกหล่น)
-    const syncExpToDatabase = useCallback(async (expToSync: number) => {
-        if (expToSync <= 0) return;
-
+    // 6. ซิงค์ EXP สะสมขึ้นฐานข้อมูลอัตโนมัติ (Atomic Queue & Periodic Sync ป้องกัน EXP ตกหล่น)
+    const syncExpToDatabase = useCallback(async (forcedExp?: number) => {
         // 🌟 บันทึกลง LocalStorage เสมอ (สำหรับ Guest และเป็น Local Backup ของผู้ใช้)
         try {
             localStorage.setItem('pimwai_guest_exp', String(userTotalExpRef.current));
         } catch (e) { }
 
-        // ถ้าไม่มี session หรือกำลัง sync อยู่ ให้เก็บ EXP สะสมไว้ใน pendingSyncExpRef เพื่อส่งรอบถัดไป
         if (!session?.user) return;
-        if (isSyncingRef.current) {
-            pendingSyncExpRef.current += expToSync;
-            return;
+        if (isSyncingRef.current) return;
+
+        // ดึงแต้มที่จะส่งออกจากคิว (ถ้าไม่ระบุ forcedExp ให้ดึงแต้มทั้งหมดที่ค้างอยู่ในคิว)
+        const expToSync = typeof forcedExp === 'number' && forcedExp > 0 
+            ? forcedExp 
+            : pendingSyncExpRef.current;
+
+        if (expToSync <= 0) return;
+
+        // หักแต้มออกจากคิวทันทีก่อนเริ่มยิง API เพื่อป้องกันการส่งซ้ำ
+        if (typeof forcedExp !== 'number') {
+            pendingSyncExpRef.current -= expToSync;
+        } else {
+            pendingSyncExpRef.current = Math.max(0, pendingSyncExpRef.current - expToSync);
         }
 
         isSyncingRef.current = true;
@@ -572,8 +580,9 @@ export default function FarmPage() {
 
             const data = await res.json().catch(() => null);
             if (!res.ok || !data?.success) {
-                // 🔄 Re-queue: หากติด Rate Limit (429) หรือเซิร์ฟเวอร์ตอบกลับไม่สำเร็จ ให้นำ EXP ก้อนนี้ทบกลับเข้าคิว
+                // 🔄 Re-queue: หากติด Rate Limit หรือเซิร์ฟเวอร์ตอบกลับไม่สำเร็จ ให้นำ EXP ก้อนนี้ทบกลับเข้าคิว
                 pendingSyncExpRef.current += expToSync;
+                console.warn("Farm EXP save deferred, returned to queue:", data);
             } else if (data?.updatedUser?.rank === 7) {
                 setIsTop10User(true);
                 isTop10UserRef.current = true;
@@ -586,6 +595,46 @@ export default function FarmPage() {
             isSyncingRef.current = false;
         }
     }, [session, currentWpm, accuracy, activeWordIdx]);
+
+    // ซิงค์แต้มที่ค้างอยู่ในคิวเป็นระยะ (ทุกๆ 2.5 วินาที) ป้องกันการยิงถี่ยิบและกันข้อมูลหาย
+    useEffect(() => {
+        const interval = setInterval(() => {
+            if (pendingSyncExpRef.current > 0 && !isSyncingRef.current) {
+                syncExpToDatabase();
+            }
+        }, 2500);
+        return () => clearInterval(interval);
+    }, [syncExpToDatabase]);
+
+    // ซิงค์แต้มเมื่อผู้ใช้จะปิดหน้าต่างเว็บ หรือสลับหน้า
+    useEffect(() => {
+        const handleBeforeUnload = () => {
+            if (pendingSyncExpRef.current > 0 && session?.user) {
+                const payload = JSON.stringify({
+                    expEarned: pendingSyncExpRef.current,
+                    wpm: currentWpm,
+                    accuracy: accuracy,
+                    wordsCount: activeWordIdx,
+                    timeSpentSeconds: 5
+                });
+                navigator.sendBeacon?.('/api/farm/save', new Blob([payload], { type: 'application/json' }));
+            }
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+            if (pendingSyncExpRef.current > 0) {
+                syncExpToDatabase();
+            }
+        };
+    }, [session, currentWpm, accuracy, activeWordIdx, syncExpToDatabase]);
+
+    // ซิงค์แต้มทันทีเมื่อจบรอบในทุกโหมด
+    useEffect(() => {
+        if (isFinished && pendingSyncExpRef.current > 0) {
+            syncExpToDatabase();
+        }
+    }, [isFinished, syncExpToDatabase]);
 
     // 7. Keyboard Event Handler
     useEffect(() => {
@@ -697,9 +746,8 @@ export default function FarmPage() {
                             });
                             pendingSyncExpRef.current += bountyExp;
 
-                            if (pendingSyncExpRef.current >= 50) {
-                                syncExpToDatabase(pendingSyncExpRef.current);
-                                pendingSyncExpRef.current = 0;
+                            if (pendingSyncExpRef.current >= 150) {
+                                syncExpToDatabase();
                             }
                         }
 
@@ -738,8 +786,7 @@ export default function FarmPage() {
                     setEndTime(Date.now());
                     setIsFinished(true);
                     setIsTyping(false);
-                    syncExpToDatabase(pendingSyncExpRef.current);
-                    pendingSyncExpRef.current = 0;
+                    syncExpToDatabase();
                     return;
                 }
 
@@ -857,10 +904,8 @@ export default function FarmPage() {
                         });
                         pendingSyncExpRef.current += charExpGain;
 
-                        // Sync ไป Server ทุกๆ 50 EXP
-                        if (pendingSyncExpRef.current >= 50) {
-                            syncExpToDatabase(pendingSyncExpRef.current);
-                            pendingSyncExpRef.current = 0;
+                        if (pendingSyncExpRef.current >= 150) {
+                            syncExpToDatabase();
                         }
                     }
                 } else {
@@ -914,8 +959,7 @@ export default function FarmPage() {
                     setEndTime(Date.now());
                     setIsFinished(true);
                     setIsTyping(false);
-                    syncExpToDatabase(pendingSyncExpRef.current);
-                    pendingSyncExpRef.current = 0;
+                    syncExpToDatabase();
                     return;
                 }
 
