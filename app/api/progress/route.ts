@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { toDateKey } from '@/lib/streakUtils';
 
 export async function GET() {
   try {
@@ -123,7 +124,31 @@ export async function GET() {
     allActivities.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     // วันที่ที่มีกิจกรรม (สำหรับ Activity Graph และระบบ Streak / ไฟ 🔥)
-    const activityDates = allActivities.map(item => new Date(item.date).toISOString().split('T')[0]);
+    const activityDates = Array.from(new Set(allActivities.map(item => toDateKey(item.date))));
+
+    // คำนวณสถิติรายวัน (WPM, Acc, Time) สำหรับปฏิทินเมื่อผู้ใช้กดดูวันที่ใน Activity Graph
+    const dailyStatsMap: Record<string, { duration: number; weightedWpm: number; weightedAcc: number; count: number }> = {};
+
+    for (const item of allActivities) {
+      const dKey = toDateKey(item.date);
+      if (!dailyStatsMap[dKey]) {
+        dailyStatsMap[dKey] = { duration: 0, weightedWpm: 0, weightedAcc: 0, count: 0 };
+      }
+      const dur = item.duration || 1;
+      dailyStatsMap[dKey].duration += dur;
+      dailyStatsMap[dKey].weightedWpm += ((item as any).wpm || 0) * dur;
+      dailyStatsMap[dKey].weightedAcc += ((item as any).accuracy !== undefined ? (item as any).accuracy : 100) * dur;
+      dailyStatsMap[dKey].count += 1;
+    }
+
+    const dailyStats: Record<string, { wpm: number; accuracy: number; duration: number }> = {};
+    for (const [dKey, val] of Object.entries(dailyStatsMap)) {
+      dailyStats[dKey] = {
+        wpm: val.duration > 0 ? Math.round(val.weightedWpm / val.duration) : 0,
+        accuracy: val.duration > 0 ? Math.round(val.weightedAcc / val.duration) : 100,
+        duration: val.duration
+      };
+    }
 
     // 5 รายการล่าสุด (สำหรับ Recent Activity Widget)
     const recentActivity = allActivities.slice(0, 5).map(item => {
@@ -203,6 +228,7 @@ export async function GET() {
         farmTimeSpent: farmTimeStr // ✅ เวลาฟาร์มในรูปแบบ String เช่น "1h 25m"
       },
       activityDates,
+      dailyStats,
       recentActivity,
       courseProgress
     });

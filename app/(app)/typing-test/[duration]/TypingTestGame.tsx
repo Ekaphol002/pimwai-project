@@ -220,6 +220,17 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target && (
+          target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable ||
+          target.closest('input, textarea, [contenteditable="true"]')
+        )
+      ) {
+        return;
+      }
       if (isFinished || isLoading) return;
       if (e.repeat) return;
 

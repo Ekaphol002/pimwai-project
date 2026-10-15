@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getRankFromExp, calculateRankInfo } from '@/lib/rankUtils';
+import { getStartOfTodayBangkok } from '@/lib/streakUtils';
 
 // 🛡️ In-memory rate limiting map (userId -> timestamp of last request)
 const lastRequestTimeMap = new Map<string, number>();
@@ -81,20 +82,22 @@ export async function POST(request: Request) {
 
         const rankInfo = calculateRankInfo(newTotalExp, isTop10);
 
-        const addedDuration = Math.max(1, Math.min(300, Math.round(Number(timeSpentSeconds) || 1)));
+        const addedDuration = Math.max(0, Math.min(300, Math.round(Number(timeSpentSeconds) || 0)));
         const newTotalFarmTime = (user.farmTimeSeconds || 0) + addedDuration;
 
         // บันทึก FarmSession เพื่อเก็บประวัติเวลา และให้ระบบ Streak (ไฟ) นับวันการเล่น
-        await prisma.farmSession.create({
-            data: {
-                userId: user.id,
-                duration: addedDuration,
-                expEarned: safeExp,
-                wpm: numWpm,
-                accuracy: numAccuracy,
-                wordsCount: Number(wordsCount) || 0
-            }
-        });
+        if (addedDuration > 0 || safeExp > 0) {
+            await prisma.farmSession.create({
+                data: {
+                    userId: user.id,
+                    duration: addedDuration,
+                    expEarned: safeExp,
+                    wpm: numWpm,
+                    accuracy: numAccuracy,
+                    wordsCount: Number(wordsCount) || 0
+                }
+            });
+        }
 
         const updatedUser = await prisma.user.update({
             where: { id: user.id },
@@ -114,9 +117,25 @@ export async function POST(request: Request) {
             }
         });
 
+        const startOfToday = getStartOfTodayBangkok();
+
+        const todayFarm = await prisma.farmSession.aggregate({
+            where: {
+                userId: user.id,
+                createdAt: { gte: startOfToday }
+            },
+            _sum: {
+                duration: true
+            }
+        });
+        const todayFarmTimeSeconds = todayFarm._sum.duration || 0;
+
         return NextResponse.json({
             success: true,
-            updatedUser
+            updatedUser: {
+                ...updatedUser,
+                todayFarmTimeSeconds
+            }
         });
 
     } catch (error: any) {

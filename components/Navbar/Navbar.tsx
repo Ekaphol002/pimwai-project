@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from "next-auth/react";
 import { FaCaretDown, FaUserCog, FaSignOutAlt } from 'react-icons/fa';
-import { Flame, MessageSquarePlus, Menu, X, Loader2, Send, BookOpen } from 'lucide-react';
+import { Flame, MessageSquarePlus, Menu, X, Loader2, Send, Newspaper } from 'lucide-react';
 import { calculateCurrentStreak } from '@/lib/streakUtils';
 import toast, { Toaster } from 'react-hot-toast';
 
@@ -87,20 +87,18 @@ export default function Navbar() {
 
       {/* Retractable Navbar Trigger สำหรับโหมดฟาร์มเวล (ซ่อนหมด ไร้ป้ายลอย) */}
       {isFarm && (
-        <div 
+        <div
           className="fixed top-0 left-0 right-0 h-4 z-[60] pointer-events-auto"
           onMouseEnter={() => setIsFarmNavOpen(true)}
         />
       )}
 
-      <nav 
-        className={`w-full mx-auto h-24 md:h-28 z-50 ${
-          isFarm
-            ? `fixed top-0 left-0 right-0 transition-transform duration-500 ease-out shadow-2xl ${
-                isFarmNavOpen ? 'translate-y-0' : '-translate-y-full'
-              }`
-            : 'relative'
-        }`}
+      <nav
+        className={`w-full mx-auto h-24 md:h-28 z-50 ${isFarm
+          ? `fixed top-0 left-0 right-0 transition-transform duration-500 ease-out shadow-2xl ${isFarmNavOpen ? 'translate-y-0' : '-translate-y-full'
+          }`
+          : 'relative'
+          }`}
         onMouseLeave={() => {
           if (isFarm) {
             setIsFarmNavOpen(false);
@@ -182,17 +180,16 @@ export default function Navbar() {
                         <span>ตั้งค่าบัญชี</span>
                       </Link>
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsDropdownOpen(false);
-                          window.dispatchEvent(new CustomEvent('open-pimwai-news'));
-                        }}
+                      <Link
+                        href="/news"
+                        onClick={() => setIsDropdownOpen(false)}
                         className="w-full text-left flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-50 hover:text-[#5cb5db] transition-colors"
                       >
-                        <BookOpen className="text-base opacity-70" size={16} />
-                        <span>ข่าวสาร & คู่มือระบบ</span>
-                      </button>
+                        <Newspaper className="text-base opacity-70" size={16} />
+                        <span>ข่าวสาร & อัปเดต</span>
+                      </Link>
+
+
 
                       <button
                         type="button"
@@ -292,17 +289,7 @@ export default function Navbar() {
               สรุปผลรวม
             </Link>
 
-            <button
-              type="button"
-              onClick={() => {
-                setIsMobileMenuOpen(false);
-                window.dispatchEvent(new CustomEvent('open-pimwai-news'));
-              }}
-              className="py-2 px-3 rounded-xl font-bold text-sm text-left text-sky-200 hover:bg-white/10 flex items-center gap-2"
-            >
-              <BookOpen size={16} />
-              <span>ข่าวสาร & คู่มือระบบ</span>
-            </button>
+
 
             <button
               type="button"
@@ -329,6 +316,14 @@ export default function Navbar() {
                   >
                     <FaUserCog size={15} />
                     <span>ตั้งค่าบัญชี</span>
+                  </Link>
+                  <Link
+                    href="/news"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="py-2 px-3 rounded-xl font-bold text-sm text-white/90 hover:bg-white/10 flex items-center gap-2"
+                  >
+                    <Newspaper size={15} />
+                    <span>ข่าวสาร & อัปเดต</span>
                   </Link>
                   <button
                     onClick={() => signOut({ callbackUrl: '/login' })}

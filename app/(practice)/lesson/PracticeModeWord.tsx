@@ -309,6 +309,17 @@ export default function PracticeModeWord({
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (
+        target && (
+          target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable ||
+          target.closest('input, textarea, [contenteditable="true"]')
+        )
+      ) {
+        return;
+      }
       if (isFinished || showIntro) return;
 
       if (!expectedChar || errorEffect !== 'none') {

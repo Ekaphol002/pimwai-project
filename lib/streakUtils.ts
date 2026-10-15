@@ -10,6 +10,12 @@ export const toDateKey = (date: Date | string) => {
     return formatter.format(d); // ผลลัพธ์: "YYYY-MM-DD"
 };
 
+// คืนค่าเวลา 00:00:00 ของวันนี้ตามเวลาประเทศไทย (Asia/Bangkok) เพื่อตัดรอบเที่ยงคืนเป๊ะทุกวัน
+export const getStartOfTodayBangkok = () => {
+    const todayStr = toDateKey(new Date());
+    return new Date(`${todayStr}T00:00:00+07:00`);
+};
+
 export const calculateCurrentStreak = (activityDates: string[]) => {
     const today = new Date();
     const yesterday = new Date();

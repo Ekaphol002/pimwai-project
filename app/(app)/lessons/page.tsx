@@ -7,6 +7,7 @@ import LessonList from '@/components/LessonList/LessonList';
 import TodayStats from '@/components/TodayStats/TodayStats';
 import WelcomeModal from '@/components/WelcomeModal/WelcomeModal';
 import { prisma } from '@/lib/prisma';
+import { getStartOfTodayBangkok } from '@/lib/streakUtils';
 import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
@@ -114,20 +115,23 @@ export default async function LessonsPage({ searchParams }: PageProps) {
   // 3. ดึงสถิติรายวันและการปลดล็อกเควส
   let todaysProgress: any[] = [];
   let todaysSpeedTests: any[] = [];
+  let todaysFarmSessions: any[] = [];
   let totalSubLessonsCount = 0;
   let userCompletedLessonsCount = 0;
   let higherExpUsersCount = 0;
 
   if (userId) {
     try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const today = getStartOfTodayBangkok();
 
-      const [prog, tests, subCount, userProgCount, higherCount] = await Promise.all([
+      const [prog, tests, farm, subCount, userProgCount, higherCount] = await Promise.all([
         prisma.lessonProgress.findMany({
           where: { userId: userId, updatedAt: { gte: today } }
         }).catch(() => []),
         prisma.speedTestResult.findMany({
+          where: { userId: userId, createdAt: { gte: today } }
+        }).catch(() => []),
+        prisma.farmSession.findMany({
           where: { userId: userId, createdAt: { gte: today } }
         }).catch(() => []),
         prisma.subLesson.count().catch(() => 0),
@@ -137,6 +141,7 @@ export default async function LessonsPage({ searchParams }: PageProps) {
 
       todaysProgress = prog || [];
       todaysSpeedTests = tests || [];
+      todaysFarmSessions = farm || [];
       totalSubLessonsCount = subCount || 0;
       userCompletedLessonsCount = userProgCount || 0;
       higherExpUsersCount = higherCount || 0;
@@ -145,15 +150,41 @@ export default async function LessonsPage({ searchParams }: PageProps) {
     }
   }
 
-  // คำนวณค่าสถิติจากข้อมูลที่ดึงมา (รวมบทเรียน + โหมดฟาร์ม)
-  const dailyTotalLessons = todaysProgress.length + todaysSpeedTests.length;
-  const dailyTotalTime = todaysProgress.reduce((sum: number, p: any) => sum + (p.duration || 0), 0) + todaysSpeedTests.reduce((sum: number, t: any) => sum + (t.duration || 0), 0);
+  // คำนวณค่าสถิติจากข้อมูลที่ดึงมา (รวมบทเรียน + โหมดฟาร์ม โดยไม่รบกวนประวัติทดสอบ)
+  let totalDuration = 0;
+  let weightedWpmSum = 0;
+  let weightedAccSum = 0;
+  let activeActivitiesCount = todaysProgress.length + todaysSpeedTests.length;
 
-  const totalWpmSum = todaysProgress.reduce((sum: number, p: any) => sum + (p.wpm || 0), 0) + todaysSpeedTests.reduce((sum: number, t: any) => sum + (t.wpm || 0), 0);
-  const totalAccSum = todaysProgress.reduce((sum: number, p: any) => sum + (p.accuracy || 0), 0) + todaysSpeedTests.reduce((sum: number, t: any) => sum + (t.accuracy || 0), 0);
+  for (const p of todaysProgress) {
+    const dur = p.duration || 1;
+    totalDuration += dur;
+    weightedWpmSum += (p.wpm || 0) * dur;
+    weightedAccSum += (p.accuracy !== undefined ? p.accuracy : 100) * dur;
+  }
 
-  const dailyAvgWpm = dailyTotalLessons > 0 ? Math.round(totalWpmSum / dailyTotalLessons) : 0;
-  const dailyAvgAcc = dailyTotalLessons > 0 ? Math.round(totalAccSum / dailyTotalLessons) : 0;
+  for (const t of todaysSpeedTests) {
+    const dur = t.duration || 1;
+    totalDuration += dur;
+    weightedWpmSum += (t.wpm || 0) * dur;
+    weightedAccSum += (t.accuracy !== undefined ? t.accuracy : 100) * dur;
+  }
+
+  for (const f of todaysFarmSessions) {
+    const dur = f.duration || 1;
+    totalDuration += dur;
+    weightedWpmSum += (f.wpm || 0) * dur;
+    weightedAccSum += (f.accuracy !== undefined ? f.accuracy : 100) * dur;
+  }
+
+  if (todaysFarmSessions.length > 0) {
+    activeActivitiesCount += 1;
+  }
+
+  const dailyAvgWpm = totalDuration > 0 ? Math.round(weightedWpmSum / totalDuration) : 0;
+  const dailyAvgAcc = totalDuration > 0 ? Math.round(weightedAccSum / totalDuration) : 0;
+  const dailyTotalTime = totalDuration;
+  const dailyTotalLessons = activeActivitiesCount;
 
   // แปลงเวลาเป็น นาที:วินาที
   const m = Math.floor(dailyTotalTime / 60);

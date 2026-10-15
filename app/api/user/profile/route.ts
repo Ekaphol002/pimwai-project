@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from '@/lib/prisma';
 import { containsProfanity } from '@/lib/profanityFilter';
 import bcrypt from 'bcrypt';
+import { getStartOfTodayBangkok } from '@/lib/streakUtils';
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -165,6 +166,25 @@ export async function GET() {
             console.error('Error verifying Top 10 rank status:', e);
         }
 
+        // คำนวณเวลาฟาร์มเฉพาะของวันนี้ (Today's Farm Playtime)
+        let todayFarmTimeSeconds = 0;
+        try {
+            const startOfToday = getStartOfTodayBangkok();
+
+            const todayFarm = await prisma.farmSession.aggregate({
+                where: {
+                    userId: user.id,
+                    createdAt: { gte: startOfToday }
+                },
+                _sum: {
+                    duration: true
+                }
+            });
+            todayFarmTimeSeconds = todayFarm._sum.duration || 0;
+        } catch (e) {
+            console.error('Error fetching today farm time:', e);
+        }
+
         // ไม่ส่ง password hash กลับไป
         const { password, ...safeUser } = user;
 
@@ -180,7 +200,8 @@ export async function GET() {
                 lastNameChangedAt: rawUser.lastNameChangedAt || null,
                 lessonPerks: perks,
                 antiCheatNotice,
-                isTop10
+                isTop10,
+                todayFarmTimeSeconds
             },
             isTop10,
             antiCheatNotice,

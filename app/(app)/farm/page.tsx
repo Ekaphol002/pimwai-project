@@ -35,6 +35,7 @@ import { soundManager } from '@/lib/soundEffects';
 import { thaiKeyDisplayMap, thaiShiftKeyDisplayMap } from '@/lib/keyMaps';
 import toast, { Toaster } from 'react-hot-toast';
 import { MONKEYTYPE_THAI_WORDS } from '@/lib/thaiWords';
+import { MONKEYTYPE_ENGLISH_WORDS, getEnglishCharFromEvent } from '@/lib/englishWords';
 import RankUpOverlay from '@/components/PracticeResultModal/RankUpOverlay';
 
 // คลังคำภาษาไทยมาตรฐาน Monkeytype (1,000 คำความถี่สูง ตรงตาม Monkeytype Official)
@@ -57,18 +58,20 @@ export function toStandardDisplayOrder(text: string): string {
     return text.replace(/(\u0E33)([\u0E48-\u0E4B])/g, '$2$1');
 }
 
-// ฟังก์ชันสุ่มชุดคำ (รองรับบัฟ Golden Rush: เพิ่มโอกาสเจอคำสีทองเป็น 15%)
+// ฟังก์ชันสุ่มชุดคำ (รองรับทั้งภาษาไทยและอังกฤษ พร้อมบัฟ Golden Rush: เพิ่มโอกาสเจอคำสีทองเป็น 15%)
 function generateWordList(
     count: number,
     withPunct: boolean,
     withNum: boolean,
-    hasIntermediatePerk: boolean = false
+    hasIntermediatePerk: boolean = false,
+    currentLanguage: 'thai' | 'english' = 'thai'
 ): { word: string; isGolden: boolean }[] {
     const list: { word: string; isGolden: boolean }[] = [];
     const goldenChance = hasIntermediatePerk ? 0.15 : 0.08;
+    const pool = currentLanguage === 'english' ? MONKEYTYPE_ENGLISH_WORDS : BASE_THAI_WORDS;
 
     for (let i = 0; i < count; i++) {
-        let base = BASE_THAI_WORDS[Math.floor(Math.random() * BASE_THAI_WORDS.length)];
+        let base = pool[Math.floor(Math.random() * pool.length)];
 
         if (withNum && Math.random() < 0.25) {
             const num = NUMBERS[Math.floor(Math.random() * NUMBERS.length)];
@@ -79,8 +82,10 @@ function generateWordList(
             base = `${base}${p}`;
         }
 
-        // จัดลำดับการพิมพ์ภาษาไทยให้ถูกต้อง: ตรวจ ำ ก่อนวรรณยุกต์
-        base = toTypingOrder(base);
+        // จัดลำดับการพิมพ์ภาษาไทยให้ถูกต้อง: ตรวจ ำ ก่อนวรรณยุกต์ (เฉพาะภาษาไทย)
+        if (currentLanguage === 'thai') {
+            base = toTypingOrder(base);
+        }
 
         const isGolden = Math.random() < goldenChance;
         list.push({ word: base, isGolden });
@@ -92,12 +97,23 @@ export default function FarmPage() {
     const { data: session } = useSession();
 
     // Settings
+    const [language, setLanguage] = useState<'thai' | 'english'>('thai');
     const [mode, setMode] = useState<'time' | 'words' | 'zen'>('zen');
     const [timeLimit, setTimeLimit] = useState<number>(30);
     const [wordLimit, setWordLimit] = useState<number>(50);
     const [includePunctuation, setIncludePunctuation] = useState<boolean>(false);
     const [includeNumbers, setIncludeNumbers] = useState<boolean>(false);
     const [isSoundOn, setIsSoundOn] = useState<boolean>(true);
+
+    // โหลดภาษาที่เคยเลือกไว้จาก LocalStorage
+    useEffect(() => {
+        try {
+            const savedLang = localStorage.getItem('pimwai_farm_lang');
+            if (savedLang === 'thai' || savedLang === 'english') {
+                setLanguage(savedLang);
+            }
+        } catch (e) { }
+    }, []);
 
     // Database & User EXP State
     const [userTotalExp, setUserTotalExp] = useState<number>(0);
@@ -175,8 +191,9 @@ export default function FarmPage() {
     const [currentWpm, setCurrentWpm] = useState<number>(0);
     const [accuracy, setAccuracy] = useState<number>(100);
 
-    // ⏱️ Farm Playtime Tracking States (เวลาฟาร์มสะสม และ เวลาเซสชันปัจจุบัน)
+    // ⏱️ Farm Playtime Tracking States (เวลาฟาร์มสะสม, เวลาฟาร์มวันนี้, และ เวลาเซสชันปัจจุบัน)
     const [totalFarmTimeSeconds, setTotalFarmTimeSeconds] = useState<number>(0);
+    const [todayFarmTimeSeconds, setTodayFarmTimeSeconds] = useState<number>(0);
     const [sessionPlayTimeSeconds, setSessionPlayTimeSeconds] = useState<number>(0);
 
     // Counters for Stats
@@ -187,15 +204,15 @@ export default function FarmPage() {
     const [isFinished, setIsFinished] = useState<boolean>(false);
     const [endTime, setEndTime] = useState<number | null>(null);
 
-    // แปลงเวลาเป็นข้อความภาษาไทย (เช่น "1 ชม. 25 นาที" หรือ "45 นาที")
+    // แปลงเวลาเป็นข้อความภาษาไทย (เช่น "1 ชม. 25 นาที" หรือ "45 นาที 10 วิ" หรือ "15 วิ")
     const formatFarmTimeDetailed = (totalSec: number) => {
-        if (!totalSec || totalSec <= 0) return "0 นาที";
+        if (!totalSec || totalSec <= 0) return "0 วิ";
         const hours = Math.floor(totalSec / 3600);
         const minutes = Math.floor((totalSec % 3600) / 60);
         const seconds = totalSec % 60;
 
         if (hours > 0) {
-            return `${hours} ชม. ${minutes > 0 ? `${minutes} นาที` : ''}`.trim();
+            return `${hours} ชม. ${minutes > 0 ? `${minutes} นาที` : ''} ${seconds > 0 ? `${seconds} วิ` : ''}`.trim();
         }
         if (minutes > 0) {
             return `${minutes} นาที ${seconds > 0 ? `${seconds} วิ` : ''}`.trim();
@@ -215,6 +232,15 @@ export default function FarmPage() {
     const pendingSyncExpRef = useRef<number>(0);
     const isSyncingRef = useRef<boolean>(false);
     const lastSyncTimeRef = useRef<number>(Date.now());
+    const lastTypingTimeRef = useRef<number>(0); // บันทึก timestamp ของการกดแป้นพิมพ์ครั้งล่าสุด
+    const lastTimerTickTimeRef = useRef<number>(0); // บันทึก timestamp ของรอบตรวจจับเวลาก่อนหน้า
+    const activeTypingAccumulatedMsRef = useRef<number>(0); // สะสมมิลลิวินาทีที่พิมพ์จริง เพื่อตัดเป็น 1 วินาทีเป๊ะๆ
+    const unsyncedPlayTimeSecondsRef = useRef<number>(0); // สะสมเวลาที่พิมพ์จริงเพื่อส่งไปบันทึก
+    const sessionPlayTimeSecondsRef = useRef<number>(0); // บันทึกเวลาเล่นในเซสชันปัจจุบันเพื่อคำนวณ WPM แม่นยำ
+    const startTimeRef = useRef<number | null>(null); // บันทึกเวลาเริ่มพิมพ์จริง
+    const recentCorrectKeyTimesRef = useRef<number[]>([]); // บันทึกเวลาที่พิมพ์ถูกของแต่ละตัวอักษรเพื่อคำนวณ WPM แบบสด
+    const totalCorrectKeystrokesCountRef = useRef<number>(0);
+    const totalAllKeystrokesCountRef = useRef<number>(0);
     const maxExpCharIdxRef = useRef<number>(0);
     const wordExpEarnedRef = useRef<number>(0); // สะสม EXP ที่ได้จากตัวอักษรในคำปัจจุบัน เพื่อนำไปสรุปรวมแสดงตอนเคาะจบคำ
     const currentRoundStartingWordsRef = useRef<{ word: string; isGolden: boolean }[]>([]);
@@ -365,6 +391,9 @@ export default function FarmPage() {
                     if (typeof data.user.farmTimeSeconds === 'number') {
                         setTotalFarmTimeSeconds(data.user.farmTimeSeconds);
                     }
+                    if (typeof data.user?.todayFarmTimeSeconds === 'number') {
+                        setTodayFarmTimeSeconds(data.user.todayFarmTimeSeconds);
+                    }
 
                     const isTop10 = Boolean(data.isTop10 || data.user?.isTop10 || data.user?.rank === 7);
                     setIsTop10User(isTop10);
@@ -427,9 +456,10 @@ export default function FarmPage() {
     }, [session?.user?.email]);
 
     // 2. เริ่มต้นหรือเริ่มรอบคำต่อไป (คำต่อไป / Next Words)
-    const nextNewWords = useCallback(() => {
+    const nextNewWords = useCallback((overrideLang?: 'thai' | 'english' | unknown) => {
+        const activeLang = (overrideLang === 'thai' || overrideLang === 'english') ? overrideLang : language;
         const count = mode === 'words' ? wordLimit : 100;
-        const newWords = generateWordList(count, includePunctuation, includeNumbers, lessonPerksRef.current.intermediate);
+        const newWords = generateWordList(count, includePunctuation, includeNumbers, lessonPerksRef.current.intermediate, activeLang);
         currentRoundStartingWordsRef.current = newWords;
         setWordList(newWords);
         setActiveWordIdx(0);
@@ -463,11 +493,29 @@ export default function FarmPage() {
         setTotalKeystrokes(0);
         setRoundExpEarned(0);
         setSessionPlayTimeSeconds(0);
+        sessionPlayTimeSecondsRef.current = 0;
+        lastTypingTimeRef.current = 0;
+        lastTimerTickTimeRef.current = 0;
+        activeTypingAccumulatedMsRef.current = 0;
+        unsyncedPlayTimeSecondsRef.current = 0;
+        recentCorrectKeyTimesRef.current = [];
+        totalCorrectKeystrokesCountRef.current = 0;
+        totalAllKeystrokesCountRef.current = 0;
         setStartTime(null);
+        startTimeRef.current = null;
         setTimeLeft(timeLimit);
         setIsFinished(false);
         setEndTime(null);
-    }, [mode, wordLimit, timeLimit, includePunctuation, includeNumbers]);
+    }, [mode, wordLimit, timeLimit, includePunctuation, includeNumbers, language]);
+
+    const handleLanguageChange = (newLang: 'thai' | 'english') => {
+        if (newLang === language) return;
+        setLanguage(newLang);
+        try {
+            localStorage.setItem('pimwai_farm_lang', newLang);
+        } catch (e) { }
+        nextNewWords(newLang);
+    };
 
     // เล่นซ้ำคำเดิม (คำเดิม / Repeat Same Words)
     const repeatSameWords = useCallback(() => {
@@ -503,7 +551,16 @@ export default function FarmPage() {
         setTotalKeystrokes(0);
         setRoundExpEarned(0);
         setSessionPlayTimeSeconds(0);
+        sessionPlayTimeSecondsRef.current = 0;
+        lastTypingTimeRef.current = 0;
+        lastTimerTickTimeRef.current = 0;
+        activeTypingAccumulatedMsRef.current = 0;
+        unsyncedPlayTimeSecondsRef.current = 0;
+        recentCorrectKeyTimesRef.current = [];
+        totalCorrectKeystrokesCountRef.current = 0;
+        totalAllKeystrokesCountRef.current = 0;
         setStartTime(null);
+        startTimeRef.current = null;
         setTimeLeft(timeLimit);
         setIsFinished(false);
         setEndTime(null);
@@ -570,14 +627,86 @@ export default function FarmPage() {
         return () => clearInterval(interval);
     }, [isFeverActive]);
 
-    // ⏱️ นับเวลาเล่นในเซสชันปัจจุบันขณะกำลังพิมพ์
+    // ⚡ คำนวณความเร็วคำต่อนาที (WPM - Words Per Minute) และ Accuracy แบบ Real-Time
+    const updateRealtimeWpm = useCallback(() => {
+        const sTime = startTimeRef.current;
+        if (!sTime) return;
+
+        const now = Date.now();
+        const elapsedSec = mode === 'zen'
+            ? Math.max(1, sessionPlayTimeSecondsRef.current)
+            : Math.max(1, Math.round((now - sTime) / 1000));
+
+        const charsPerWord = language === 'thai' ? 4 : 5;
+
+        // คำนวณความเร็วคำต่อนาที (WPM) ตามสูตรมาตรฐานสากล:
+        // WPM = (จำนวนตัวอักษรที่พิมพ์ถูก / จำนวนตัวอักษรต่อคำ) / (เวลาที่ใช้ไปเป็นนาที)
+        if (totalCorrectKeystrokesCountRef.current >= 2 && elapsedSec >= 1) {
+            const elapsedMin = elapsedSec / 60;
+            const liveWpm = Math.max(0, Math.round((totalCorrectKeystrokesCountRef.current / charsPerWord) / elapsedMin));
+            setCurrentWpm(liveWpm);
+        }
+
+        // คำนวณ Accuracy แบบเรียลไทม์จากจำนวนการกดจริง ป้องกัน State Stale
+        if (totalAllKeystrokesCountRef.current > 0) {
+            const acc = Math.round((totalCorrectKeystrokesCountRef.current / totalAllKeystrokesCountRef.current) * 100);
+            setAccuracy(Math.min(100, Math.max(0, acc)));
+        }
+    }, [language, mode]);
+
+    // ⏱️ นับเวลาเล่นเฉพาะขณะกำลังพิมพ์อยู่จริง (ความแม่นยำสูง ตรวจจับทุก 200ms และหยุดทันทีเมื่อหยุดพิมพ์)
     useEffect(() => {
         if (!startTime || isFinished) return;
+
+        lastTimerTickTimeRef.current = Date.now();
+
         const interval = setInterval(() => {
-            setSessionPlayTimeSeconds(prev => prev + 1);
-        }, 1000);
+            const now = Date.now();
+            const lastTick = lastTimerTickTimeRef.current || now;
+            const deltaMs = Math.min(1000, Math.max(0, now - lastTick));
+            lastTimerTickTimeRef.current = now;
+
+            // ตรวจจับว่ากำลังพิมพ์อยู่จริง: มีการกดปุ่มพิมพ์ภายใน 1.2 วินาทีที่ผ่านมา
+            const timeSinceLastKeypress = now - (lastTypingTimeRef.current || 0);
+            const isActivelyTyping = timeSinceLastKeypress < 1200;
+
+            if (isActivelyTyping) {
+                activeTypingAccumulatedMsRef.current += deltaMs;
+
+                // สะสมเวลาพิมพ์จริงครบทุกๆ 1,000 มิลลิวินาที (1 วินาทีเต็ม)
+                while (activeTypingAccumulatedMsRef.current >= 1000) {
+                    activeTypingAccumulatedMsRef.current -= 1000;
+                    setSessionPlayTimeSeconds(prev => {
+                        const nextVal = prev + 1;
+                        sessionPlayTimeSecondsRef.current = nextVal;
+                        return nextVal;
+                    });
+                    setTodayFarmTimeSeconds(prev => prev + 1);
+                    setTotalFarmTimeSeconds(prev => prev + 1);
+                    unsyncedPlayTimeSecondsRef.current += 1;
+                }
+            } else {
+                // ถ้าหยุดพิมพ์เกิน 1.2 วินาที ให้ตัดเศษ ms ทิ้ง เพื่อหยุดเวลาทันทีอย่างสมบูรณ์
+                activeTypingAccumulatedMsRef.current = 0;
+            }
+
+            // อัปเดตความเร็วคำต่อนาที (WPM) สดตลอดเวลา
+            const sTime = startTimeRef.current;
+            if (sTime && isActivelyTyping && totalCorrectKeystrokesCountRef.current >= 2) {
+                const elapsedSec = mode === 'zen'
+                    ? Math.max(1, sessionPlayTimeSecondsRef.current)
+                    : Math.max(1, Math.round((now - sTime) / 1000));
+                if (elapsedSec >= 1) {
+                    const elapsedMin = elapsedSec / 60;
+                    const charsPerWord = language === 'thai' ? 4 : 5;
+                    const liveWpm = Math.max(0, Math.round((totalCorrectKeystrokesCountRef.current / charsPerWord) / elapsedMin));
+                    setCurrentWpm(liveWpm);
+                }
+            }
+        }, 200);
+
         return () => clearInterval(interval);
-    }, [startTime, isFinished]);
+    }, [startTime, isFinished, language, mode]);
 
     // 6. ซิงค์ EXP สะสมขึ้นฐานข้อมูลอัตโนมัติ (Atomic Queue & Periodic Sync ป้องกัน EXP ตกหล่น)
     const syncExpToDatabase = useCallback(async (forcedExp?: number) => {
@@ -592,8 +721,8 @@ export default function FarmPage() {
         if (isSyncingRef.current) return;
 
         // ดึงแต้มที่จะส่งออกจากคิว (ถ้าไม่ระบุ forcedExp ให้ดึงแต้มทั้งหมดที่ค้างอยู่ในคิว)
-        const expToSync = typeof forcedExp === 'number' && forcedExp > 0 
-            ? forcedExp 
+        const expToSync = typeof forcedExp === 'number' && forcedExp > 0
+            ? forcedExp
             : pendingSyncExpRef.current;
 
         if (expToSync <= 0) return;
@@ -606,8 +735,14 @@ export default function FarmPage() {
         }
 
         isSyncingRef.current = true;
-        const timeSpentSeconds = Math.max(1, Math.round((Date.now() - (lastSyncTimeRef.current || Date.now())) / 1000));
+        const activeSecondsToSync = unsyncedPlayTimeSecondsRef.current;
+        unsyncedPlayTimeSecondsRef.current = 0;
         lastSyncTimeRef.current = Date.now();
+
+        // คำนวณ WPM ที่เหมาะสมในการส่งไปบันทึก
+        const roundDurationMin = Math.max(0.05, sessionPlayTimeSeconds / 60);
+        const avgRoundWpm = Math.round((totalCorrectKeystrokesCountRef.current / 4) / roundDurationMin);
+        const wpmToSync = currentWpm > 0 ? currentWpm : Math.max(0, avgRoundWpm);
 
         try {
             const res = await fetch('/api/farm/save', {
@@ -615,17 +750,18 @@ export default function FarmPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     expEarned: expToSync,
-                    wpm: currentWpm,
+                    wpm: wpmToSync,
                     accuracy: accuracy,
                     wordsCount: activeWordIdx,
-                    timeSpentSeconds: timeSpentSeconds
+                    timeSpentSeconds: activeSecondsToSync
                 })
             });
 
             const data = await res.json().catch(() => null);
             if (!res.ok || !data?.success) {
-                // 🔄 Re-queue: หากติด Rate Limit หรือเซิร์ฟเวอร์ตอบกลับไม่สำเร็จ ให้นำ EXP ก้อนนี้ทบกลับเข้าคิว
+                // 🔄 Re-queue: หากติด Rate Limit หรือเซิร์ฟเวอร์ตอบกลับไม่สำเร็จ ให้นำ EXP และเวลา ก้อนนี้ทบกลับเข้าคิว
                 pendingSyncExpRef.current += expToSync;
+                unsyncedPlayTimeSecondsRef.current += activeSecondsToSync;
                 console.warn("Farm EXP save deferred, returned to queue:", data);
             } else {
                 if (data?.updatedUser?.rank === 7) {
@@ -633,12 +769,16 @@ export default function FarmPage() {
                     isTop10UserRef.current = true;
                 }
                 if (typeof data?.updatedUser?.farmTimeSeconds === 'number') {
-                    setTotalFarmTimeSeconds(data.updatedUser.farmTimeSeconds);
+                    setTotalFarmTimeSeconds(prev => Math.max(prev, data.updatedUser.farmTimeSeconds));
+                }
+                if (typeof data?.updatedUser?.todayFarmTimeSeconds === 'number') {
+                    setTodayFarmTimeSeconds(prev => Math.max(prev, data.updatedUser.todayFarmTimeSeconds));
                 }
             }
         } catch (e) {
             // 🔄 Re-queue: เครือข่ายหลุดหรือ error ให้นำกลับเข้าคิวส่งรอบถัดไป
             pendingSyncExpRef.current += expToSync;
+            unsyncedPlayTimeSecondsRef.current += activeSecondsToSync;
             console.error("Sync farm exp error (re-queued):", e);
         } finally {
             isSyncingRef.current = false;
@@ -688,6 +828,19 @@ export default function FarmPage() {
     // 7. Keyboard Event Handler
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
+            // ข้ามการตรวจจับหากผู้ใช้กำลังพิมพ์อยู่ใน input หรือ textarea ใดๆ
+            const target = e.target as HTMLElement | null;
+            if (
+                target && (
+                    target.tagName === 'INPUT' ||
+                    target.tagName === 'TEXTAREA' ||
+                    target.isContentEditable ||
+                    target.closest('input, textarea, [contenteditable="true"]')
+                )
+            ) {
+                return;
+            }
+
             // Ignore Special Navigation Keys
             if (e.ctrlKey || e.metaKey || e.altKey) return;
             if (e.key === 'Tab') {
@@ -698,8 +851,12 @@ export default function FarmPage() {
 
             if (isFinished) return;
 
-            // เมื่อเริ่มพิมพ์ ให้หยุดการกระพริบของเคอร์เซอร์ทันที
+            // เมื่อเริ่มพิมพ์ ให้หยุดการกระพริบของเคอร์เซอร์ทันที และบันทึกเวลาที่กำลังพิมพ์
             setIsTyping(true);
+            lastTypingTimeRef.current = Date.now();
+            if (lastTimerTickTimeRef.current === 0) {
+                lastTimerTickTimeRef.current = Date.now();
+            }
 
             const targetWordObj = wordList[activeWordIdx];
             if (!targetWordObj) return;
@@ -708,7 +865,9 @@ export default function FarmPage() {
 
             // Start Timer on First Keypress
             if (!startTime) {
-                setStartTime(Date.now());
+                const nowTime = Date.now();
+                setStartTime(nowTime);
+                startTimeRef.current = nowTime;
             }
 
             // คำนวณ Base Multiplier & Cap ตาม Rank ปัจจุบัน
@@ -735,6 +894,13 @@ export default function FarmPage() {
                 const updatedStatus = [...completedWordsStatus];
                 updatedStatus[activeWordIdx] = isWordFullyCorrect ? 'correct' : 'incorrect';
                 setCompletedWordsStatus(updatedStatus);
+
+                totalAllKeystrokesCountRef.current += 1;
+                if (isWordFullyCorrect) {
+                    totalCorrectKeystrokesCountRef.current += 1;
+                    recentCorrectKeyTimesRef.current.push(Date.now());
+                }
+                updateRealtimeWpm();
 
                 if (!isWordFullyCorrect) {
                     // ถ้าพิมพ์ไม่ครบ หรือมีตัวผิดตอนกดเว้นวรรคข้าม
@@ -826,7 +992,7 @@ export default function FarmPage() {
 
                 // สุ่มเติมคำเพิ่มเรื่อยๆ ถ้าเป็นโหมด Zen
                 if (mode === 'zen' && activeWordIdx + 15 >= wordList.length) {
-                    const extraWords = generateWordList(50, includePunctuation, includeNumbers, lessonPerksRef.current.intermediate);
+                    const extraWords = generateWordList(50, includePunctuation, includeNumbers, lessonPerksRef.current.intermediate, language);
                     setWordList(prev => [...prev, ...extraWords]);
                 }
 
@@ -882,13 +1048,19 @@ export default function FarmPage() {
 
             // C. พิมพ์ตัวอักษรปกติ (ตรวจทีละตัวทันทีที่กด)
             let typedChar = e.key;
-            // ตรวจสอบว่าคีย์บอร์ดอยู่ใน layout อังกฤษแล้วกดปุ่มไทยหรือไม่
-            if (e.code && (e.key.length === 1 || e.key === 'Dead')) {
-                const isShift = e.shiftKey;
-                const mappedThai = isShift ? thaiShiftKeyDisplayMap[e.code] : thaiKeyDisplayMap[e.code];
-                if (mappedThai && !/[a-zA-Z]/.test(e.key)) {
-                    typedChar = mappedThai;
+
+            if (language === 'thai') {
+                // ตรวจสอบว่าคีย์บอร์ดอยู่ใน layout อังกฤษแล้วกดปุ่มไทยหรือไม่
+                if (e.code && (e.key.length === 1 || e.key === 'Dead')) {
+                    const isShift = e.shiftKey;
+                    const mappedThai = isShift ? thaiShiftKeyDisplayMap[e.code] : thaiKeyDisplayMap[e.code];
+                    if (mappedThai && !/[a-zA-Z]/.test(e.key)) {
+                        typedChar = mappedThai;
+                    }
                 }
+            } else {
+                // โหมดภาษาอังกฤษ: แปลงปุ่มให้อัตโนมัติ (แม้คีย์บอร์ดใน OS จะค้างภาษาไทยอยู่ก็ตาม)
+                typedChar = getEnglishCharFromEvent(e);
             }
 
             if (typedChar.length === 1) {
@@ -896,12 +1068,15 @@ export default function FarmPage() {
                 if (isSoundOn) soundManager.playKeySound(undefined, e);
 
                 setTotalKeystrokes(prev => prev + 1);
+                totalAllKeystrokesCountRef.current += 1;
 
                 const nextCharIdx = inputBuffer.length;
                 const isCharCorrect = targetWord[nextCharIdx] === typedChar;
 
                 if (isCharCorrect) {
                     setCorrectKeystrokes(prev => prev + 1);
+                    totalCorrectKeystrokesCountRef.current += 1;
+                    recentCorrectKeyTimesRef.current.push(Date.now());
 
                     // เพิ่มคอมโบทีละตัวอักษรที่พิมพ์ถูก
                     const newCombo = combo + 1;
@@ -1012,15 +1187,8 @@ export default function FarmPage() {
                     return;
                 }
 
-                // คำนวณ WPM & Accuracy แบบสด
-                if (startTime) {
-                    const elapsedMin = Math.max(0.05, (Date.now() - startTime) / 60000);
-                    const grossWpm = Math.round((correctKeystrokes / 5) / elapsedMin);
-                    setCurrentWpm(grossWpm);
-
-                    const currentAcc = Math.round(((correctKeystrokes + (isCharCorrect ? 1 : 0)) / (totalKeystrokes + 1)) * 100);
-                    setAccuracy(Math.min(100, Math.max(0, currentAcc)));
-                }
+                // คำนวณ WPM และ Accuracy แบบสดจากความเร็วจริง ณ ขณะนั้น
+                updateRealtimeWpm();
             }
         };
 
@@ -1042,6 +1210,7 @@ export default function FarmPage() {
         wordLimit,
         includePunctuation,
         includeNumbers,
+        language,
         resetGame,
         syncExpToDatabase,
         triggerBountyToast,
@@ -1071,11 +1240,20 @@ export default function FarmPage() {
             )
         );
     const finalElapsedMin = Math.max(0.016, finalElapsedSec / 60);
-    const finalWpm = Math.max(0, Math.round((correctKeystrokes / 5) / finalElapsedMin));
-    const finalRawWpm = Math.max(0, Math.round((totalKeystrokes / 5) / finalElapsedMin));
+    const charsPerWord = language === 'thai' ? 4 : 5;
+    const finalWpm = Math.max(0, Math.round((correctKeystrokes / charsPerWord) / finalElapsedMin));
+    const finalRawWpm = Math.max(0, Math.round((totalKeystrokes / charsPerWord) / finalElapsedMin));
     const finalAcc = totalKeystrokes > 0 ? Math.round((correctKeystrokes / totalKeystrokes) * 100) : 0;
     const incorrectCount = Math.max(0, totalKeystrokes - correctKeystrokes);
     const isFocusMode = isTyping && !isFinished;
+
+    // 🌟 ซิงค์สถานะการพิมพ์ไปยัง Widget เสนอสิ่งที่อยากให้ทำเพิ่ม เพื่อให้ซ่อนตัวอัตโนมัติขณะกำลังพิมพ์
+    useEffect(() => {
+        window.dispatchEvent(new CustomEvent('pimwai-typing-state', { detail: { isTyping: isFocusMode } }));
+        return () => {
+            window.dispatchEvent(new CustomEvent('pimwai-typing-state', { detail: { isTyping: false } }));
+        };
+    }, [isFocusMode]);
 
     // 🎈 เรนเดอร์ข้อความลอยกลางบนหัวคำ (Top-Center Floating Text เพียวๆ ไม่มีเงา เลื่อนสมูท)
     const renderWordFloaters = (wordIdx: number) => {
@@ -1116,6 +1294,24 @@ export default function FarmPage() {
                     ? 'opacity-0 pointer-events-none -translate-y-4'
                     : 'opacity-100 translate-y-0'
                     }`}>
+
+                    {/* Sub-Group: Language */}
+                    <div className="flex items-center gap-1.5 pr-3 sm:border-r border-gray-200">
+                        <button
+                            onClick={() => handleLanguageChange('thai')}
+                            className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer ${language === 'thai' ? 'bg-[#5cb5db] text-white shadow-xs font-bold' : 'hover:text-[#5cb5db]'
+                                }`}
+                        >
+                            <span>ไทย</span>
+                        </button>
+                        <button
+                            onClick={() => handleLanguageChange('english')}
+                            className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer ${language === 'english' ? 'bg-[#5cb5db] text-white shadow-xs font-bold' : 'hover:text-[#5cb5db]'
+                                }`}
+                        >
+                            <span>English</span>
+                        </button>
+                    </div>
 
                     {/* Sub-Group: Punctuation & Numbers */}
                     <div className="flex items-center gap-2 pr-3 sm:border-r border-gray-200">
@@ -1265,6 +1461,7 @@ export default function FarmPage() {
                                         <div className="text-6xl sm:text-7xl lg:text-8xl font-black text-[#5cb5db] tracking-tight leading-none logo-font">
                                             {finalWpm}
                                         </div>
+                                        <div className="text-xs text-gray-400 dark:text-gray-500 font-medium mt-1">ความเร็วคำต่อนาที</div>
                                     </div>
                                     <div>
                                         <div className="text-sm sm:text-base font-bold text-gray-400 dark:text-gray-500 tracking-wider lowercase mb-1 logo-font">acc</div>
@@ -1282,7 +1479,10 @@ export default function FarmPage() {
                                             {mode} {mode === 'time' ? timeLimit : wordLimit}
                                         </div>
                                         <div className="text-xs sm:text-sm text-gray-400 dark:text-gray-500 font-medium mt-1">
-                                            {includePunctuation ? 'thai punct' : includeNumbers ? 'thai num' : 'thai basic'}
+                                            {language === 'english'
+                                                ? (includePunctuation ? 'english punct' : includeNumbers ? 'english num' : 'english basic')
+                                                : (includePunctuation ? 'thai punct' : includeNumbers ? 'thai num' : 'thai basic')
+                                            }
                                         </div>
                                     </div>
 
@@ -1497,33 +1697,14 @@ export default function FarmPage() {
                                         )}
 
                                         {/* Live Speed */}
-                                        <div className="bg-gray-500 text-white px-2.5 sm:px-3 py-1.5 rounded-xl flex items-center gap-1 shadow-xs shrink-0">
+                                        <div
+                                            className="bg-gray-500 text-white px-2.5 sm:px-3 py-1.5 rounded-xl flex items-center gap-1 shadow-xs shrink-0"
+                                            title="ความเร็วคำต่อนาที (Words Per Minute)"
+                                        >
                                             <span className="text-xs font-black logo-font">{currentWpm} WPM</span>
                                         </div>
 
-                                        {/* ⏱️ Total Farm Playtime: แสดงเวลาที่ฟาร์มสะสมทั้งหมด (นาที / ชั่วโมง) */}
-                                        <div 
-                                            className="bg-amber-500/10 border border-amber-300/40 text-amber-800 dark:text-amber-300 px-2.5 sm:px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xs shrink-0 select-none"
-                                            title="เวลาเล่นสะสมในโหมด Farm ทั้งหมด"
-                                        >
-                                            <Clock size={13} className="text-amber-600 dark:text-amber-400 shrink-0" />
-                                            <span className="text-xs font-black logo-font whitespace-nowrap">
-                                                ฟาร์ม: {formatFarmTimeDetailed(totalFarmTimeSeconds + sessionPlayTimeSeconds)}
-                                            </span>
-                                        </div>
 
-                                        {/* ⏱️ Live Session Timer (แสดงเมื่อเริ่มพิมพ์ในรอบนี้) */}
-                                        {sessionPlayTimeSeconds > 0 && (
-                                            <div 
-                                                className="bg-sky-500/10 border border-sky-300/40 text-sky-700 dark:text-sky-300 px-2.5 py-1.5 rounded-xl flex items-center gap-1 shadow-xs shrink-0 select-none"
-                                                title="เวลาที่พิมพ์ในรอบปัจจุบัน"
-                                            >
-                                                <Timer size={13} className="text-sky-500 shrink-0 animate-pulse" />
-                                                <span className="text-xs font-black logo-font font-mono whitespace-nowrap">
-                                                    {formatSessionTimer(sessionPlayTimeSeconds)}
-                                                </span>
-                                            </div>
-                                        )}
 
                                         {/* Time Countdown (ถ้าเป็นโหมดเวลา) */}
                                         {mode === 'time' && (
@@ -1840,7 +2021,7 @@ export default function FarmPage() {
 
                                                 {renderWordFloaters(idx)}
 
-                                                {/* Reference span สำหรับวัดความกว้างที่พิมพ์แล้วไปอัปเดตตำแหน่ง Floating Caret */}
+                                                {/* Reference span สำหรับวัดความกว้างที่พิมพ์แล้วไปอัปเดตตำแหน่ง Floating Careต */}
                                                 <span
                                                     ref={typedPartRef}
                                                     aria-hidden="true"
@@ -1872,7 +2053,7 @@ export default function FarmPage() {
                             {/* Bottom Controls inside Box */}
                             <div className="mt-6 flex items-center justify-between pt-4 border-t border-gray-100">
                                 {/* Action Buttons: ปุ่มถัดไป (>) และ ปุ่มเริ่มใหม่ (🔄) */}
-                                <div className="flex items-center gap-4 sm:gap-6">
+                                <div className="flex items-center gap-3 sm:gap-4 select-none">
                                     {/* 1. ปุ่มถัดไป (คำต่อไป) */}
                                     <button
                                         type="button"
@@ -1892,6 +2073,16 @@ export default function FarmPage() {
                                     >
                                         <RefreshCw size={20} strokeWidth={2.8} />
                                     </button>
+
+                                    <div className="w-[1px] h-4 bg-gray-200 dark:bg-slate-700 hidden sm:block mx-0.5"></div>
+
+                                    {/* ⏱️ เวลาวันนี้: สไตล์เดียวกับ Accuracy ด้านขวา (สีดำ ฟอนต์เหมือนกัน) */}
+                                    <div className="flex items-center gap-2 text-sm sm:text-base font-bold text-gray-400" title="เวลาพิมพ์ในโหมดฟาร์มของวันนี้ทั้งหมด">
+                                        <span>เวลาวันนี้:</span>
+                                        <strong className="text-base sm:text-xl font-black text-gray-800 dark:text-gray-100 logo-font">
+                                            {formatFarmTimeDetailed(todayFarmTimeSeconds)}
+                                        </strong>
+                                    </div>
                                 </div>
 
                                 {/* Right Area: EXP รอบนี้ (ตัวใหญ่ๆ นับใหม่เมื่อกดรี) + Accuracy */}
@@ -2057,7 +2248,7 @@ export default function FarmPage() {
                                         </li>
                                         <li>
                                             <strong className="text-gray-800">✨ โบนัสพิมพ์เป๊ะคำยาว (Flawless Bounty):</strong> เคาะ Spacebar จบคำถูกต้อง 100% โดย<span className="underline decoration-emerald-500 underline-offset-2">ไม่กดปุ่ม Backspace เลย</span> รับโบนัสเริ่มต้นอย่างต่ำ <span className="text-emerald-700 font-black">+5 EXP</span> (คำปานกลาง <span className="text-emerald-700 font-black">+8 EXP</span>, คำยาว <span className="text-emerald-700 font-black">+12 ถึง 20 EXP</span>)
-                                         </li>
+                                        </li>
                                     </ul>
                                 </div>
 

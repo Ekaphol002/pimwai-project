@@ -37,6 +37,7 @@ export default function ProgressPage() {
         farmTimeSpent: "--"
     });
     const [activityDates, setActivityDates] = useState<string[]>([]);
+    const [dailyStats, setDailyStats] = useState<Record<string, { wpm: number; accuracy: number; duration: number }>>({});
     const [recentActivity, setRecentActivity] = useState<any[]>([]);
     const [courseProgress, setCourseProgress] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -49,6 +50,7 @@ export default function ProgressPage() {
                 if (data.success) {
                     setStats(data.stats);
                     setActivityDates(data.activityDates);
+                    if (data.dailyStats) setDailyStats(data.dailyStats);
                     setRecentActivity(data.recentActivity);
                     setCourseProgress(data.courseProgress);
                 }
@@ -138,7 +140,7 @@ export default function ProgressPage() {
 
                     {/* 3. Right: Sidebar (โหลดแบบ lazy) */}
                     <div className="space-y-6">
-                        <ActivityGraph completedDates={activityDates} />
+                        <ActivityGraph completedDates={activityDates} dailyStats={dailyStats} />
                         <RecentActivityWidget activities={recentActivity} />
                     </div>
                 </div>
