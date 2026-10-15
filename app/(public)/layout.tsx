@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     siteName: 'PIMWAI',
     images: [
       {
-        url: '/logopimwai.png',
+        url: '/Bannerlink.png',
         width: 1200,
         height: 630,
         alt: 'PIMWAI ฝึกพิมพ์ดีดและทดสอบพิมพ์สัมผัสออนไลน์ฟรี',
@@ -45,7 +45,7 @@ export const metadata: Metadata = {
     title: 'ฝึกพิมพ์ดีด (Typing Test) - ฝึกพิมพ์สัมผัสไทย 10 นิ้วออนไลน์ฟรี | PIMWAI',
     description: 'เว็บฝึกพิมพ์ดีดออนไลน์ฟรี เช็คความเร็วพิมพ์ WPM เริ่มพิมพ์ได้ทันทีไม่ต้องสมัครสมาชิก',
     creator: '@PIMWAI',
-    images: ['/logopimwai.png'],
+    images: ['/Bannerlink.png'],
   },
 };
 

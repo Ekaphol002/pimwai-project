@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     siteName: 'PIMWAI',
     images: [
       {
-        url: '/logopimwai.png',
+        url: '/Bannerlink.png',
         width: 1200,
         height: 630,
         alt: 'โหมดพิมพ์ด่วน พิมพ์ดีดไทยสไตล์ Monkeytype PIMWAI',
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
     title: 'โหมดพิมพ์ด่วน พิมพ์ดีดไทยสไตล์ Monkeytype | PIMWAI',
     description: 'ฝึกพิมพ์ดีดภาษาไทยมาตรฐาน Monkeytype จับเวลาทดสอบ WPM เก็บเลเวลอัปแรงค์ฟรี',
     creator: '@PIMWAI',
-    images: ['/logopimwai.png'],
+    images: ['/Bannerlink.png'],
   },
 };
 
