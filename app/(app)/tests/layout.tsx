@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     'หาจุดอ่อนการพิมพ์สัมผัส'
   ],
   alternates: {
-    canonical: '/tests',
+    canonical: 'https://pimwai.vercel.app/tests',
   },
 }
 

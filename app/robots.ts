@@ -5,14 +5,15 @@ export default function robots(): MetadataRoute.Robots {
         rules: [
             {
                 userAgent: '*',
-                allow: ['/', '/lessons', '/tests', '/farm', '/rankings', '/login'],
+                allow: ['/', '/lessons', '/tests', '/farm', '/rankings', '/news'],
                 disallow: [
                     '/api/',
                     '/admin/',
+                    '/login',
+                    '/login/*',
                     '/progress/',
                     '/lesson/',
                     '/typing-test/',
-                    '/login?*',
                     '/*?*callbackUrl*',
                     '/_next/static/media/*.woff2',
                     '/_next/static/media/*.woff',

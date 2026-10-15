@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   description: 'ตารางจัดอันดับนักพิมพ์ดีดที่เร็วที่สุด เช็คสถิติผู้เล่นที่มี WPM สูงสุด แข่งแรงค์จัดอันดับพิมพ์ดีดไปกับเพื่อนๆ บน PIMWAI',
   keywords: ['อันดับคนพิมพ์เร็ว', 'จัดอันดับพิมพ์ดีด', 'Leaderboard พิมพ์ดีด', 'สถิติพิมพ์ดีด', 'แชมป์พิมพ์ดีด', 'แข่งพิมพ์ดีด'],
   alternates: {
-    canonical: '/rankings',
+    canonical: 'https://pimwai.vercel.app/rankings',
   },
 }
 

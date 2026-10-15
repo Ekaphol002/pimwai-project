@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     'เกมพิมพ์ดีด'
   ],
   alternates: {
-    canonical: '/farm',
+    canonical: 'https://pimwai.vercel.app/farm',
   },
   openGraph: {
     title: 'ฝึกพิมพ์ดีด (โหมดพิมพ์ด่วน) - ทดสอบความเร็วพิมพ์สัมผัสไทย WPM | PIMWAI',

@@ -11,6 +11,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
             priority: 1.0,
         },
         {
+            url: `${baseUrl}/farm`,
+            lastModified: new Date(),
+            changeFrequency: 'daily',
+            priority: 0.95,
+        },
+        {
             url: `${baseUrl}/lessons`,
             lastModified: new Date(),
             changeFrequency: 'daily',
@@ -29,16 +35,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
             priority: 0.9,
         },
         {
-            url: `${baseUrl}/farm`,
+            url: `${baseUrl}/news`,
             lastModified: new Date(),
-            changeFrequency: 'daily',
-            priority: 0.95,
-        },
-        {
-            url: `${baseUrl}/login`,
-            lastModified: new Date(),
-            changeFrequency: 'monthly',
-            priority: 0.7,
+            changeFrequency: 'weekly',
+            priority: 0.8,
         }
     ]
 }

@@ -1,9 +1,16 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: 'เข้าสู่ระบบ',
+  title: 'เข้าสู่ระบบ | PIMWAI',
   description: 'เข้าสู่ระบบเพื่อบันทึกสถิติการพิมพ์ ดูอันดับคะแนน และติดตามพัฒนาการของคุณ',
-}
+  robots: {
+    index: false,
+    follow: false,
+  },
+  alternates: {
+    canonical: 'https://pimwai.vercel.app/login',
+  },
+};
 
 export default function AppLayout({
   children,
@@ -13,7 +20,7 @@ export default function AppLayout({
   return (
     <div className="flex flex-col">
       <main className="flex-1 overflow-y-auto">
-        {children} {/* <-- {children} คือ LessonsPage ของคุณ */}
+        {children}
       </main>
     </div>
   );
