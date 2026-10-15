@@ -155,11 +155,14 @@ export async function GET(request: Request) {
                 select: { id: true, username: true, name: true, image: true, rank: true, currentExp: true }
             });
 
-            const [lessons, tests] = await Promise.all([
+            const [lessons, tests, farmSessions] = await Promise.all([
                 prisma.lessonProgress.findMany({
                     select: { userId: true, updatedAt: true }
                 }),
                 prisma.speedTestResult.findMany({
+                    select: { userId: true, createdAt: true }
+                }),
+                prisma.farmSession.findMany({
                     select: { userId: true, createdAt: true }
                 })
             ]);
@@ -169,7 +172,8 @@ export async function GET(request: Request) {
             allUsers.forEach((user: any) => {
                 const userLessons = lessons.filter(l => l.userId === user.id).map(l => toDateKey(l.updatedAt));
                 const userTests = tests.filter(t => t.userId === user.id).map(t => toDateKey(t.createdAt));
-                const activityDates = [...userLessons, ...userTests];
+                const userFarm = farmSessions.filter(f => f.userId === user.id).map(f => toDateKey(f.createdAt));
+                const activityDates = [...userLessons, ...userTests, ...userFarm];
                 
                 const streak = calculateTotalDays(activityDates);
                 if (streak > 0) {

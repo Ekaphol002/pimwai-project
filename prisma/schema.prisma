@@ -79,6 +79,7 @@ model User {
   stars      Int @default(0) // ดาวสะสม
   currentExp Int @default(0) // Exp ปัจจุบัน
   xp         Int @default(0) // เก็บค่าประสบการณ์รวม
+  farmTimeSeconds Int @default(0) // ✅ เวลาเล่นสะสมในโหมด Farm (วินาที)
 
   // --- App Relations ---
   progress    LessonProgress[]
@@ -86,6 +87,7 @@ model User {
   feedbacks   Feedback[]
   reportsReceived Report[] @relation("ReportedUser")
   reportsSent     Report[] @relation("ReporterUser")
+  farmSessions    FarmSession[]
 
   @@index([email])
 }
@@ -186,4 +188,22 @@ model SpeedTestResult {
   mistakes Json // ✅ เก็บตัวที่พิมพ์ผิด (เช่น {"ก": 5, "ข": 2}) ไว้ทำกราฟแท่ง
 
   createdAt DateTime @default(now())
+}
+
+// =========================================================
+// 🌾 ตารางบันทึกการฟาร์ม (Farm Session & Streak Tracking)
+// =========================================================
+model FarmSession {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  duration   Int      @default(0) // ระยะเวลาที่เล่น (วินาที)
+  expEarned  Int      @default(0) // EXP ที่ได้รับ
+  wpm        Int      @default(0)
+  accuracy   Float    @default(0)
+  wordsCount Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
 }

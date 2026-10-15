@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import {
     Clock,
+    Timer,
     Type,
     Hash,
     AtSign,
@@ -174,6 +175,10 @@ export default function FarmPage() {
     const [currentWpm, setCurrentWpm] = useState<number>(0);
     const [accuracy, setAccuracy] = useState<number>(100);
 
+    // ⏱️ Farm Playtime Tracking States (เวลาฟาร์มสะสม และ เวลาเซสชันปัจจุบัน)
+    const [totalFarmTimeSeconds, setTotalFarmTimeSeconds] = useState<number>(0);
+    const [sessionPlayTimeSeconds, setSessionPlayTimeSeconds] = useState<number>(0);
+
     // Counters for Stats
     const [correctKeystrokes, setCorrectKeystrokes] = useState<number>(0);
     const [totalKeystrokes, setTotalKeystrokes] = useState<number>(0);
@@ -181,6 +186,28 @@ export default function FarmPage() {
     const [timeLeft, setTimeLeft] = useState<number>(30);
     const [isFinished, setIsFinished] = useState<boolean>(false);
     const [endTime, setEndTime] = useState<number | null>(null);
+
+    // แปลงเวลาเป็นข้อความภาษาไทย (เช่น "1 ชม. 25 นาที" หรือ "45 นาที")
+    const formatFarmTimeDetailed = (totalSec: number) => {
+        if (!totalSec || totalSec <= 0) return "0 นาที";
+        const hours = Math.floor(totalSec / 3600);
+        const minutes = Math.floor((totalSec % 3600) / 60);
+        const seconds = totalSec % 60;
+
+        if (hours > 0) {
+            return `${hours} ชม. ${minutes > 0 ? `${minutes} นาที` : ''}`.trim();
+        }
+        if (minutes > 0) {
+            return `${minutes} นาที ${seconds > 0 ? `${seconds} วิ` : ''}`.trim();
+        }
+        return `${seconds} วิ`;
+    };
+
+    const formatSessionTimer = (sec: number) => {
+        const m = Math.floor(sec / 60);
+        const s = sec % 60;
+        return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    };
 
     const typingContainerRef = useRef<HTMLDivElement>(null);
     const wordElementsRef = useRef<(HTMLSpanElement | null)[]>([]);
@@ -335,6 +362,10 @@ export default function FarmPage() {
                     setUserTotalExp(exp);
                     userTotalExpRef.current = exp;
 
+                    if (typeof data.user.farmTimeSeconds === 'number') {
+                        setTotalFarmTimeSeconds(data.user.farmTimeSeconds);
+                    }
+
                     const isTop10 = Boolean(data.isTop10 || data.user?.isTop10 || data.user?.rank === 7);
                     setIsTop10User(isTop10);
                     isTop10UserRef.current = isTop10;
@@ -431,6 +462,7 @@ export default function FarmPage() {
         setCorrectKeystrokes(0);
         setTotalKeystrokes(0);
         setRoundExpEarned(0);
+        setSessionPlayTimeSeconds(0);
         setStartTime(null);
         setTimeLeft(timeLimit);
         setIsFinished(false);
@@ -470,6 +502,7 @@ export default function FarmPage() {
         setCorrectKeystrokes(0);
         setTotalKeystrokes(0);
         setRoundExpEarned(0);
+        setSessionPlayTimeSeconds(0);
         setStartTime(null);
         setTimeLeft(timeLimit);
         setIsFinished(false);
@@ -537,6 +570,15 @@ export default function FarmPage() {
         return () => clearInterval(interval);
     }, [isFeverActive]);
 
+    // ⏱️ นับเวลาเล่นในเซสชันปัจจุบันขณะกำลังพิมพ์
+    useEffect(() => {
+        if (!startTime || isFinished) return;
+        const interval = setInterval(() => {
+            setSessionPlayTimeSeconds(prev => prev + 1);
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [startTime, isFinished]);
+
     // 6. ซิงค์ EXP สะสมขึ้นฐานข้อมูลอัตโนมัติ (Atomic Queue & Periodic Sync ป้องกัน EXP ตกหล่น)
     const syncExpToDatabase = useCallback(async (forcedExp?: number) => {
         // 🌟 บันทึกลง LocalStorage เสมอ (สำหรับ Guest และเป็น Local Backup ของผู้ใช้)
@@ -583,9 +625,14 @@ export default function FarmPage() {
                 // 🔄 Re-queue: หากติด Rate Limit หรือเซิร์ฟเวอร์ตอบกลับไม่สำเร็จ ให้นำ EXP ก้อนนี้ทบกลับเข้าคิว
                 pendingSyncExpRef.current += expToSync;
                 console.warn("Farm EXP save deferred, returned to queue:", data);
-            } else if (data?.updatedUser?.rank === 7) {
-                setIsTop10User(true);
-                isTop10UserRef.current = true;
+            } else {
+                if (data?.updatedUser?.rank === 7) {
+                    setIsTop10User(true);
+                    isTop10UserRef.current = true;
+                }
+                if (typeof data?.updatedUser?.farmTimeSeconds === 'number') {
+                    setTotalFarmTimeSeconds(data.updatedUser.farmTimeSeconds);
+                }
             }
         } catch (e) {
             // 🔄 Re-queue: เครือข่ายหลุดหรือ error ให้นำกลับเข้าคิวส่งรอบถัดไป
@@ -1283,7 +1330,7 @@ export default function FarmPage() {
                                             {finalElapsedSec}s
                                         </div>
                                         <div className="text-xs sm:text-sm text-gray-400 dark:text-gray-500 font-medium mt-1">
-                                            duration
+                                            duration (ฟาร์มรวม: {formatFarmTimeDetailed(totalFarmTimeSeconds)})
                                         </div>
                                     </div>
                                 </div>
@@ -1451,6 +1498,30 @@ export default function FarmPage() {
                                         <div className="bg-gray-500 text-white px-2.5 sm:px-3 py-1.5 rounded-xl flex items-center gap-1 shadow-xs shrink-0">
                                             <span className="text-xs font-black logo-font">{currentWpm} WPM</span>
                                         </div>
+
+                                        {/* ⏱️ Total Farm Playtime: แสดงเวลาที่ฟาร์มสะสมทั้งหมด (นาที / ชั่วโมง) */}
+                                        <div 
+                                            className="bg-amber-500/10 border border-amber-300/40 text-amber-800 dark:text-amber-300 px-2.5 sm:px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xs shrink-0 select-none"
+                                            title="เวลาเล่นสะสมในโหมด Farm ทั้งหมด"
+                                        >
+                                            <Clock size={13} className="text-amber-600 dark:text-amber-400 shrink-0" />
+                                            <span className="text-xs font-black logo-font whitespace-nowrap">
+                                                ฟาร์ม: {formatFarmTimeDetailed(totalFarmTimeSeconds + sessionPlayTimeSeconds)}
+                                            </span>
+                                        </div>
+
+                                        {/* ⏱️ Live Session Timer (แสดงเมื่อเริ่มพิมพ์ในรอบนี้) */}
+                                        {sessionPlayTimeSeconds > 0 && (
+                                            <div 
+                                                className="bg-sky-500/10 border border-sky-300/40 text-sky-700 dark:text-sky-300 px-2.5 py-1.5 rounded-xl flex items-center gap-1 shadow-xs shrink-0 select-none"
+                                                title="เวลาที่พิมพ์ในรอบปัจจุบัน"
+                                            >
+                                                <Timer size={13} className="text-sky-500 shrink-0 animate-pulse" />
+                                                <span className="text-xs font-black logo-font font-mono whitespace-nowrap">
+                                                    {formatSessionTimer(sessionPlayTimeSeconds)}
+                                                </span>
+                                            </div>
+                                        )}
 
                                         {/* Time Countdown (ถ้าเป็นโหมดเวลา) */}
                                         {mode === 'time' && (

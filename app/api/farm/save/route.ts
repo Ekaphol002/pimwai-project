@@ -81,10 +81,26 @@ export async function POST(request: Request) {
 
         const rankInfo = calculateRankInfo(newTotalExp, isTop10);
 
+        const addedDuration = Math.max(1, Math.min(300, Math.round(Number(timeSpentSeconds) || 1)));
+        const newTotalFarmTime = (user.farmTimeSeconds || 0) + addedDuration;
+
+        // บันทึก FarmSession เพื่อเก็บประวัติเวลา และให้ระบบ Streak (ไฟ) นับวันการเล่น
+        await prisma.farmSession.create({
+            data: {
+                userId: user.id,
+                duration: addedDuration,
+                expEarned: safeExp,
+                wpm: numWpm,
+                accuracy: numAccuracy,
+                wordsCount: Number(wordsCount) || 0
+            }
+        });
+
         const updatedUser = await prisma.user.update({
             where: { id: user.id },
             data: {
                 currentExp: newTotalExp,
+                farmTimeSeconds: newTotalFarmTime,
                 rank: rankInfo.rank,
                 stars: rankInfo.stars,
                 lastPlayedAt: new Date()
@@ -93,7 +109,8 @@ export async function POST(request: Request) {
                 id: true,
                 rank: true,
                 currentExp: true,
-                stars: true
+                stars: true,
+                farmTimeSeconds: true
             }
         });
 

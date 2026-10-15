@@ -36,6 +36,7 @@ export async function GET() {
                 showInLeaderboard: true,
                 keyboardSound: true,
                 isAvatarLocked: true,
+                farmTimeSeconds: true,
                 accounts: {
                     select: {
                         provider: true

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Zap, Target, Clock, Star, Loader2 } from 'lucide-react';
+import { Zap, Target, Clock, Star, Loader2, Sparkles } from 'lucide-react';
 import dynamic from 'next/dynamic'; // ✅ 1. Import dynamic
 import StickyNavbar from '@/components/StickyNavbar/StickyNavbar';
 
@@ -34,6 +34,7 @@ export default function ProgressPage() {
         avgSpeed: 0,
         avgAccuracy: 0,
         timeSpent: "--",
+        farmTimeSpent: "--"
     });
     const [activityDates, setActivityDates] = useState<string[]>([]);
     const [recentActivity, setRecentActivity] = useState<any[]>([]);
@@ -89,8 +90,8 @@ export default function ProgressPage() {
                     <p className="text-gray-500 mt-1">ดูพัฒนาการและสถิติทั้งหมดได้ที่นี่</p>
                 </div>
 
-                {/* 1. Stats Grid (โหลดแบบ lazy) */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+                {/* 1. Stats Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-10">
                     <StatCard
                         icon={<Star className="text-yellow-500 fill-yellow-500" size={40} />}
                         label="ดาวทั้งหมด"
@@ -114,9 +115,16 @@ export default function ProgressPage() {
                     />
                     <StatCard
                         icon={<Clock className="text-purple-600" size={40} />}
-                        label="เวลาที่ใช้ฝึก"
+                        label="เวลาฝึกบทเรียน"
                         value={stats.timeSpent}
                         subValue=""
+                        color=""
+                    />
+                    <StatCard
+                        icon={<Sparkles className="text-amber-500 fill-amber-500" size={40} />}
+                        label="เวลาโหมดฟาร์ม"
+                        value={stats.farmTimeSpent || "0m"}
+                        subValue="Farm"
                         color=""
                     />
                 </div>

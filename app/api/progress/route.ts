@@ -48,7 +48,13 @@ export async function GET() {
       orderBy: { createdAt: 'desc' }
     });
 
-    // C. ดึงโครงสร้างบทเรียนทั้งหมด
+    // C. ดึงประวัติการฟาร์ม (Farm Sessions) สำหรับคำนวณ Streak (ไฟ) และเวลาฟาร์ม
+    const farmSessions = await prisma.farmSession.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // D. ดึงโครงสร้างบทเรียนทั้งหมด
     const allLessons = await prisma.lesson.findMany({
       include: { subLessons: true },
       orderBy: { order: 'asc' }
@@ -85,16 +91,38 @@ export async function GET() {
     else if (minutes > 0) timeSpentStr = `${minutes}m`;
     else if (totalDurationSeconds > 0) timeSpentStr = `< 1m`;
 
+    // คำนวณเวลาฟาร์มสะสม (Farm Playtime)
+    const farmSeconds = user.farmTimeSeconds || 0;
+    const farmHours = Math.floor(farmSeconds / 3600);
+    const farmMinutes = Math.floor((farmSeconds % 3600) / 60);
+    let farmTimeStr = "0m";
+    if (farmHours > 0) farmTimeStr = `${farmHours}h ${farmMinutes}m`;
+    else if (farmMinutes > 0) farmTimeStr = `${farmMinutes}m`;
+    else if (farmSeconds > 0) farmTimeStr = `< 1m`;
+
     // =========================================================
-    // 3. เตรียมข้อมูลสำหรับ Graph และ Widgets (อันนี้รวมได้ปกติ)
+    // 3. เตรียมข้อมูลสำหรับ Graph และ Widgets (รวมทั้ง Lesson, Speed Test และ Farm)
     // =========================================================
 
     const allActivities = [
       ...lessonProgress.map(l => ({ ...l, type: 'lesson', date: l.updatedAt })),
-      ...speedTestResults.map(s => ({ ...s, type: 'test', date: s.createdAt, stars: 0 }))
-    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      ...speedTestResults.map(s => ({ ...s, type: 'test', date: s.createdAt, stars: 0 })),
+      ...farmSessions.map(f => ({ ...f, type: 'farm', date: f.createdAt, stars: 0 }))
+    ];
 
-    // วันที่ที่มีกิจกรรม (สำหรับ Activity Graph)
+    // ถ้าเคยเล่น Farm มาก่อนแต่ยังไม่มีในตาราง farmSessions ให้นำ lastPlayedAt มารวมด้วยเพื่อความต่อเนื่องของ Streak
+    if (user.lastPlayedAt && farmSessions.length === 0) {
+      allActivities.push({
+        id: 'legacy-farm',
+        type: 'farm',
+        date: user.lastPlayedAt,
+        stars: 0
+      } as any);
+    }
+
+    allActivities.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    // วันที่ที่มีกิจกรรม (สำหรับ Activity Graph และระบบ Streak / ไฟ 🔥)
     const activityDates = allActivities.map(item => new Date(item.date).toISOString().split('T')[0]);
 
     // 5 รายการล่าสุด (สำหรับ Recent Activity Widget)
@@ -104,6 +132,8 @@ export async function GET() {
         const lessonTitle = (item as any)?.subLesson?.lesson?.title || 'บทเรียน';
         const subTitle = (item as any)?.subLesson?.title || '';
         title = subTitle ? `${lessonTitle} - ${subTitle}` : lessonTitle;
+      } else if (item.type === 'farm') {
+        title = `โหมดฟาร์ม (Farm Mode)`;
       } else {
         title = `Speed Test (${Math.ceil(((item as any)?.duration || 60) / 60)} min)`;
       }
@@ -111,9 +141,9 @@ export async function GET() {
         id: item.id,
         type: item.type,
         title: title,
-        wpm: item.wpm,
-        accuracy: item.accuracy,
-        stars: item.stars,
+        wpm: (item as any).wpm || 0,
+        accuracy: (item as any).accuracy || 100,
+        stars: (item as any).stars || 0,
         date: item.date
       };
     });
@@ -168,7 +198,9 @@ export async function GET() {
         totalStars,
         avgSpeed,    // ✅ มาจาก Lesson เท่านั้น
         avgAccuracy, // ✅ มาจาก Lesson เท่านั้น
-        timeSpent: timeSpentStr // ✅ มาจาก Lesson เท่านั้น
+        timeSpent: timeSpentStr, // ✅ มาจาก Lesson เท่านั้น
+        farmTimeSeconds: farmSeconds, // ✅ เวลาฟาร์ม (วินาที)
+        farmTimeSpent: farmTimeStr // ✅ เวลาฟาร์มในรูปแบบ String เช่น "1h 25m"
       },
       activityDates,
       recentActivity,
