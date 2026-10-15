@@ -341,18 +341,18 @@ export default function FarmPage() {
                     let exp = data.user.currentExp || 0;
 
                     // 🌟 ถ้าเคยเล่นในฐานะ Guest มาก่อนแล้วเพิ่งล็อกอินเข้ามา
+                    // ป้องกันบั๊ก: ซิงค์เฉพาะบัญชีใหม่ที่แต้มยังเป็น 0 (exp === 0) เท่านั้น ป้องกันแต้มค้างจากบัญชีอื่นมาทับ!
                     try {
                         const savedGuestExp = localStorage.getItem('pimwai_guest_exp');
                         if (savedGuestExp) {
                             const parsedGuestExp = parseInt(savedGuestExp, 10);
-                            if (!isNaN(parsedGuestExp) && parsedGuestExp > exp) {
-                                const diffExp = parsedGuestExp - exp;
+                            if (!isNaN(parsedGuestExp) && exp === 0 && parsedGuestExp > 0) {
                                 exp = parsedGuestExp;
-                                // ซิงค์แต้มจาก Guest เข้าระบบบัญชีผู้ใช้
+                                // ซิงค์แต้มจาก Guest เข้าระบบบัญชีผู้ใช้ใหม่
                                 fetch('/api/farm/save', {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ expEarned: diffExp })
+                                    body: JSON.stringify({ expEarned: parsedGuestExp })
                                 });
                             }
                             localStorage.removeItem('pimwai_guest_exp');
@@ -581,10 +581,12 @@ export default function FarmPage() {
 
     // 6. ซิงค์ EXP สะสมขึ้นฐานข้อมูลอัตโนมัติ (Atomic Queue & Periodic Sync ป้องกัน EXP ตกหล่น)
     const syncExpToDatabase = useCallback(async (forcedExp?: number) => {
-        // 🌟 บันทึกลง LocalStorage เสมอ (สำหรับ Guest และเป็น Local Backup ของผู้ใช้)
-        try {
-            localStorage.setItem('pimwai_guest_exp', String(userTotalExpRef.current));
-        } catch (e) { }
+        // 🌟 บันทึกลง LocalStorage เฉพาะเมื่อไม่ได้ล็อกอิน (Guest Mode) เท่านั้น ป้องกันแต้มรั่วไปบัญชีอื่น
+        if (!session?.user) {
+            try {
+                localStorage.setItem('pimwai_guest_exp', String(userTotalExpRef.current));
+            } catch (e) { }
+        }
 
         if (!session?.user) return;
         if (isSyncingRef.current) return;
