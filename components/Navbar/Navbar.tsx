@@ -5,9 +5,10 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from "next-auth/react";
 import { FaCaretDown, FaUserCog, FaSignOutAlt } from 'react-icons/fa';
-import { Flame, MessageSquarePlus, Menu, X, Loader2, Send, Newspaper } from 'lucide-react';
+import { Flame, MessageSquarePlus, Menu, X, Loader2, Send, Newspaper, Code2 } from 'lucide-react';
 import { calculateCurrentStreak } from '@/lib/streakUtils';
 import toast, { Toaster } from 'react-hot-toast';
+import { isAdmin } from '@/lib/adminAuth';
 
 export default function Navbar() {
   const { data: session, status } = useSession();
@@ -189,6 +190,17 @@ export default function Navbar() {
                         <span>ข่าวสาร & อัปเดต</span>
                       </Link>
 
+                      {isAdmin(session.user?.email) && (
+                        <Link
+                          href="/code"
+                          onClick={() => setIsDropdownOpen(false)}
+                          className="w-full text-left flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold text-amber-600 bg-amber-50/60 hover:bg-amber-100/80 transition-colors"
+                        >
+                          <Code2 className="text-base text-amber-500" size={16} />
+                          <span>Code Typing (Dev)</span>
+                        </Link>
+                      )}
+
 
 
                       <button
@@ -325,6 +337,16 @@ export default function Navbar() {
                     <Newspaper size={15} />
                     <span>ข่าวสาร & อัปเดต</span>
                   </Link>
+                  {isAdmin(session.user?.email) && (
+                    <Link
+                      href="/code"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="py-2 px-3 rounded-xl font-bold text-sm text-amber-300 hover:bg-white/10 flex items-center gap-2"
+                    >
+                      <Code2 size={15} />
+                      <span>Code Typing (Dev)</span>
+                    </Link>
+                  )}
                   <button
                     onClick={() => signOut({ callbackUrl: '/login' })}
                     className="py-2 px-3 rounded-xl font-bold text-sm text-red-400 hover:bg-red-500/20 flex items-center gap-2 text-left"
