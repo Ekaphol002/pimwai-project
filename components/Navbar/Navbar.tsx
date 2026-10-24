@@ -169,9 +169,9 @@ export default function Navbar() {
             >
               <span>ข่าวสาร</span>
               {hasUnreadNews && (
-                <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 ring-2 ring-white"></span>
+                <span className="absolute -top-0.5 -right-1 flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ff7b7b] opacity-60"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#ff5252]"></span>
                 </span>
               )}
             </Link>
@@ -237,7 +237,7 @@ export default function Navbar() {
                           <span>ข่าวสาร & อัปเดต</span>
                         </div>
                         {hasUnreadNews && (
-                          <span className="px-1.5 py-0.5 text-[9px] bg-rose-500 text-white font-bold rounded-full animate-pulse">
+                          <span className="px-1.5 py-0.5 text-[9px] bg-[#ff5252] text-white font-bold rounded-full animate-pulse">
                             ใหม่
                           </span>
                         )}
@@ -302,9 +302,9 @@ export default function Navbar() {
             >
               {isMobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
               {hasUnreadNews && (
-                <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 ring-2 ring-[#182834]"></span>
+                <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ff7b7b] opacity-60"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#ff5252]"></span>
                 </span>
               )}
             </button>
@@ -364,7 +364,7 @@ export default function Navbar() {
                 <span>ข่าวสาร</span>
               </div>
               {hasUnreadNews && (
-                <span className="px-1.5 py-0.5 text-[9px] bg-rose-500 text-white font-bold rounded-full animate-pulse">
+                <span className="px-1.5 py-0.5 text-[9px] bg-[#ff5252] text-white font-bold rounded-full animate-pulse">
                   ใหม่
                 </span>
               )}
@@ -411,7 +411,7 @@ export default function Navbar() {
                       <span>ข่าวสาร & อัปเดต</span>
                     </div>
                     {hasUnreadNews && (
-                      <span className="px-1.5 py-0.5 text-[9px] bg-rose-500 text-white font-bold rounded-full">
+                      <span className="px-1.5 py-0.5 text-[9px] bg-[#ff5252] text-white font-bold rounded-full">
                         ใหม่
                       </span>
                     )}
