@@ -916,6 +916,22 @@ export const ARTICLES_COLLECTION: ArticleItem[] = [
     }
 ];
 
+// ฟังก์ชันจัดหมวดหมู่ความยาวของบทความตามจำนวนตัวอักษรจริง
+export function getArticleLengthCategory(text: string, lang: 'thai' | 'english'): 'short' | 'medium' | 'long' {
+    const len = text.length;
+    if (lang === 'english') {
+        if (len <= 180) return 'short';
+        if (len <= 260) return 'medium';
+        return 'long';
+    }
+    if (len <= 210) return 'short';
+    if (len <= 275) return 'medium';
+    return 'long';
+}
+
+// ประวัติเก็บบทความที่เพิ่งสุ่มไป เพื่อไม่ให้สุ่มได้ซ้ำเดิมติดๆ กัน
+const recentlyUsedArticleIds: string[] = [];
+
 // ฟังก์ชันสุ่มบทความตามเงื่อนไขภาษา และความยาว
 export function getRandomArticle(
     lang: 'thai' | 'english' = 'thai',
@@ -925,57 +941,110 @@ export function getRandomArticle(
     let pool = ARTICLES_COLLECTION.filter(a => a.language === lang);
 
     if (lengthFilter !== 'all') {
-        const filtered = pool.filter(a => a.lengthCategory === lengthFilter);
+        const filtered = pool.filter(a => {
+            const dynamicCat = getArticleLengthCategory(a.text, a.language);
+            return a.lengthCategory === lengthFilter || dynamicCat === lengthFilter;
+        });
         if (filtered.length > 0) pool = filtered;
     }
 
-    if (excludeId && pool.length > 1) {
-        pool = pool.filter(a => a.id !== excludeId);
+    // กรองบทความที่กำลังเล่นอยู่ (excludeId) และบทความที่เพิ่งเล่นไปไม่นานนี้ออกไป
+    let available = pool.filter(a => a.id !== excludeId && !recentlyUsedArticleIds.includes(a.id));
+    if (available.length === 0) {
+        // หากเล่นจนครบแล้ว ให้ล้างประวัติล่าสุดแล้วสุ่มใหม่
+        recentlyUsedArticleIds.length = 0;
+        available = pool.filter(a => a.id !== excludeId);
+    }
+    if (available.length === 0) {
+        available = pool;
     }
 
-    if (pool.length === 0) {
-        return ARTICLES_COLLECTION[0];
+    const randomIndex = Math.floor(Math.random() * available.length);
+    const selected = available[randomIndex];
+
+    // บันทึกเข้าประวัติล่าสุด (เก็บไว้สูงสุด 10 บทความล่าสุด)
+    if (selected) {
+        recentlyUsedArticleIds.push(selected.id);
+        if (recentlyUsedArticleIds.length > 10) {
+            recentlyUsedArticleIds.shift();
+        }
     }
 
-    const randomIndex = Math.floor(Math.random() * pool.length);
-    return pool[randomIndex];
+    return selected || ARTICLES_COLLECTION[0];
 }
 
-// ฟังก์ชันตัดแบ่งข้อความบทความเป็นท่อนคำที่พอดีคำ (ไม่เกิน 20 ตัวอักษร)
-// ป้องกันปัญหาข้อความยาวล้นขอบจอ (Overflow) บนมือถือและเดสก์ท็อป และช่วยให้การพิมพ์มีจังหวะธรรมชาติ
+// ฟังก์ชันตัดแบ่งข้อความบทความเป็น "ประโยคและวลีที่สมบูรณ์ตามหลักภาษาไทย"
+// รักษาความหมายของประโยค ไม่หักคำกลางคัน (เช่น ไม่ตัด "ไม่ได้" หรือ "ผ่านพ้นไป" หรือ "เช่นกัน")
+// และตัดแบ่งท่อนประโยคยาวตามคำเชื่อมหลัก (และ, แต่, หรือ, เพราะ, จึง, เพื่อ, ทำให้, โดย ฯลฯ)
+const THAI_CLAUSE_STARTERS = [
+    'และ', 'แต่', 'หรือ', 'เพราะ', 'จึง', 'เพื่อ', 'ทำให้', 'โดย',
+    'จนกระทั่ง', 'จน', 'ทว่า', 'หาก', 'แม้ว่า', 'แม้', 'ดังนั้น',
+    'ในที่สุด', 'ส่วน', 'ขณะที่', 'เมื่อ', 'ซึ่ง', 'นอกจากนี้'
+];
+
 export function tokenizeArticle(text: string, lang: 'thai' | 'english' = 'thai'): string[] {
     const rawTokens = text.trim().split(/\s+/).filter(Boolean);
     if (lang === 'english') {
         return rawTokens;
     }
 
-    const maxLen = 20;
-    const result: string[] = [];
-    const seg = (typeof Intl !== 'undefined' && 'Segmenter' in Intl)
-        ? new Intl.Segmenter('th', { granularity: 'word' })
-        : null;
+    const finalClauses: string[] = [];
 
-    for (const token of rawTokens) {
-        if (token.length <= maxLen || !seg) {
-            result.push(token);
+    for (const chunk of rawTokens) {
+        // ถ้าท่อนประโยคมีความยาวพอดีอยู่แล้ว (ไม่เกิน 42 ตัวอักษร) ให้คงไว้ตามเดิม 100% ไม่ตัดคำ
+        if (chunk.length <= 42) {
+            finalClauses.push(chunk);
             continue;
         }
 
-        const segments = [...seg.segment(token)].map(s => s.segment);
-        let currentChunk = '';
+        // หากเป็นประโยคยาวมาก ให้หาจุดตัดตามคำเชื่อมทางภาษาธรรมชาติ (Clause Starters)
+        let remaining = chunk;
+        while (remaining.length > 42) {
+            let bestSplitIdx = -1;
+            let minDistance = 999;
 
-        for (const segWord of segments) {
-            if (currentChunk && (currentChunk + segWord).length > maxLen) {
-                result.push(currentChunk);
-                currentChunk = segWord;
+            for (const starter of THAI_CLAUSE_STARTERS) {
+                let idx = remaining.indexOf(starter, 16);
+                while (idx !== -1 && idx < remaining.length - 12) {
+                    const dist = Math.abs(idx - 32);
+                    if (dist < minDistance) {
+                        minDistance = dist;
+                        bestSplitIdx = idx;
+                    }
+                    idx = remaining.indexOf(starter, idx + 1);
+                }
+            }
+
+            if (bestSplitIdx !== -1) {
+                finalClauses.push(remaining.slice(0, bestSplitIdx));
+                remaining = remaining.slice(bestSplitIdx);
             } else {
-                currentChunk += segWord;
+                // กรณีไม่มีคำเชื่อม ให้ใช้ Intl.Segmenter ตัดตามขอบเขตคำจริง ไม่ตัดพยางค์หรือคำกลางคัน
+                if (typeof Intl !== 'undefined' && 'Segmenter' in Intl) {
+                    const seg = new Intl.Segmenter('th', { granularity: 'word' });
+                    const words = [...seg.segment(remaining)].map(s => s.segment);
+                    let cur = '';
+                    let splitDone = false;
+                    for (let i = 0; i < words.length; i++) {
+                        if (cur.length + words[i].length > 36 && cur.length >= 20) {
+                            finalClauses.push(cur);
+                            remaining = words.slice(i).join('');
+                            splitDone = true;
+                            break;
+                        }
+                        cur += words[i];
+                    }
+                    if (!splitDone) break;
+                } else {
+                    break;
+                }
             }
         }
-        if (currentChunk) {
-            result.push(currentChunk);
+        if (remaining) {
+            finalClauses.push(remaining);
         }
     }
 
-    return result;
+    return finalClauses;
 }
+

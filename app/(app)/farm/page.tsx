@@ -112,15 +112,81 @@ export default function FarmPage() {
     const [includeNumbers, setIncludeNumbers] = useState<boolean>(false);
     const [isSoundOn, setIsSoundOn] = useState<boolean>(true);
 
-    // โหลดภาษาที่เคยเลือกไว้จาก LocalStorage
+    // 💾 บันทึกและจดจำตัวเลือกทั้งหมดของผู้ใช้ในรหัสนั้นๆ (Account-specific Settings Memory)
     useEffect(() => {
         try {
-            const savedLang = localStorage.getItem('pimwai_farm_lang');
+            const email = session?.user?.email;
+            const prefix = email ? `pimwai_farm_${email}_` : 'pimwai_farm_';
+
+            const savedLang = localStorage.getItem(prefix + 'lang') || localStorage.getItem('pimwai_farm_lang');
             if (savedLang === 'thai' || savedLang === 'english') {
                 setLanguage(savedLang);
             }
+
+            const savedMode = localStorage.getItem(prefix + 'mode') || localStorage.getItem('pimwai_farm_mode');
+            if (savedMode === 'time' || savedMode === 'words' || savedMode === 'zen' || savedMode === 'quote') {
+                setMode(savedMode);
+            }
+
+            const savedZenType = localStorage.getItem(prefix + 'zen_type') || localStorage.getItem('pimwai_farm_zen_type');
+            if (savedZenType === 'words' || savedZenType === 'quote') {
+                setZenType(savedZenType);
+            }
+
+            const savedQuoteLength = localStorage.getItem(prefix + 'quote_length');
+            if (savedQuoteLength === 'all' || savedQuoteLength === 'short' || savedQuoteLength === 'medium' || savedQuoteLength === 'long') {
+                setQuoteLength(savedQuoteLength);
+            }
+
+            const savedTimeLimit = localStorage.getItem(prefix + 'time_limit');
+            if (savedTimeLimit && !isNaN(Number(savedTimeLimit))) {
+                setTimeLimit(Number(savedTimeLimit));
+            }
+
+            const savedWordLimit = localStorage.getItem(prefix + 'word_limit');
+            if (savedWordLimit && !isNaN(Number(savedWordLimit))) {
+                setWordLimit(Number(savedWordLimit));
+            }
+
+            const savedPunct = localStorage.getItem(prefix + 'punct');
+            if (savedPunct !== null) {
+                setIncludePunctuation(savedPunct === 'true');
+            }
+
+            const savedNum = localStorage.getItem(prefix + 'num');
+            if (savedNum !== null) {
+                setIncludeNumbers(savedNum === 'true');
+            }
+
+            const savedSound = localStorage.getItem(prefix + 'sound');
+            if (savedSound !== null) {
+                setIsSoundOn(savedSound === 'true');
+            }
         } catch (e) { }
-    }, []);
+    }, [session?.user?.email]);
+
+    // บันทึกการเปลี่ยนแปลงค่าตัวเลือกลง LocalStorage อัตโนมัติสำหรับรหัสนั้นๆ
+    useEffect(() => {
+        try {
+            const email = session?.user?.email;
+            const prefix = email ? `pimwai_farm_${email}_` : 'pimwai_farm_';
+
+            localStorage.setItem(prefix + 'lang', language);
+            localStorage.setItem(prefix + 'mode', mode);
+            localStorage.setItem(prefix + 'zen_type', zenType);
+            localStorage.setItem(prefix + 'quote_length', quoteLength);
+            localStorage.setItem(prefix + 'time_limit', String(timeLimit));
+            localStorage.setItem(prefix + 'word_limit', String(wordLimit));
+            localStorage.setItem(prefix + 'punct', String(includePunctuation));
+            localStorage.setItem(prefix + 'num', String(includeNumbers));
+            localStorage.setItem(prefix + 'sound', String(isSoundOn));
+
+            // บันทึกแบบ fallback สำหรับ guest
+            localStorage.setItem('pimwai_farm_lang', language);
+            localStorage.setItem('pimwai_farm_mode', mode);
+            localStorage.setItem('pimwai_farm_zen_type', zenType);
+        } catch (e) { }
+    }, [session?.user?.email, language, mode, zenType, quoteLength, timeLimit, wordLimit, includePunctuation, includeNumbers, isSoundOn]);
 
     // Database & User EXP State
     const [userTotalExp, setUserTotalExp] = useState<number>(0);
@@ -1879,17 +1945,6 @@ export default function FarmPage() {
                                 </div>
                             )}
 
-                            {/* 📖 แสดงจำนวนคำและชื่อเรื่อง (กระชับ ชิดข้อความ ไม่เว้นที่ว่าง ไม่ล้นขอบ) */}
-                            {isArticleMode && (
-                                <div className="w-full flex justify-between items-center px-2 -mb-2 text-xs sm:text-sm font-bold text-gray-400 select-none">
-                                    <span className="text-[#5cb5db] font-bold truncate max-w-[55%] sm:max-w-[70%]">
-                                        📖 {currentArticle?.title || 'บทความ'}
-                                    </span>
-                                    <span className="shrink-0">
-                                        {mode === 'zen' ? `พิมพ์ไปแล้ว ${activeWordIdx + 1} คำ (พิมพ์เรื่อยๆ)` : `${activeWordIdx + 1} / ${wordList.length} คำ`}
-                                    </span>
-                                </div>
-                            )}
 
                             {/* Words Stream Box with Smooth Scrolling (3 Full Visible Lines) */}
                             <div
