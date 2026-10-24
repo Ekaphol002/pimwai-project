@@ -940,3 +940,42 @@ export function getRandomArticle(
     const randomIndex = Math.floor(Math.random() * pool.length);
     return pool[randomIndex];
 }
+
+// ฟังก์ชันตัดแบ่งข้อความบทความเป็นท่อนคำที่พอดีคำ (ไม่เกิน 20 ตัวอักษร)
+// ป้องกันปัญหาข้อความยาวล้นขอบจอ (Overflow) บนมือถือและเดสก์ท็อป และช่วยให้การพิมพ์มีจังหวะธรรมชาติ
+export function tokenizeArticle(text: string, lang: 'thai' | 'english' = 'thai'): string[] {
+    const rawTokens = text.trim().split(/\s+/).filter(Boolean);
+    if (lang === 'english') {
+        return rawTokens;
+    }
+
+    const maxLen = 20;
+    const result: string[] = [];
+    const seg = (typeof Intl !== 'undefined' && 'Segmenter' in Intl)
+        ? new Intl.Segmenter('th', { granularity: 'word' })
+        : null;
+
+    for (const token of rawTokens) {
+        if (token.length <= maxLen || !seg) {
+            result.push(token);
+            continue;
+        }
+
+        const segments = [...seg.segment(token)].map(s => s.segment);
+        let currentChunk = '';
+
+        for (const segWord of segments) {
+            if (currentChunk && (currentChunk + segWord).length > maxLen) {
+                result.push(currentChunk);
+                currentChunk = segWord;
+            } else {
+                currentChunk += segWord;
+            }
+        }
+        if (currentChunk) {
+            result.push(currentChunk);
+        }
+    }
+
+    return result;
+}

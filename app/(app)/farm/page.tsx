@@ -37,7 +37,7 @@ import { thaiKeyDisplayMap, thaiShiftKeyDisplayMap } from '@/lib/keyMaps';
 import toast, { Toaster } from 'react-hot-toast';
 import { MONKEYTYPE_THAI_WORDS } from '@/lib/thaiWords';
 import { MONKEYTYPE_ENGLISH_WORDS, getEnglishCharFromEvent } from '@/lib/englishWords';
-import { getRandomArticle, ArticleItem } from '@/lib/articles';
+import { getRandomArticle, tokenizeArticle, ArticleItem } from '@/lib/articles';
 import RankUpOverlay from '@/components/PracticeResultModal/RankUpOverlay';
 
 // คลังคำภาษาไทยมาตรฐาน Monkeytype (1,000 คำความถี่สูง ตรงตาม Monkeytype Official)
@@ -101,11 +101,13 @@ export default function FarmPage() {
     // Settings
     const [language, setLanguage] = useState<'thai' | 'english'>('thai');
     const [mode, setMode] = useState<'time' | 'words' | 'zen' | 'quote'>('zen');
+    const [zenType, setZenType] = useState<'words' | 'quote'>('words');
     const [quoteLength, setQuoteLength] = useState<'all' | 'short' | 'medium' | 'long'>('all');
     const [currentArticle, setCurrentArticle] = useState<ArticleItem | null>(null);
     const currentArticleRef = useRef<ArticleItem | null>(null);
     const [timeLimit, setTimeLimit] = useState<number>(30);
     const [wordLimit, setWordLimit] = useState<number>(50);
+    const isArticleMode = mode === 'quote' || (mode === 'zen' && zenType === 'quote');
     const [includePunctuation, setIncludePunctuation] = useState<boolean>(false);
     const [includeNumbers, setIncludeNumbers] = useState<boolean>(false);
     const [isSoundOn, setIsSoundOn] = useState<boolean>(true);
@@ -465,14 +467,16 @@ export default function FarmPage() {
         const activeLang = (overrideLang === 'thai' || overrideLang === 'english') ? overrideLang : language;
         let newWords: { word: string; isGolden: boolean }[] = [];
 
-        if (mode === 'quote') {
+        const isCurrentArticleMode = mode === 'quote' || (mode === 'zen' && zenType === 'quote');
+
+        if (isCurrentArticleMode) {
             const article = getRandomArticle(activeLang, quoteLength, currentArticleRef.current?.id);
             currentArticleRef.current = article;
             setCurrentArticle(article);
-            const tokens = article.text.trim().split(/\s+/).filter(Boolean);
+            const tokens = tokenizeArticle(article.text, activeLang);
             newWords = tokens.map((t, idx) => ({
                 word: activeLang === 'thai' ? toTypingOrder(t) : t,
-                isGolden: idx === tokens.length - 1
+                isGolden: mode === 'quote' && idx === tokens.length - 1
             }));
         } else {
             const count = mode === 'words' ? wordLimit : 100;
@@ -527,7 +531,7 @@ export default function FarmPage() {
         setTimeLeft(timeLimit);
         setIsFinished(false);
         setEndTime(null);
-    }, [mode, wordLimit, timeLimit, includePunctuation, includeNumbers, language, quoteLength]);
+    }, [mode, zenType, wordLimit, timeLimit, includePunctuation, includeNumbers, language, quoteLength]);
 
     const handleLanguageChange = (newLang: 'thai' | 'english') => {
         if (newLang === language) return;
@@ -953,7 +957,7 @@ export default function FarmPage() {
                     }
                 } else {
                     // ✨ คำถูกต้องสมบูรณ์ 100%! ตรวจสอบเงื่อนไขรับ Flawless Bounty (ปิดการทำงานในโหมดบทความเพื่อความสมดุล)
-                    if (mode !== 'quote' && !wordHasBackspaceRef.current && !rewardedWordIndicesRef.current.has(activeWordIdx)) {
+                    if (!isArticleMode && !wordHasBackspaceRef.current && !rewardedWordIndicesRef.current.has(activeWordIdx)) {
                         rewardedWordIndicesRef.current.add(activeWordIdx);
 
                         let bountyExp = 0;
@@ -1023,10 +1027,22 @@ export default function FarmPage() {
                     }
                 }
 
-                // สุ่มเติมคำเพิ่มเรื่อยๆ ถ้าเป็นโหมด Zen
+                // สุ่มเติมคำหรือบทความเพิ่มเรื่อยๆ ถ้าเป็นโหมด Zen (พิมพ์เรื่อยๆ ไม่มีวันจบ)
                 if (mode === 'zen' && activeWordIdx + 15 >= wordList.length) {
-                    const extraWords = generateWordList(50, includePunctuation, includeNumbers, lessonPerksRef.current.intermediate, language);
-                    setWordList(prev => [...prev, ...extraWords]);
+                    if (zenType === 'words') {
+                        const extraWords = generateWordList(50, includePunctuation, includeNumbers, lessonPerksRef.current.intermediate, language);
+                        setWordList(prev => [...prev, ...extraWords]);
+                    } else {
+                        const nextArticle = getRandomArticle(language, quoteLength, currentArticleRef.current?.id);
+                        currentArticleRef.current = nextArticle;
+                        setCurrentArticle(nextArticle);
+                        const nextTokens = tokenizeArticle(nextArticle.text, language);
+                        const extraWords = nextTokens.map((t) => ({
+                            word: language === 'thai' ? toTypingOrder(t) : t,
+                            isGolden: false
+                        }));
+                        setWordList(prev => [...prev, ...extraWords]);
+                    }
                 }
 
                 // ตรวจสอบจบในโหมด Words หรือโหมดบทความ (Quote)
@@ -1193,7 +1209,7 @@ export default function FarmPage() {
                     updatedStatus[activeWordIdx] = 'correct';
                     setCompletedWordsStatus(updatedStatus);
 
-                    if (mode !== 'quote' && !wordHasBackspaceRef.current && !rewardedWordIndicesRef.current.has(activeWordIdx)) {
+                    if (!isArticleMode && !wordHasBackspaceRef.current && !rewardedWordIndicesRef.current.has(activeWordIdx)) {
                         rewardedWordIndicesRef.current.add(activeWordIdx);
                         let bountyExp = 0;
                         let isGoldenBounty = false;
@@ -1240,6 +1256,8 @@ export default function FarmPage() {
         totalKeystrokes,
         isSoundOn,
         mode,
+        zenType,
+        quoteLength,
         wordLimit,
         includePunctuation,
         includeNumbers,
@@ -1347,7 +1365,7 @@ export default function FarmPage() {
                     </div>
 
                     {/* Sub-Group: Punctuation & Numbers (ซ่อนในโหมดบทความ) */}
-                    {mode !== 'quote' && (
+                    {!isArticleMode && (
                         <div className="flex items-center gap-2 pr-3 sm:border-r border-gray-200">
                             <button
                                 onClick={() => setIncludePunctuation(!includePunctuation)}
@@ -1436,6 +1454,49 @@ export default function FarmPage() {
                                     {w}
                                 </button>
                             ))}
+                        </div>
+                    )}
+
+                    {mode === 'zen' && (
+                        <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1">
+                                <button
+                                    onClick={() => setZenType('words')}
+                                    className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${zenType === 'words' ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
+                                        }`}
+                                >
+                                    คำ
+                                </button>
+                                <button
+                                    onClick={() => setZenType('quote')}
+                                    className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${zenType === 'quote' ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
+                                        }`}
+                                >
+                                    บทความ
+                                </button>
+                            </div>
+                            {zenType === 'quote' && (
+                                <div className="flex items-center gap-1 border-l border-gray-200 pl-2">
+                                    {(['all', 'short', 'medium', 'long'] as const).map((qLen) => {
+                                        const labels: Record<string, string> = {
+                                            all: 'สุ่มทั้งหมด',
+                                            short: 'สั้น',
+                                            medium: 'ปานกลาง',
+                                            long: 'ยาว'
+                                        };
+                                        return (
+                                            <button
+                                                key={qLen}
+                                                onClick={() => setQuoteLength(qLen)}
+                                                className={`px-1.5 py-0.5 rounded-md text-[13px] transition-all cursor-pointer ${quoteLength === qLen ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
+                                                    }`}
+                                            >
+                                                {labels[qLen]}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -1818,17 +1879,22 @@ export default function FarmPage() {
                                 </div>
                             )}
 
-                            {/* 📖 แสดงจำนวนคำด้านขวา (กระชับ ชิดข้อความ ไม่เว้นที่ว่าง) */}
-                            {mode === 'quote' && (
-                                <div className="w-full flex justify-end px-2 -mb-2 text-xs sm:text-sm font-bold text-gray-400 select-none">
-                                    <span>{activeWordIdx + 1} / {wordList.length} คำ</span>
+                            {/* 📖 แสดงจำนวนคำและชื่อเรื่อง (กระชับ ชิดข้อความ ไม่เว้นที่ว่าง ไม่ล้นขอบ) */}
+                            {isArticleMode && (
+                                <div className="w-full flex justify-between items-center px-2 -mb-2 text-xs sm:text-sm font-bold text-gray-400 select-none">
+                                    <span className="text-[#5cb5db] font-bold truncate max-w-[55%] sm:max-w-[70%]">
+                                        📖 {currentArticle?.title || 'บทความ'}
+                                    </span>
+                                    <span className="shrink-0">
+                                        {mode === 'zen' ? `พิมพ์ไปแล้ว ${activeWordIdx + 1} คำ (พิมพ์เรื่อยๆ)` : `${activeWordIdx + 1} / ${wordList.length} คำ`}
+                                    </span>
                                 </div>
                             )}
 
                             {/* Words Stream Box with Smooth Scrolling (3 Full Visible Lines) */}
                             <div
                                 ref={typingContainerRef}
-                                className="flex-1 overflow-hidden h-[188px] max-h-[188px] sm:h-[192px] sm:max-h-[192px] relative flex flex-wrap items-baseline gap-x-4 gap-y-3.5 text-2xl sm:text-3xl font-medium leading-normal select-none my-1 pt-2 pb-2 antialiased"
+                                className="flex-1 overflow-hidden max-w-full overflow-x-hidden h-[188px] max-h-[188px] sm:h-[192px] sm:max-h-[192px] relative flex flex-wrap items-baseline gap-x-3 sm:gap-x-4 gap-y-3 sm:gap-y-3.5 text-2xl sm:text-3xl font-medium leading-normal select-none my-1 pt-2 pb-2 antialiased"
                             >
                                 {/* 🎯 Container-Level Ultra-Smooth Floating Caret (เลื่อนช้า สมูท นุ่มนวล ไม่มีเงา) */}
                                 {!isFinished && caretCoords.height > 0 && (
