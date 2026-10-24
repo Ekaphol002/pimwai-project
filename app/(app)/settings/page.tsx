@@ -7,7 +7,7 @@ import {
     Camera, Pencil, Check, X, Clock, Loader2, Calendar, ShieldCheck,
     Mail, User as UserIcon, KeyRound, Eye, EyeOff, LogOut, Volume2,
     Music, Play, Square, CheckSquare, Sparkles, VolumeX, Pause,
-    MessageSquarePlus, ShieldAlert, Send
+    MessageSquarePlus, ShieldAlert, Send, Trash2, AlertTriangle
 } from 'lucide-react';
 import { FcGoogle } from 'react-icons/fc';
 import toast, { Toaster } from 'react-hot-toast';
@@ -68,6 +68,39 @@ export default function SettingsPage() {
     // Avatar Upload States
     const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+
+    // Delete Account States
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [deleteConfirmText, setDeleteConfirmText] = useState('');
+    const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+
+    const handleDeleteAccount = async () => {
+        if (deleteConfirmText.trim() !== 'ลบบัญชีถาวร') {
+            toast.error('กรุณาพิมพ์ "ลบบัญชีถาวร" ให้ถูกต้องเพื่อยืนยัน');
+            return;
+        }
+
+        setIsDeletingAccount(true);
+        try {
+            const res = await fetch('/api/user/delete-account', {
+                method: 'DELETE'
+            });
+            const data = await res.json();
+            if (data.success) {
+                toast.success('ลบบัญชีของคุณเรียบร้อยแล้ว');
+                setTimeout(() => {
+                    signOut({ callbackUrl: '/' });
+                }, 1000);
+            } else {
+                toast.error(data.error || 'ไม่สามารถลบบัญชีได้');
+                setIsDeletingAccount(false);
+            }
+        } catch (error) {
+            console.error('Delete account error:', error);
+            toast.error('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+            setIsDeletingAccount(false);
+        }
+    };
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -850,8 +883,8 @@ export default function SettingsPage() {
                 {/* --- Section 5: ออกจากระบบ --- */}
                 <div className="bg-white rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between shadow-sm border border-gray-200/80 gap-4">
                     <div className="flex flex-col text-center sm:text-left">
-                        <h3 className="text-base sm:text-lg font-black text-red-600 logo-font flex items-center justify-center sm:justify-start gap-2">
-                            <LogOut size={20} />
+                        <h3 className="text-base sm:text-lg font-black text-gray-700 logo-font flex items-center justify-center sm:justify-start gap-2">
+                            <LogOut size={20} className="text-gray-500" />
                             <span>Sign Out</span>
                         </h3>
                         <p className="text-xs sm:text-sm text-gray-500 mt-0.5">ออกจากระบบบัญชีผู้ใช้นี้บนอุปกรณ์นี้</p>
@@ -860,13 +893,125 @@ export default function SettingsPage() {
                     <button
                         type="button"
                         onClick={() => signOut({ callbackUrl: '/login' })}
-                        className="px-6 py-2.5 rounded-2xl text-xs sm:text-sm font-bold text-white bg-red-500 hover:bg-red-700 transition-all cursor-pointer shadow-xs active:scale-95"
+                        className="px-6 py-2.5 rounded-2xl text-xs sm:text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all cursor-pointer shadow-xs active:scale-95"
                     >
                         ออกจากระบบ
                     </button>
                 </div>
 
+                {/* --- Section 6: โซนอันตราย (Danger Zone) - ลบบัญชีผู้ใช้ถาวร --- */}
+                <div className="bg-white rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between shadow-sm border border-red-200 gap-4">
+                    <div className="flex flex-col text-center sm:text-left">
+                        <h3 className="text-base sm:text-lg font-black text-red-600 logo-font flex items-center justify-center sm:justify-start gap-2">
+                            <Trash2 size={20} />
+                            <span>ลบบัญชีถาวร</span>
+                        </h3>
+                        <p className="text-xs sm:text-sm text-red-700/80 mt-0.5 max-w-lg">
+                            ลบข้อมูลส่วนตัว EXP, แรงค์, ประวัติการฝึกพิมพ์ และโค้ดทั้งหมดออกจากระบบอย่างถาวร (ไม่สามารถกู้คืนได้)
+                        </p>
+                    </div>
+
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setDeleteConfirmText('');
+                            setIsDeleteModalOpen(true);
+                        }}
+                        className="px-6 py-2.5 rounded-2xl text-xs sm:text-sm font-bold text-white bg-red-600 hover:bg-red-700 transition-all cursor-pointer shadow-sm hover:shadow active:scale-95 shrink-0 flex items-center gap-2"
+                    >
+                        <Trash2 size={16} />
+                        <span>ลบบัญชีถาวร</span>
+                    </button>
+                </div>
+
             </div>
+
+            {/* 🚨 Modal ยืนยันการลบบัญชีถาวร */}
+            {isDeleteModalOpen && (
+                <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+                    <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-red-100 flex flex-col">
+                        <div className="flex items-center justify-between pb-4 border-b border-gray-100 mb-4">
+                            <div className="flex items-center gap-2.5 text-red-600">
+                                <div className="p-2 text-red-600 rounded-2xl ">
+                                    <AlertTriangle size={22} />
+                                </div>
+                                <div>
+                                    <h4 className="font-black text-base text-gray-900">ยืนยันการลบบัญชีถาวร</h4>
+                                    <p className="text-xs text-red-500 font-medium">การกระทำนี้ไม่สามารถย้อนกลับได้</p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsDeleteModalOpen(false)}
+                                className="p-1.5 text-gray-400 hover:text-gray-700 rounded-full hover:bg-gray-100 cursor-pointer"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div className="space-y-3 mb-5 text-xs sm:text-sm text-gray-600 leading-relaxed">
+                            <div className="p-3.5 bg-red-50/70 rounded-2xl border border-red-100 text-red-800 text-xs flex flex-col gap-1.5">
+                                <p className="font-bold flex items-center gap-1.5 text-red-700">
+                                    <AlertTriangle size={15} />
+                                    โปรดทราบก่อนดำเนินการ:
+                                </p>
+                                <p className="list-disc list-inside space-y-1 text-red-700/90 pl-1">
+                                    EXP, ระดับแรงค์, ดาวสะสม จะหายไปทั้งหมด
+                                    ประวัติและสถิติการฝึกพิมพ์ทั้งหมดจะถูกลบถาวร
+                                    โค้ด Snippets ส่วนตัวของคุณจะถูกลบออกจากฐานข้อมูล
+                                    คุณจะถูกออกจากระบบทันทีหลังจากลบเสร็จสิ้น
+                                </p>
+                            </div>
+
+                            <p className="font-bold text-gray-700 pt-1">
+                                เพื่อยืนยัน กรุณาพิมพ์คำว่า <span className="text-red-600 font-black select-all bg-red-50 px-1.5 py-0.5 rounded border border-red-200">ลบบัญชีถาวร</span> ในช่องด้านล่าง:
+                            </p>
+
+                            <input
+                                type="text"
+                                value={deleteConfirmText}
+                                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                                placeholder="พิมพ์คำว่า: ลบบัญชีถาวร"
+                                className="w-full px-4 py-2.5 rounded-2xl border border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-500/10 outline-none text-sm text-gray-800"
+                                autoFocus
+                            />
+                        </div>
+
+                        <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
+                            <button
+                                type="button"
+                                onClick={() => setIsDeleteModalOpen(false)}
+                                className="px-5 py-2.5 text-xs sm:text-sm text-gray-500 hover:text-gray-800 font-bold cursor-pointer rounded-2xl hover:bg-gray-50"
+                            >
+                                ยกเลิก
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={handleDeleteAccount}
+                                disabled={deleteConfirmText.trim() !== 'ลบบัญชีถาวร' || isDeletingAccount}
+                                className={`px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer ${deleteConfirmText.trim() === 'ลบบัญชีถาวร' && !isDeletingAccount
+                                    ? 'bg-red-600 hover:bg-red-700 text-white shadow-md active:scale-95'
+                                    : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+                                    }`}
+                            >
+                                {isDeletingAccount ? (
+                                    <>
+                                        <Loader2 size={16} className="animate-spin" />
+                                        <span>กำลังลบบัญชี...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Trash2 size={16} />
+                                        <span>ยืนยันลบบัญชีของฉัน</span>
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 }

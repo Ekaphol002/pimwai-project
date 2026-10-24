@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
     Calendar,
     ChevronRight,
@@ -26,6 +27,8 @@ interface BlogPost {
         sections: {
             title: string;
             description: string;
+            image?: string;
+            imageCaption?: string;
             points?: string[];
         }[];
         conclusion?: string;
@@ -33,6 +36,63 @@ interface BlogPost {
 }
 
 const BLOG_POSTS: BlogPost[] = [
+    {
+        id: 'article-mode-and-delete-account',
+        title: 'อัปเดตใหม่: เปิดตัว "โหมดบทความ" ในหน้าฟาร์ม และฟังก์ชัน "ลบบัญชีถาวร" ตามคำขอ',
+        subtitle: 'ยกระดับการฝึกพิมพ์ด้วยคลังวรรณกรรมและข้อคิดกว่า 100 เรื่อง พร้อมระบบจัดการข้อมูลส่วนตัวที่ปลอดภัยยิ่งขึ้น',
+        category: 'major',
+        categoryLabel: 'อัปเดตใหญ่',
+        categoryColor: 'bg-indigo-50 text-indigo-600 border-indigo-200',
+        date: '24 ตุลาคม 2026',
+        readTime: '3 นาที',
+        author: 'ทีมงาน PIMWAI',
+        summary: 'เปิดตัวโหมดพิมพ์บทความใน Farm Mode พร้อมคลังเนื้อหากว่า 100 เรื่อง ระบบเลื่อนขึ้นอัตโนมัติ 3 บรรทัดแบบ Smooth Scroll และเพิ่มปุ่มลบบัญชีถาวร (Danger Zone) พร้อมยืนยันความปลอดภัย 2 ชั้นในหน้าตั้งค่า',
+        content: {
+            intro: 'เพื่อตอบรับข้อเสนอแนะและเสียงเรียกร้องจากผู้ใช้งานทุกท่าน ทีมงาน PIMWAI ได้ปล่อยอัปเดตครั้งสำคัญที่เพิ่มมิติการฝึกพิมพ์ให้ลึกซึ้งยิ่งขึ้นด้วยโหมดบทความ และเพิ่มความโปร่งใสด้านข้อมูลส่วนตัวด้วยระบบลบบัญชีผู้ใช้งานถาวร',
+            sections: [
+                {
+                    title: '1. เปิดตัว "โหมดบทความ" ในหน้าพิมพ์ด่วน (Farm Mode)',
+                    description: 'สำหรับผู้ที่ต้องการฝึกพิมพ์ประโยคยาว เรื่องเล่า นิทาน และบทความวรรณกรรม แทนที่จะเป็นเพียงคำสั้นๆ โดยระบบจะจัดลำดับการพิมพ์ภาษาไทยอย่างถูกต้อง แสดงผลแบบ 3 บรรทัดพร้อมระบบ Smooth Scroll เลื่อนขึ้นอัตโนมัติอย่างลื่นไหล สบายตา ไม่กระตุก เมื่อพิมพ์จบบรรทัดที่ 2 จะเลื่อนบรรทัดที่ 2 ขึ้นไปแทนบรรทัดที่ 1 ทันที พร้อมเลือกความยาว สั้น, ปานกลาง, หรือยาว ได้อย่างอิสระ',
+                    image: '/farm-article-mode.jpg',
+                    imageCaption: 'ภาพตัวอย่างหน้าจอโหมดบทความบน Farm Mode พร้อมตัวเลือกความยาวและแถบนับคำ'
+                },
+                {
+                    title: '2. คัดสรรคลังบทความคุณภาพสูงกว่า 100 เรื่อง',
+                    description: 'หมดปัญหาเนื้อหาซ้ำซาก ด้วยการรวบรวมบทความภาษาไทยและภาษาอังกฤษกว่า 100 เรื่อง แบ่งออกเป็น 6 หมวดหมู่ชัดเจน: นิทานอีสปและนิทานพื้นบ้านสอนใจ, ข้อคิดและจิตวิทยาแห่งความสำเร็จ, เทคโนโลยี วิทยาการคอมพิวเตอร์ และ AI, ปรัชญาและการใช้ชีวิต, ประวัติศาสตร์และวรรณคดีไทย, ตลอดจนบทความภาษาอังกฤษระดับโลก',
+                    points: [
+                        'นิทานอีสปและเรื่องเล่าสอนใจ 25 เรื่อง (เช่น กระต่ายกับเต่า, ชายตัดฟืนกับขวานทองคำ, กากับเหยือกน้ำ, ลากับเงา)',
+                        'ข้อคิดและจิตวิทยา 20 เรื่อง (เช่น พลังแห่งความสม่ำเสมอ, กฎ 1% Atomic Habits, Growth Mindset)',
+                        'เทคโนโลยีและคอมพิวเตอร์ 18 เรื่อง (เช่น แป้น QWERTY, กำเนิด AI, กล้องเจมส์เว็บบ์, ปรัชญา Clean Code)',
+                        'ปรัชญาและวิถีชีวิต 17 เรื่อง (เช่น ศิลปะคินสึงิ, ปลาว่ายทวนน้ำ, บทเรียนจากเกลียวคลื่น)',
+                        'ประวัติศาสตร์และวรรณคดี 10 เรื่อง (เช่น นิราศภูเขาทอง, กาลิเลโอ, มหาพีระมิด, กำเนิดอักษรไทย)',
+                        'บทความภาษาอังกฤษ 20 เรื่อง (เช่น The Bamboo Tree Story, Steve Jobs, The Lion and the Mouse)'
+                    ]
+                },
+                {
+                    title: '3. เพิ่มโซนอันตราย (Danger Zone): ลบบัญชีผู้ใช้ถาวร',
+                    description: 'ตามคำเรียกร้องของผู้ใช้งานที่ต้องการเริ่มต้นใหม่หรือลบข้อมูลส่วนบุคคล เราได้เพิ่มเมนู "ลบบัญชีถาวร" ในหน้าตั้งค่า (Settings) ซึ่งจะลบข้อมูลบัญชี สถิติฟาร์ม บันทึกบทเรียน ผลทดสอบความเร็ว และโค้ดส่วนตัวออกจากฐานข้อมูลอย่างสมบูรณ์แบบถาวร',
+                    image: '/delete-account-zone.jpg',
+                    imageCaption: 'แถบโซนอันตราย (Danger Zone) ในหน้าตั้งค่าสำหรับลบบัญชีถาวร'
+                },
+                {
+                    title: '4. ระบบยืนยันความปลอดภัย 2 ชั้น (Double Confirmation)',
+                    description: 'เพื่อป้องกันไม่ให้ผู้ใช้เผลอกดลบบัญชีโดยไม่ได้ตั้งใจ ระบบจะมีหน้าต่าง Modal แจ้งเตือนข้อความเตือนความเสี่ยงเป็นสีแดง และบังคับให้ผู้ใช้ต้องพิมพ์คำว่า "ลบบัญชีถาวร" ลงในช่องยืนยันก่อน ปุ่มกดยืนยันจึงจะยอมทำงาน',
+                    image: '/delete-account-modal.jpg',
+                    imageCaption: 'หน้าต่างป๊อปอัปยืนยันการลบบัญชีถาวรที่ต้องพิมพ์ข้อความยืนยันก่อนลบ'
+                },
+                {
+                    title: '5. ทิศทางในอนาคต: แผนการย้ายสู่โดเมนเนม .com เพื่อผลลัพธ์ SEO ที่ดียิ่งขึ้น',
+                    description: 'เป้าหมายก้าวต่อไปของ PIMWAI ทางทีมงานมีแผนเตรียมเปลี่ยนชื่อโดเมนจาก .vercel.app ไปเป็น .com เต็มรูปแบบ เพื่อเสริมประสิทธิภาพด้าน SEO (Search Engine Optimization) ช่วยให้ผู้คนค้นหาและเข้าถึงเว็บไซต์ของเราผ่านการค้นหาบน Google ได้ง่ายและมากขึ้น แต่ในระหว่างนี้ เรา "ขอเก็บตัวซุ่มพัฒนาเงียบๆ ก่อน" เพื่อมุ่งมั่นขัดเกลาระบบ ฟังก์ชัน และประสบการณ์การพิมพ์ให้สมบูรณ์และเสถียรที่สุด ก่อนเปิดตัวอย่างเต็มภาคภูมิ!',
+                    points: [
+                        'วางรากฐานโครงสร้าง SEO คุณภาพสูง เพื่อให้การค้นหาคำว่าฝึกพิมพ์ดีดไทยและแบบฝึกหัดพิมพ์ดีดติดอันดับต้นๆ บน Google',
+                        'วางระบบเปลี่ยนผ่านอย่างราบรื่น ข้อมูลบัญชี เลเวล ค่า EXP และสถิติทั้งหมดของผู้ใช้จะคงอยู่อย่างปลอดภัย 100%',
+                        'ปัจจุบันขอเก็บตัวโฟกัสการพัฒนาเนื้อหาและฟีเจอร์ภายในให้แข็งแกร่งที่สุดก่อนก้าวสู่โดเมน .com อย่างเป็นทางการ'
+                    ]
+                }
+            ],
+            conclusion: 'ขอขอบคุณทุกข้อเสนอแนะที่ส่งเข้ามาผ่านปุ่มรับฟังไอเดีย ทีมงานจะมุ่งมั่นพัฒนา PIMWAI ให้เป็นแพลตฟอร์มฝึกพิมพ์ที่ดีที่สุดสำหรับทุกคนครับ!'
+        }
+    },
     {
         id: 'pimwai-remaster',
         title: 'อัปเดตใหญ่: รีมาสเตอร์ 210 ด่านคำศัพท์จริง และเปิดตัวระบบแรงค์ระดับตำนาน Rank 4-7',
@@ -174,6 +234,14 @@ export default function NewsBlogPage() {
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [activePost, setActivePost] = useState<BlogPost | null>(null);
+
+    // ทำเครื่องหมายว่าอ่านข่าวสารล่าสุดแล้ว (ลบจุดแดงแจ้งเตือนบน Navbar ทันทีเมื่อเข้าหน้านี้)
+    React.useEffect(() => {
+        try {
+            localStorage.setItem('pimwai_last_read_news_id', 'article-mode-and-delete-account');
+            window.dispatchEvent(new Event('pimwai-news-read'));
+        } catch (e) {}
+    }, []);
 
     // กรองบทความตามหมวดหมู่และคำค้นหา
     const filteredPosts = BLOG_POSTS.filter((post) => {
@@ -355,21 +423,21 @@ export default function NewsBlogPage() {
 
             {/* Modal: Full Article Reader */}
             {activePost && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 md:p-8 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
                     <div
-                        className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-gray-100 relative animate-in zoom-in-95 duration-150 max-h-[90vh] flex flex-col overflow-hidden text-gray-800"
+                        className="bg-white rounded-3xl max-w-4xl lg:max-w-5xl w-full shadow-2xl border border-gray-100 relative animate-in zoom-in-95 duration-150 max-h-[92vh] flex flex-col overflow-hidden text-gray-800"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Modal Header */}
-                        <div className="p-5 sm:p-6 pb-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-slate-50 to-white">
+                        <div className="p-5 sm:p-7 pb-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-slate-50 to-white">
                             <div className="space-y-1">
                                 <div className="flex items-center gap-2">
                                     <span className={`px-2.5 py-0.5 rounded-lg text-xs font-bold border ${activePost.categoryColor}`}>
                                         {activePost.categoryLabel}
                                     </span>
                                 </div>
-                                <span className="text-[11px] text-gray-400 flex items-center gap-1 mt-1">
-                                    <Calendar size={12} />
+                                <span className="text-[11px] sm:text-xs text-gray-400 flex items-center gap-1 mt-1">
+                                    <Calendar size={13} />
                                     <span>เผยแพร่เมื่อ {activePost.date} • โดย {activePost.author}</span>
                                 </span>
                             </div>
@@ -377,39 +445,55 @@ export default function NewsBlogPage() {
                             <button
                                 type="button"
                                 onClick={() => setActivePost(null)}
-                                className="p-2 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer"
+                                className="p-2.5 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer"
                                 aria-label="ปิด"
                             >
-                                <X size={20} />
+                                <X size={22} />
                             </button>
                         </div>
 
                         {/* Modal Body (Scrollable Article) */}
-                        <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6 text-xs sm:text-sm leading-relaxed text-gray-700 no-scrollbar">
+                        <div className="flex-1 overflow-y-auto p-6 sm:p-10 space-y-7 text-xs sm:text-sm leading-relaxed text-gray-700 no-scrollbar">
                             <div>
-                                <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight leading-snug">
+                                <h2 className="text-xl sm:text-3xl font-black text-gray-900 tracking-tight leading-snug">
                                     {activePost.title}
                                 </h2>
-                                <p className="text-xs sm:text-sm text-gray-500 font-medium mt-1">
+                                <p className="text-xs sm:text-base text-gray-500 font-medium mt-1.5">
                                     {activePost.subtitle}
                                 </p>
                             </div>
 
                             {/* Lead paragraph */}
-                            <div className="p-4 rounded-2xl bg-sky-50/60 border border-sky-100 text-sky-950 leading-relaxed font-medium">
+                            <div className="p-4 sm:p-5 rounded-2xl bg-sky-50/70 border border-sky-100 text-sky-950 leading-relaxed font-medium text-xs sm:text-sm">
                                 {activePost.content.intro}
                             </div>
 
                             {/* Main sections */}
-                            <div className="space-y-6">
+                            <div className="space-y-7">
                                 {activePost.content.sections.map((sec, idx) => (
-                                    <div key={idx} className="space-y-2">
-                                        <h4 className="text-sm sm:text-base font-bold text-gray-900">
+                                    <div key={idx} className="space-y-3">
+                                        <h4 className="text-sm sm:text-lg font-bold text-gray-900">
                                             {sec.title}
                                         </h4>
                                         <p className="text-gray-600 leading-relaxed">
                                             {sec.description}
                                         </p>
+                                        {sec.image && (
+                                            <div className="rounded-2xl overflow-hidden border border-gray-200/90 shadow-sm my-4 bg-gray-50 max-w-3xl mx-auto">
+                                                <Image
+                                                    src={sec.image}
+                                                    alt={sec.title}
+                                                    width={1000}
+                                                    height={550}
+                                                    className="w-full h-auto object-contain rounded-2xl"
+                                                />
+                                                {sec.imageCaption && (
+                                                    <div className="p-2 text-center text-[11px] text-gray-500 font-medium bg-gray-50 border-t border-gray-100">
+                                                        {sec.imageCaption}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                         {sec.points && (
                                             <ul className="list-disc pl-5 space-y-1.5 text-gray-600 mt-2">
                                                 {sec.points.map((pt, pIdx) => (

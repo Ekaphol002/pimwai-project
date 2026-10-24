@@ -25,6 +25,37 @@ export default function Navbar() {
   const [feedbackContent, setFeedbackContent] = useState('');
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
 
+  const pathname = usePathname();
+
+  // 🔴 จุดแดงแจ้งเตือนข่าวสารใหม่ (Red Dot Notification)
+  const LATEST_NEWS_ID = 'article-mode-and-delete-account';
+  const [hasUnreadNews, setHasUnreadNews] = useState(false);
+
+  useEffect(() => {
+    try {
+      const lastRead = localStorage.getItem('pimwai_last_read_news_id');
+      if (lastRead !== LATEST_NEWS_ID && pathname !== '/news') {
+        setHasUnreadNews(true);
+      } else {
+        setHasUnreadNews(false);
+      }
+    } catch (e) {}
+
+    const handleNewsReadEvent = () => {
+      setHasUnreadNews(false);
+    };
+
+    window.addEventListener('pimwai-news-read', handleNewsReadEvent);
+    return () => window.removeEventListener('pimwai-news-read', handleNewsReadEvent);
+  }, [pathname]);
+
+  const handleNewsClick = () => {
+    try {
+      localStorage.setItem('pimwai_last_read_news_id', LATEST_NEWS_ID);
+    } catch (e) {}
+    setHasUnreadNews(false);
+  };
+
   useEffect(() => {
     if (session?.user) {
       fetch('/api/progress')
@@ -38,8 +69,7 @@ export default function Navbar() {
     }
   }, [session]);
 
-  const pathname = usePathname();
-  const isFarm = pathname === '/' || pathname === '/farm' || pathname?.startsWith('/farm');
+  const isFarm = pathname === '/' || pathname === '/farm' || pathname?.startsWith('/farm') || pathname === '/code' || pathname?.startsWith('/code');
   const [isFarmNavOpen, setIsFarmNavOpen] = useState(false);
 
   // ถ้า URL มีคำว่า "typing-test" ให้ซ่อน Navbar
@@ -132,6 +162,19 @@ export default function Navbar() {
             <Link href="/farm" className={`menu-link-base text-sm ${pathname === '/farm' || pathname === '/' ? 'menu-link-active' : 'menu-link-inactive'}`}>พิมพ์ด่วน</Link>
             <Link href="/rankings" className={`menu-link-base text-sm ${pathname === '/rankings' ? 'menu-link-active' : 'menu-link-inactive'}`}>อันดับ</Link>
             <Link href="/progress" className={`menu-link-base text-sm ${pathname === '/progress' ? 'menu-link-active' : 'menu-link-inactive'}`}>สรุปผลรวม</Link>
+            <Link
+              href="/news"
+              onClick={handleNewsClick}
+              className={`menu-link-base text-sm relative ${pathname === '/news' ? 'menu-link-active' : 'menu-link-inactive'}`}
+            >
+              <span>ข่าวสาร</span>
+              {hasUnreadNews && (
+                <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 ring-2 ring-white"></span>
+                </span>
+              )}
+            </Link>
 
             <div className="text-xl text-white/40">|</div>
 
@@ -183,23 +226,24 @@ export default function Navbar() {
 
                       <Link
                         href="/news"
-                        onClick={() => setIsDropdownOpen(false)}
-                        className="w-full text-left flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-50 hover:text-[#5cb5db] transition-colors"
+                        onClick={() => {
+                          setIsDropdownOpen(false);
+                          handleNewsClick();
+                        }}
+                        className="w-full text-left flex items-center justify-between px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-50 hover:text-[#5cb5db] transition-colors"
                       >
-                        <Newspaper className="text-base opacity-70" size={16} />
-                        <span>ข่าวสาร & อัปเดต</span>
+                        <div className="flex items-center gap-2.5">
+                          <Newspaper className="text-base opacity-70" size={16} />
+                          <span>ข่าวสาร & อัปเดต</span>
+                        </div>
+                        {hasUnreadNews && (
+                          <span className="px-1.5 py-0.5 text-[9px] bg-rose-500 text-white font-bold rounded-full animate-pulse">
+                            ใหม่
+                          </span>
+                        )}
                       </Link>
 
-                      {isAdmin(session.user?.email) && (
-                        <Link
-                          href="/code"
-                          onClick={() => setIsDropdownOpen(false)}
-                          className="w-full text-left flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold text-amber-600 bg-amber-50/60 hover:bg-amber-100/80 transition-colors"
-                        >
-                          <Code2 className="text-base text-amber-500" size={16} />
-                          <span>Code Typing (Dev)</span>
-                        </Link>
-                      )}
+
 
 
 
@@ -253,10 +297,16 @@ export default function Navbar() {
             <button
               type="button"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="p-2 text-white bg-[#182834]/30 hover:bg-white/30 rounded-xl transition cursor-pointer"
+              className="relative p-2 text-white bg-[#182834]/30 hover:bg-white/30 rounded-xl transition cursor-pointer"
               aria-label="Toggle Menu"
             >
               {isMobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+              {hasUnreadNews && (
+                <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 ring-2 ring-[#182834]"></span>
+                </span>
+              )}
             </button>
           </div>
 
@@ -301,6 +351,25 @@ export default function Navbar() {
               สรุปผลรวม
             </Link>
 
+            <Link
+              href="/news"
+              onClick={() => {
+                setIsMobileMenuOpen(false);
+                handleNewsClick();
+              }}
+              className={`py-2 px-3 rounded-xl font-bold text-sm flex items-center justify-between ${pathname === '/news' ? 'bg-[#5cb5db] text-white' : 'text-white/80 hover:bg-white/10'}`}
+            >
+              <div className="flex items-center gap-2">
+                <Newspaper size={16} />
+                <span>ข่าวสาร</span>
+              </div>
+              {hasUnreadNews && (
+                <span className="px-1.5 py-0.5 text-[9px] bg-rose-500 text-white font-bold rounded-full animate-pulse">
+                  ใหม่
+                </span>
+              )}
+            </Link>
+
 
 
             <button
@@ -331,22 +400,23 @@ export default function Navbar() {
                   </Link>
                   <Link
                     href="/news"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="py-2 px-3 rounded-xl font-bold text-sm text-white/90 hover:bg-white/10 flex items-center gap-2"
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      handleNewsClick();
+                    }}
+                    className={`py-2 px-3 rounded-xl font-bold text-sm flex items-center justify-between ${pathname === '/news' ? 'bg-[#5cb5db] text-white' : 'text-white/80 hover:bg-white/10'}`}
                   >
-                    <Newspaper size={15} />
-                    <span>ข่าวสาร & อัปเดต</span>
+                    <div className="flex items-center gap-2">
+                      <Newspaper size={15} />
+                      <span>ข่าวสาร & อัปเดต</span>
+                    </div>
+                    {hasUnreadNews && (
+                      <span className="px-1.5 py-0.5 text-[9px] bg-rose-500 text-white font-bold rounded-full">
+                        ใหม่
+                      </span>
+                    )}
                   </Link>
-                  {isAdmin(session.user?.email) && (
-                    <Link
-                      href="/code"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className="py-2 px-3 rounded-xl font-bold text-sm text-amber-300 hover:bg-white/10 flex items-center gap-2"
-                    >
-                      <Code2 size={15} />
-                      <span>Code Typing (Dev)</span>
-                    </Link>
-                  )}
+
                   <button
                     onClick={() => signOut({ callbackUrl: '/login' })}
                     className="py-2 px-3 rounded-xl font-bold text-sm text-red-400 hover:bg-red-500/20 flex items-center gap-2 text-left"

@@ -27,7 +27,8 @@ import {
     Info,
     X,
     Lock,
-    Check
+    Check,
+    BookOpen
 } from 'lucide-react';
 import ExpBar from '@/components/ExpBar/ExpBar';
 import { calculateRankInfo, getRankMultiplierConfig } from '@/lib/rankUtils';
@@ -36,6 +37,7 @@ import { thaiKeyDisplayMap, thaiShiftKeyDisplayMap } from '@/lib/keyMaps';
 import toast, { Toaster } from 'react-hot-toast';
 import { MONKEYTYPE_THAI_WORDS } from '@/lib/thaiWords';
 import { MONKEYTYPE_ENGLISH_WORDS, getEnglishCharFromEvent } from '@/lib/englishWords';
+import { getRandomArticle, ArticleItem } from '@/lib/articles';
 import RankUpOverlay from '@/components/PracticeResultModal/RankUpOverlay';
 
 // คลังคำภาษาไทยมาตรฐาน Monkeytype (1,000 คำความถี่สูง ตรงตาม Monkeytype Official)
@@ -98,7 +100,10 @@ export default function FarmPage() {
 
     // Settings
     const [language, setLanguage] = useState<'thai' | 'english'>('thai');
-    const [mode, setMode] = useState<'time' | 'words' | 'zen'>('zen');
+    const [mode, setMode] = useState<'time' | 'words' | 'zen' | 'quote'>('zen');
+    const [quoteLength, setQuoteLength] = useState<'all' | 'short' | 'medium' | 'long'>('all');
+    const [currentArticle, setCurrentArticle] = useState<ArticleItem | null>(null);
+    const currentArticleRef = useRef<ArticleItem | null>(null);
     const [timeLimit, setTimeLimit] = useState<number>(30);
     const [wordLimit, setWordLimit] = useState<number>(50);
     const [includePunctuation, setIncludePunctuation] = useState<boolean>(false);
@@ -458,8 +463,24 @@ export default function FarmPage() {
     // 2. เริ่มต้นหรือเริ่มรอบคำต่อไป (คำต่อไป / Next Words)
     const nextNewWords = useCallback((overrideLang?: 'thai' | 'english' | unknown) => {
         const activeLang = (overrideLang === 'thai' || overrideLang === 'english') ? overrideLang : language;
-        const count = mode === 'words' ? wordLimit : 100;
-        const newWords = generateWordList(count, includePunctuation, includeNumbers, lessonPerksRef.current.intermediate, activeLang);
+        let newWords: { word: string; isGolden: boolean }[] = [];
+
+        if (mode === 'quote') {
+            const article = getRandomArticle(activeLang, quoteLength, currentArticleRef.current?.id);
+            currentArticleRef.current = article;
+            setCurrentArticle(article);
+            const tokens = article.text.trim().split(/\s+/).filter(Boolean);
+            newWords = tokens.map((t, idx) => ({
+                word: activeLang === 'thai' ? toTypingOrder(t) : t,
+                isGolden: idx === tokens.length - 1
+            }));
+        } else {
+            const count = mode === 'words' ? wordLimit : 100;
+            newWords = generateWordList(count, includePunctuation, includeNumbers, lessonPerksRef.current.intermediate, activeLang);
+            currentArticleRef.current = null;
+            setCurrentArticle(null);
+        }
+
         currentRoundStartingWordsRef.current = newWords;
         setWordList(newWords);
         setActiveWordIdx(0);
@@ -506,7 +527,7 @@ export default function FarmPage() {
         setTimeLeft(timeLimit);
         setIsFinished(false);
         setEndTime(null);
-    }, [mode, wordLimit, timeLimit, includePunctuation, includeNumbers, language]);
+    }, [mode, wordLimit, timeLimit, includePunctuation, includeNumbers, language, quoteLength]);
 
     const handleLanguageChange = (newLang: 'thai' | 'english') => {
         if (newLang === language) return;
@@ -572,22 +593,37 @@ export default function FarmPage() {
         resetGame();
     }, [resetGame]);
 
-    // 3. Auto Scroll ข้อความตามคำที่กำลังพิมพ์ (แสดง 3 บรรทัด และเมื่อถึงบรรทัดที่ 3 ให้ดันบรรทัดที่ 1 ขึ้นไป)
+    // 3. Auto Scroll ข้อความตามคำที่กำลังพิมพ์ (แสดง 3 บรรทัด และเมื่อพิมพ์จบบรรทัดที่ 2 ให้เลื่อนแถว 2 ขึ้นไปแทนที่แถว 1)
     useEffect(() => {
         const currentEl = wordElementsRef.current[activeWordIdx];
         const container = typingContainerRef.current;
-        if (currentEl && container) {
-            const firstWordEl = wordElementsRef.current[0];
-            const baseTop = firstWordEl ? firstWordEl.offsetTop : container.offsetTop;
-            const relativeTop = currentEl.offsetTop - baseTop;
+        if (!currentEl || !container) return;
 
-            // บรรทัดที่ 1: ~0px, บรรทัดที่ 2: ~55-65px, บรรทัดที่ 3: ~115-130px
-            if (relativeTop > 90) {
-                const scrollY = relativeTop - 58;
-                container.scrollTo({ top: scrollY, behavior: 'smooth' });
-            } else {
-                container.scrollTo({ top: 0, behavior: 'smooth' });
+        const firstWordEl = wordElementsRef.current[0];
+        if (!firstWordEl) return;
+
+        const baseTop = firstWordEl.offsetTop;
+        const relativeTop = currentEl.offsetTop - baseTop;
+
+        // คำนวณความสูงของแต่ละบรรทัด (Line Height) แบบไดนามิกตามขนาดหน้าจอจริง
+        let detectedLineHeight = 58;
+        for (let i = 1; i < wordElementsRef.current.length; i++) {
+            const el = wordElementsRef.current[i];
+            if (el && el.offsetTop > baseTop + 10) {
+                detectedLineHeight = el.offsetTop - baseTop;
+                break;
             }
+        }
+
+        // เมื่อพิมพ์อยู่บรรทัดที่ 1 หรือบรรทัดที่ 2 (relativeTop <= detectedLineHeight + 10):
+        // ให้คง scroll อยู่ที่ 0 เสมอ (มองเห็นบรรทัด 1, 2, 3)
+        // เมื่อพิมพ์จบบรรทัดที่ 2 และเริ่มคำแรกของบรรทัดที่ 3 เป็นต้นไป:
+        // ให้เลื่อนบรรทัดที่ 2 ขึ้นไปเป็นบรรทัดที่ 1 (Scroll เลื่อนขึ้นไป 1 บรรทัดพอดี)
+        if (relativeTop > detectedLineHeight + 10) {
+            const scrollY = relativeTop - detectedLineHeight;
+            container.scrollTo({ top: scrollY, behavior: 'smooth' });
+        } else {
+            container.scrollTo({ top: 0, behavior: 'smooth' });
         }
     }, [activeWordIdx]);
 
@@ -916,11 +952,8 @@ export default function FarmPage() {
                         setMultiplier(Number((baseRankMul + (nextWordIsGolden ? 1.0 : 0)).toFixed(2)));
                     }
                 } else {
-                    // ✨ คำถูกต้องสมบูรณ์ 100%! ตรวจสอบเงื่อนไขรับ Flawless Bounty
-                    // กฎป้องกันโกง:
-                    // 1. ต้องไม่มีการกด Backspace ในคำนี้เลย (wordHasBackspaceRef === false)
-                    // 2. index ของคำนี้ต้องไม่เคยได้รับรางวัลมาก่อน (rewardedWordIndicesRef.has === false)
-                    if (!wordHasBackspaceRef.current && !rewardedWordIndicesRef.current.has(activeWordIdx)) {
+                    // ✨ คำถูกต้องสมบูรณ์ 100%! ตรวจสอบเงื่อนไขรับ Flawless Bounty (ปิดการทำงานในโหมดบทความเพื่อความสมดุล)
+                    if (mode !== 'quote' && !wordHasBackspaceRef.current && !rewardedWordIndicesRef.current.has(activeWordIdx)) {
                         rewardedWordIndicesRef.current.add(activeWordIdx);
 
                         let bountyExp = 0;
@@ -996,8 +1029,8 @@ export default function FarmPage() {
                     setWordList(prev => [...prev, ...extraWords]);
                 }
 
-                // ตรวจสอบจบในโหมด Words
-                if (mode === 'words' && activeWordIdx + 1 >= wordLimit) {
+                // ตรวจสอบจบในโหมด Words หรือโหมดบทความ (Quote)
+                if ((mode === 'words' && activeWordIdx + 1 >= wordLimit) || (mode === 'quote' && activeWordIdx + 1 >= wordList.length)) {
                     setEndTime(Date.now());
                     setIsFinished(true);
                     setIsTyping(false);
@@ -1150,8 +1183,8 @@ export default function FarmPage() {
                 const newInput = inputBuffer + typedChar;
                 setInputBuffer(newInput);
 
-                // ตรวจสอบจบในโหมด Words ทันทีที่พิมพ์ตัวสุดท้ายของคำสุดท้ายครบถูกต้อง
-                if (mode === 'words' && activeWordIdx === wordLimit - 1 && newInput === targetWord) {
+                // ตรวจสอบจบในโหมด Words หรือโหมดบทความ ทันทีที่พิมพ์ตัวสุดท้ายของคำสุดท้ายครบถูกต้อง
+                if (((mode === 'words' && activeWordIdx === wordLimit - 1) || (mode === 'quote' && activeWordIdx === wordList.length - 1)) && newInput === targetWord) {
                     const updatedHistory = [...typedWordsHistory];
                     updatedHistory[activeWordIdx] = newInput;
                     setTypedWordsHistory(updatedHistory);
@@ -1160,7 +1193,7 @@ export default function FarmPage() {
                     updatedStatus[activeWordIdx] = 'correct';
                     setCompletedWordsStatus(updatedStatus);
 
-                    if (!wordHasBackspaceRef.current && !rewardedWordIndicesRef.current.has(activeWordIdx)) {
+                    if (mode !== 'quote' && !wordHasBackspaceRef.current && !rewardedWordIndicesRef.current.has(activeWordIdx)) {
                         rewardedWordIndicesRef.current.add(activeWordIdx);
                         let bountyExp = 0;
                         let isGoldenBounty = false;
@@ -1313,26 +1346,28 @@ export default function FarmPage() {
                         </button>
                     </div>
 
-                    {/* Sub-Group: Punctuation & Numbers */}
-                    <div className="flex items-center gap-2 pr-3 sm:border-r border-gray-200">
-                        <button
-                            onClick={() => setIncludePunctuation(!includePunctuation)}
-                            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg transition-all cursor-pointer ${includePunctuation ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
-                                }`}
-                        >
-                            <AtSign size={14} />
-                            <span>สัญลักษณ์</span>
-                        </button>
+                    {/* Sub-Group: Punctuation & Numbers (ซ่อนในโหมดบทความ) */}
+                    {mode !== 'quote' && (
+                        <div className="flex items-center gap-2 pr-3 sm:border-r border-gray-200">
+                            <button
+                                onClick={() => setIncludePunctuation(!includePunctuation)}
+                                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg transition-all cursor-pointer ${includePunctuation ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
+                                    }`}
+                            >
+                                <AtSign size={14} />
+                                <span>สัญลักษณ์</span>
+                            </button>
 
-                        <button
-                            onClick={() => setIncludeNumbers(!includeNumbers)}
-                            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg transition-all cursor-pointer ${includeNumbers ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
-                                }`}
-                        >
-                            <Hash size={14} />
-                            <span>ตัวเลข</span>
-                        </button>
-                    </div>
+                            <button
+                                onClick={() => setIncludeNumbers(!includeNumbers)}
+                                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg transition-all cursor-pointer ${includeNumbers ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
+                                    }`}
+                            >
+                                <Hash size={14} />
+                                <span>ตัวเลข</span>
+                            </button>
+                        </div>
+                    )}
 
                     {/* Sub-Group: Main Mode */}
                     <div className="flex items-center gap-2 pr-3 sm:border-r border-gray-200">
@@ -1362,9 +1397,18 @@ export default function FarmPage() {
                             <InfinityIcon size={15} />
                             <span>พิมพ์ชิลล์ (Zen)</span>
                         </button>
+
+                        <button
+                            onClick={() => setMode('quote')}
+                            className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer ${mode === 'quote' ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
+                                }`}
+                        >
+                            <BookOpen size={15} />
+                            <span>บทความ</span>
+                        </button>
                     </div>
 
-                    {/* Sub-Group: Values (Time / Words) */}
+                    {/* Sub-Group: Values (Time / Words / Quote) */}
                     {mode === 'time' && (
                         <div className="flex items-center gap-1">
                             {[15, 30, 60, 120].map((t) => (
@@ -1392,6 +1436,29 @@ export default function FarmPage() {
                                     {w}
                                 </button>
                             ))}
+                        </div>
+                    )}
+
+                    {mode === 'quote' && (
+                        <div className="flex items-center gap-1">
+                            {(['all', 'short', 'medium', 'long'] as const).map((qLen) => {
+                                const labels: Record<string, string> = {
+                                    all: 'สุ่มทั้งหมด',
+                                    short: 'สั้น',
+                                    medium: 'ปานกลาง',
+                                    long: 'ยาว'
+                                };
+                                return (
+                                    <button
+                                        key={qLen}
+                                        onClick={() => setQuoteLength(qLen)}
+                                        className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${quoteLength === qLen ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
+                                            }`}
+                                    >
+                                        {labels[qLen]}
+                                    </button>
+                                );
+                            })}
                         </div>
                     )}
 
@@ -1476,7 +1543,7 @@ export default function FarmPage() {
                                     <div>
                                         <div className="text-sm sm:text-base font-bold text-gray-400 dark:text-gray-500 tracking-wider lowercase mb-1 logo-font">test type</div>
                                         <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-gray-800 dark:text-gray-100 leading-tight logo-font">
-                                            {mode} {mode === 'time' ? timeLimit : wordLimit}
+                                            {mode === 'quote' ? (currentArticle ? `บทความ: ${currentArticle.title}` : 'บทความ') : `${mode} ${mode === 'time' ? timeLimit : wordLimit}`}
                                         </div>
                                         <div className="text-xs sm:text-sm text-gray-400 dark:text-gray-500 font-medium mt-1">
                                             {language === 'english'
@@ -1581,7 +1648,7 @@ export default function FarmPage() {
                         <>
                             {/* 👑 Integrated Rank, Star & EXP Progress Header (แสดง Skeleton ตอนโหลดเพื่อป้องกันการกระพริบเป็น Rank 1) */}
                             {!isUserLoaded ? (
-                                <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-4 pb-6 mb-4 border-b border-gray-100/90 animate-pulse">
+                                <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-4 pb-3 mb-2 border-b border-gray-100/90 animate-pulse">
                                     {/* Skeleton Left: Rank Image & Info */}
                                     <div className="flex items-center gap-3.5 shrink-0">
                                         <div className="w-14 h-12 bg-gray-200/70 rounded-2xl"></div>
@@ -1612,7 +1679,7 @@ export default function FarmPage() {
                                     </div>
                                 </div>
                             ) : (
-                                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pb-6 mb-4 border-b border-gray-100/90 animate-in fade-in duration-300">
+                                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pb-3 mb-2 border-b border-gray-100/90 animate-in fade-in duration-300">
 
                                     {/* 1. Left: Rank Image + Badge + Stars + Base Multiplier */}
                                     <div className="flex items-center gap-3.5 shrink-0">
@@ -1751,10 +1818,17 @@ export default function FarmPage() {
                                 </div>
                             )}
 
+                            {/* 📖 แสดงจำนวนคำด้านขวา (กระชับ ชิดข้อความ ไม่เว้นที่ว่าง) */}
+                            {mode === 'quote' && (
+                                <div className="w-full flex justify-end px-2 -mb-2 text-xs sm:text-sm font-bold text-gray-400 select-none">
+                                    <span>{activeWordIdx + 1} / {wordList.length} คำ</span>
+                                </div>
+                            )}
+
                             {/* Words Stream Box with Smooth Scrolling (3 Full Visible Lines) */}
                             <div
                                 ref={typingContainerRef}
-                                className="flex-1 overflow-hidden h-[215px] max-h-[215px] relative flex flex-wrap items-baseline gap-x-4 gap-y-3.5 text-2xl sm:text-3xl font-medium leading-normal select-none my-auto pt-7 pb-2 antialiased"
+                                className="flex-1 overflow-hidden h-[188px] max-h-[188px] sm:h-[192px] sm:max-h-[192px] relative flex flex-wrap items-baseline gap-x-4 gap-y-3.5 text-2xl sm:text-3xl font-medium leading-normal select-none my-1 pt-2 pb-2 antialiased"
                             >
                                 {/* 🎯 Container-Level Ultra-Smooth Floating Caret (เลื่อนช้า สมูท นุ่มนวล ไม่มีเงา) */}
                                 {!isFinished && caretCoords.height > 0 && (
