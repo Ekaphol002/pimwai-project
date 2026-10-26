@@ -2,13 +2,12 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { isAdmin } from '@/lib/adminAuth';
 
 // GET: ดึง Snippets ที่ผู้ใช้คนนั้นบันทึกไว้ในบัญชี
 export async function GET() {
     try {
         const session = await getServerSession(authOptions);
-        if (!session?.user?.email || !isAdmin(session.user.email)) {
+        if (!session?.user?.email) {
             return NextResponse.json({ success: false, error: 'Unauthorized', snippets: [] }, { status: 401 });
         }
 
@@ -46,7 +45,7 @@ export async function GET() {
 export async function POST(request: Request) {
     try {
         const session = await getServerSession(authOptions);
-        if (!session?.user?.email || !isAdmin(session.user.email)) {
+        if (!session?.user?.email) {
             return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -102,7 +101,7 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
     try {
         const session = await getServerSession(authOptions);
-        if (!session?.user?.email || !isAdmin(session.user.email)) {
+        if (!session?.user?.email) {
             return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
         }
 

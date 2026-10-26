@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
     Code2,
@@ -28,7 +27,6 @@ import {
     SunMedium
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
-import { isAdmin } from '@/lib/adminAuth';
 import { soundManager } from '@/lib/soundEffects';
 
 interface CodeSnippet {
@@ -131,7 +129,8 @@ LIMIT 50;`
     }
 ];
 
-const LOCAL_STORAGE_KEY = 'pimwai_custom_code_snippets';
+const getCodeStorageKey = (email?: string | null) =>
+    email ? `pimwai_custom_code_${email}` : 'pimwai_custom_code_guest';
 const LOCAL_STORAGE_CONTRAST_KEY = 'pimwai_code_contrast';
 
 // แปลงโค้ดเป็นบรรทัดและคำ โดยเก็บการเยื้อง (Indentation) และลำดับของแต่ละคำ
@@ -181,16 +180,7 @@ function parseCodeIntoLines(codeText: string): { lines: CodeLine[]; allTokens: C
 }
 
 export default function CodeTypingPage() {
-    const router = useRouter();
-    const { data: session, status } = useSession();
-    const userIsAdmin = isAdmin(session?.user?.email);
-
-    // 🔒 ถ้าไม่ใช่ฉัน (Admin) ให้เด้งกลับหน้าหลักทันที
-    useEffect(() => {
-        if (status !== 'loading' && (!session || !userIsAdmin)) {
-            router.replace('/');
-        }
-    }, [status, session, userIsAdmin, router]);
+    const { data: session } = useSession();
 
     // Snippets state
     const [snippets, setSnippets] = useState<CodeSnippet[]>(PRESET_SNIPPETS);
@@ -233,9 +223,13 @@ export default function CodeTypingPage() {
 
         async function fetchSnippets() {
             try {
-                // 1. Initial fast load from localStorage
+                // 1. Initial fast load from account-specific localStorage
+                const storageKey = getCodeStorageKey(session?.user?.email);
                 let localCustom: CodeSnippet[] = [];
-                const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+                let saved = localStorage.getItem(storageKey);
+                if (!saved && !session?.user?.email) {
+                    saved = localStorage.getItem('pimwai_custom_code_snippets');
+                }
                 if (saved) {
                     const parsed = JSON.parse(saved);
                     if (Array.isArray(parsed) && parsed.length > 0) {
@@ -262,14 +256,14 @@ export default function CodeTypingPage() {
 
                             if (isMounted) {
                                 setSnippets([...PRESET_SNIPPETS, ...combined]);
-                                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(combined));
+                                localStorage.setItem(storageKey, JSON.stringify(combined));
                                 return;
                             }
                         }
                     }
                 }
 
-                if (isMounted && localCustom.length > 0) {
+                if (isMounted) {
                     setSnippets([...PRESET_SNIPPETS, ...localCustom]);
                 }
             } catch (e) {
@@ -534,9 +528,10 @@ export default function CodeTypingPage() {
         setCustomCode('');
         setIsCustomModalOpen(false);
 
-        // เซฟลง localStorage
+        // เซฟลง localStorage ตามบัญชี
+        const storageKey = getCodeStorageKey(session?.user?.email);
         try {
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedCustom));
+            localStorage.setItem(storageKey, JSON.stringify(updatedCustom));
         } catch {
             // ignore
         }
@@ -560,7 +555,7 @@ export default function CodeTypingPage() {
                     const finalCustom = [serverSnippet, ...existingCustom.filter(s => s.id !== tempId)];
                     setSnippets([...PRESET_SNIPPETS, ...finalCustom]);
                     setSelectedSnippetId(serverSnippet.id);
-                    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(finalCustom));
+                    localStorage.setItem(storageKey, JSON.stringify(finalCustom));
                     toast.success('บันทึกโค้ดลงในบัญชีเรียบร้อย!');
                     return;
                 }
@@ -577,9 +572,10 @@ export default function CodeTypingPage() {
     // ลบ Custom Snippet ออกจากบัญชีและเครื่อง
     const handleDeleteSnippet = async (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
+        const storageKey = getCodeStorageKey(session?.user?.email);
         const updatedCustom = snippets.filter(s => s.isCustom && s.id !== id);
         try {
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedCustom));
+            localStorage.setItem(storageKey, JSON.stringify(updatedCustom));
         } catch {
             // ignore
         }
@@ -600,10 +596,7 @@ export default function CodeTypingPage() {
         toast.success('ลบโค้ดเรียบร้อย');
     };
 
-    // 🔒 คนที่ไม่ใช่ฉัน ให้เด้งกลับหน้าหลักทันที ไม่ต้องแสดงอะไร
-    if (status !== 'loading' && (!session || !userIsAdmin)) {
-        return null;
-    }
+
 
     const untypedClass = CONTRAST_CONFIG[contrastLevel].textClass;
 
