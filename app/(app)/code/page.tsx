@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { soundManager } from '@/lib/soundEffects';
+import { toDateKey } from '@/lib/streakUtils';
 
 interface CodeSnippet {
     id: string;
@@ -132,6 +133,30 @@ LIMIT 50;`
 const getCodeStorageKey = (email?: string | null) =>
     email ? `pimwai_custom_code_${email}` : 'pimwai_custom_code_guest';
 const LOCAL_STORAGE_CONTRAST_KEY = 'pimwai_code_contrast';
+
+// สร้าง Storage Key สำหรับจำเวลาพิมพ์โค้ดของวันนี้ (ตัดรอบเที่ยงคืนเวลาไทย)
+const getTodayTimeStorageKey = (email?: string | null) => {
+    const todayStr = toDateKey(new Date());
+    return email
+        ? `pimwai_code_today_time_${email}_${todayStr}`
+        : `pimwai_code_today_time_guest_${todayStr}`;
+};
+
+// แปลงเวลาเป็นข้อความภาษาไทยตามสูตร Farm Mode (เช่น "1 ชม. 25 นาที" หรือ "45 นาที 10 วิ" หรือ "15 วิ")
+const formatFarmTimeDetailed = (totalSec: number) => {
+    if (!totalSec || totalSec <= 0) return "0 วิ";
+    const hours = Math.floor(totalSec / 3600);
+    const minutes = Math.floor((totalSec % 3600) / 60);
+    const seconds = totalSec % 60;
+
+    if (hours > 0) {
+        return `${hours} ชม. ${minutes > 0 ? `${minutes} นาที` : ''} ${seconds > 0 ? `${seconds} วิ` : ''}`.trim();
+    }
+    if (minutes > 0) {
+        return `${minutes} นาที ${seconds > 0 ? `${seconds} วิ` : ''}`.trim();
+    }
+    return `${seconds} วิ`;
+};
 
 // แปลงโค้ดเป็นบรรทัดและคำ โดยเก็บการเยื้อง (Indentation) และลำดับของแต่ละคำ
 function parseCodeIntoLines(codeText: string): { lines: CodeLine[]; allTokens: CodeWordToken[] } {
@@ -293,20 +318,43 @@ export default function CodeTypingPage() {
     // Live Metrics
     const [startTime, setStartTime] = useState<number | null>(null);
     const [elapsedSeconds, setElapsedSeconds] = useState(0);
+    const [todayCodeTimeSeconds, setTodayCodeTimeSeconds] = useState<number>(0);
     const [isFinished, setIsFinished] = useState(false);
     const [totalKeystrokes, setTotalKeystrokes] = useState(0);
     const [correctKeystrokes, setCorrectKeystrokes] = useState(0);
     const [errorCount, setErrorCount] = useState(0);
     const [isSoundOn, setIsSoundOn] = useState(true);
 
+    // ⏱️ Refs สำหรับจับเวลาตามสูตร Farm Mode เป๊ะๆ (Active Typing Detection)
+    const lastTypingTimeRef = useRef<number>(0);
+    const lastTimerTickTimeRef = useRef<number>(0);
+    const activeTypingAccumulatedMsRef = useRef<number>(0);
+
     // Smooth Floating Caret Coords
     const [caretCoords, setCaretCoords] = useState<{ left: number; top: number; height: number }>({ left: 0, top: 0, height: 0 });
 
     const inputRef = useRef<HTMLTextAreaElement>(null);
-    const timerRef = useRef<NodeJS.Timeout | null>(null);
     const textContainerRef = useRef<HTMLDivElement>(null);
     const wordElementsRef = useRef<{ [idx: number]: HTMLSpanElement | null }>({});
     const typedPartRef = useRef<HTMLSpanElement>(null);
+
+    // ⏱️ โหลดเวลาวันนี้ที่บันทึกไว้ (ออกเข้าใหม่ก็ยังเก็บ ไม่หาย)
+    useEffect(() => {
+        try {
+            const key = getTodayTimeStorageKey(session?.user?.email);
+            const saved = localStorage.getItem(key);
+            if (saved) {
+                const parsed = parseInt(saved, 10);
+                if (!isNaN(parsed) && parsed > 0) {
+                    setTodayCodeTimeSeconds(parsed);
+                    return;
+                }
+            }
+            setTodayCodeTimeSeconds(0);
+        } catch {
+            setTodayCodeTimeSeconds(0);
+        }
+    }, [session?.user?.email]);
 
     // ⚡ Fast & Lightweight Caret Position Calculation using offsetLeft/offsetTop (Zero expensive getBoundingClientRect reflows!)
     const updateCaretPosition = useCallback(() => {
@@ -366,23 +414,54 @@ export default function CodeTypingPage() {
         setTotalKeystrokes(0);
         setCorrectKeystrokes(0);
         setErrorCount(0);
-        if (timerRef.current) clearInterval(timerRef.current);
+        lastTypingTimeRef.current = 0;
+        lastTimerTickTimeRef.current = 0;
+        activeTypingAccumulatedMsRef.current = 0;
         setTimeout(() => inputRef.current?.focus(), 50);
     }, []);
 
-    // Timer effect
+    // ⏱️ นับเวลาเล่นเฉพาะขณะกำลังพิมพ์อยู่จริง (สูตร Farm Mode เป๊ะ: ตรวจจับทุก 200ms และหยุดทันทีเมื่อหยุดพิมพ์เกิน 1.2 วินาที)
     useEffect(() => {
-        if (startTime && !isFinished) {
-            timerRef.current = setInterval(() => {
-                setElapsedSeconds(Math.floor((Date.now() - startTime) / 1000));
-            }, 1000);
-        } else if (isFinished && timerRef.current) {
-            clearInterval(timerRef.current);
-        }
-        return () => {
-            if (timerRef.current) clearInterval(timerRef.current);
-        };
-    }, [startTime, isFinished]);
+        if (!startTime || isFinished) return;
+
+        lastTimerTickTimeRef.current = Date.now();
+
+        const interval = setInterval(() => {
+            const now = Date.now();
+            const lastTick = lastTimerTickTimeRef.current || now;
+            const deltaMs = Math.min(1000, Math.max(0, now - lastTick));
+            lastTimerTickTimeRef.current = now;
+
+            // ตรวจจับว่ากำลังพิมพ์อยู่จริง: มีการกดปุ่มพิมพ์ภายใน 1.2 วินาทีที่ผ่านมา
+            const timeSinceLastKeypress = now - (lastTypingTimeRef.current || 0);
+            const isActivelyTyping = timeSinceLastKeypress < 1200;
+
+            if (isActivelyTyping) {
+                activeTypingAccumulatedMsRef.current += deltaMs;
+
+                // สะสมเวลาพิมพ์จริงครบทุกๆ 1,000 มิลลิวินาที (1 วินาทีเต็ม)
+                while (activeTypingAccumulatedMsRef.current >= 1000) {
+                    activeTypingAccumulatedMsRef.current -= 1000;
+                    setElapsedSeconds(prev => prev + 1);
+                    setTodayCodeTimeSeconds(prev => {
+                        const nextSec = prev + 1;
+                        try {
+                            const key = getTodayTimeStorageKey(session?.user?.email);
+                            localStorage.setItem(key, String(nextSec));
+                        } catch {
+                            // ignore
+                        }
+                        return nextSec;
+                    });
+                }
+            } else {
+                // ถ้าหยุดพิมพ์เกิน 1.2 วินาที ให้ตัดเศษ ms ทิ้ง เพื่อหยุดเวลาทันทีอย่างสมบูรณ์
+                activeTypingAccumulatedMsRef.current = 0;
+            }
+        }, 200);
+
+        return () => clearInterval(interval);
+    }, [startTime, isFinished, session?.user?.email]);
 
     // Calculate metrics
     const wpm = useMemo(() => {
@@ -409,9 +488,12 @@ export default function CodeTypingPage() {
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (isFinished || !currentToken) return;
 
+        const now = Date.now();
+        lastTypingTimeRef.current = now;
+
         // Start timer on first printable key
         if (!startTime && e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
-            setStartTime(Date.now());
+            setStartTime(now);
         }
 
         const isSpace = e.key === ' ' || e.code === 'Space';
@@ -811,26 +893,17 @@ export default function CodeTypingPage() {
                                     </span>
                                 </div>
 
-                                {/* Middle: Live Stats Badges */}
-                                <div className="flex items-center gap-2">
-                                    <div className="bg-gray-500 text-white px-3 py-1 rounded-xl flex items-center gap-1 shadow-xs font-black text-xs logo-font">
-                                        {wpm} WPM
+                                {/* Right Area: เวลาวันนี้ (วางไว้ข้างซ้ายปุ่มรีเซ็ต ตามรูป) + Quick Reset Button */}
+                                <div className="flex items-center gap-2.5 sm:gap-3.5 select-none">
+                                    <div className="flex items-center gap-1.5 text-xs sm:text-sm font-bold text-gray-400" title="เวลาพิมพ์โค้ดของวันนี้ทั้งหมด">
+                                        <span>เวลาวันนี้:</span>
+                                        <strong className="text-sm sm:text-base font-black text-gray-800 logo-font">
+                                            {formatFarmTimeDetailed(todayCodeTimeSeconds)}
+                                        </strong>
                                     </div>
-                                    <div className="bg-emerald-500 text-white px-2.5 py-1 rounded-xl text-xs font-black logo-font shadow-xs">
-                                        {accuracy}%
-                                    </div>
-                                    {errorCount > 0 && (
-                                        <div className="bg-red-500 text-white px-2.5 py-1 rounded-xl text-xs font-black logo-font shadow-xs">
-                                            {errorCount} errors
-                                        </div>
-                                    )}
-                                    <div className="bg-[#5cb5db] text-white px-2.5 py-1 rounded-xl text-xs font-black logo-font shadow-xs">
-                                        {elapsedSeconds}s
-                                    </div>
-                                </div>
 
-                                {/* Right: Quick Reset Button */}
-                                <div>
+                                    <div className="w-[1px] h-4 bg-gray-200 hidden sm:block"></div>
+
                                     <button
                                         type="button"
                                         onClick={() => resetPractice()}
