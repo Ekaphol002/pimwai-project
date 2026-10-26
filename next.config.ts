@@ -9,10 +9,6 @@ const nextConfig: any = {
     ignoreBuildErrors: true,
   },
   
-  // 2. ปิด error ESLint ตอน build
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
 
   // config อื่นๆ (ถ้ามี)
   async headers() {
