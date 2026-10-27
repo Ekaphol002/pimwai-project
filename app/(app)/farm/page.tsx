@@ -228,6 +228,30 @@ export default function FarmPage() {
 
     // Modal State
     const [isPerkModalOpen, setIsPerkModalOpen] = useState<boolean>(false);
+    const [isSeoExpanded, setIsSeoExpanded] = useState<boolean>(false);
+
+    useEffect(() => {
+        try {
+            const savedSeo = localStorage.getItem('pimwai_seo_expanded');
+            if (savedSeo === 'true') {
+                setIsSeoExpanded(true);
+            }
+        } catch {
+            // ignore
+        }
+    }, []);
+
+    const toggleSeoExpanded = () => {
+        setIsSeoExpanded(prev => {
+            const next = !prev;
+            try {
+                localStorage.setItem('pimwai_seo_expanded', String(next));
+            } catch {
+                // ignore
+            }
+            return next;
+        });
+    };
 
     // Floating Notification Toasts
     const [bountyToast, setBountyToast] = useState<{ id: number; text: string; amount: number; isGolden?: boolean } | null>(null);
@@ -2541,40 +2565,184 @@ export default function FarmPage() {
                     </div>
                 )}
 
-                {/* 🔍 SEO Semantic Section (Googlebot Crawl Content): ซ่อนอัตโนมัติเมื่อเริ่มพิมพ์ (Focus Mode) ไม่เกะกะสายตา */}
-                <section className={`w-full mt-10 mb-6 pt-8 border-t border-gray-200/80 text-gray-600 text-xs sm:text-sm leading-relaxed transition-all duration-300 ease-in-out ${isFocusMode
-                    ? 'opacity-0 pointer-events-none translate-y-4'
-                    : 'opacity-100 translate-y-0'
-                    }`}>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="bg-white/70 p-4 rounded-2xl border border-gray-100 shadow-xs">
-                            <h2 className="font-bold text-gray-800 text-sm mb-2 flex items-center gap-1.5">
-                                <span className="w-2 h-2 rounded-full bg-[#5cb5db]"></span>
-                                ฝึกพิมพ์ดีด และ ฝึกพิมพ์สัมผัส 10 นิ้ว
-                            </h2>
-                            <p className="text-gray-500 text-xs">
-                                PIMWAI ออกแบบมาเพื่อช่วยให้คุณ<strong>ฝึกพิมพ์ดีด</strong>ภาษาไทยและภาษาอังกฤษได้อย่างถูกต้องตามหลักการวางนิ้วสัมผัส 10 นิ้ว (แป้นเหย้า ฟ ห ก ด ่ า ส ว) เสริมสร้างความจำของกล้ามเนื้อ (Muscle Memory) เพื่อเพิ่มความเร็วในการพิมพ์โดยไม่ต้องมองแป้น
+                {/* 🔍 SEO Semantic Section & Sitelinks Hub (Googlebot Crawl Content): กดซ่อน/พับเก็บได้ และซ่อนอัตโนมัติเมื่อเริ่มพิมพ์ (Focus Mode) */}
+                <section
+                    aria-label="ข้อมูลการฝึกพิมพ์ดีดและพิมพ์สัมผัส 10 นิ้ว"
+                    className={`w-full max-w-6xl mt-4 mb-6 text-gray-600 text-xs sm:text-sm leading-relaxed transition-all duration-300 ease-in-out ${isFocusMode
+                        ? 'opacity-0 pointer-events-none translate-y-4'
+                        : 'opacity-100 translate-y-0'
+                        }`}
+                >
+                    {/* แถบหัวข้อแบบพับเก็บได้ (มี H1 อยู่ใน DOM ตลอดเวลาเพื่อ SEO แต่ดูคลีนตาและกดซ่อน/เปิดได้) */}
+                    <div className="bg-white/80 px-5 py-3 rounded-2xl border border-gray-100 shadow-xs flex flex-wrap items-center justify-between gap-3">
+                        <h1 className="text-xs sm:text-sm font-bold text-gray-600">
+                            ฝึกพิมพ์ดีดออนไลน์ฟรี ฝึกพิมพ์สัมผัส 10 นิ้ว & ทดสอบความเร็ว WPM | PIMWAI (พิมพ์ไว)
+                        </h1>
+
+                        <button
+                            type="button"
+                            onClick={toggleSeoExpanded}
+                            aria-expanded={isSeoExpanded}
+                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-gray-100 hover:bg-gray-200/80 text-gray-600 font-bold text-xs transition-colors cursor-pointer select-none"
+                        >
+                            <span>{isSeoExpanded ? 'ซ่อนคู่มือและข้อมูล' : 'ดูคู่มือวางนิ้ว 10 นิ้ว & ข้อมูลเพิ่มเติม'}</span>
+                            <ChevronRight
+                                size={14}
+                                className={`transition-transform duration-200 ${isSeoExpanded ? '-rotate-90' : 'rotate-90'}`}
+                            />
+                        </button>
+                    </div>
+
+                    {/* เนื้อหา SEO ทั้งหมดคงอยู่ใน HTML DOM เสมอเพื่อให้ Googlebot เก็บข้อมูลได้ 100% แต่พับซ่อนด้วย CSS ได้ */}
+                    <div
+                        className={`space-y-6 transition-all duration-300 ease-in-out overflow-hidden ${isSeoExpanded
+                            ? 'max-h-[2500px] opacity-100 mt-4'
+                            : 'max-h-0 opacity-0 pointer-events-none mt-0'
+                            }`}
+                    >
+                        {/* 1. คำอธิบายหลัก */}
+                        <div className="bg-white/80 p-5 rounded-2xl border border-gray-100 shadow-xs">
+                            <p className="text-gray-500 text-xs sm:text-sm leading-relaxed">
+                                <strong>PIMWAI (พิมพ์ไว)</strong> คือแพลตฟอร์ม<strong>ฝึกพิมพ์ดีดออนไลน์ฟรี</strong>และโปรแกรม<strong>ฝึกพิมพ์สัมผัส 10 นิ้ว</strong>สำหรับคนไทย ออกแบบมาเพื่อช่วยให้คุณฝึกวางนิ้วบนแป้นพิมพ์ภาษาไทย (แป้นเหย้า <strong>ฟ ห ก ด ่ า ส ว</strong>) และภาษาอังกฤษ (<strong>A S D F - J K L ;</strong>) ได้อย่างถูกต้องตามหลักสรีรศาสตร์ พร้อมระบบ<strong>ทดสอบความเร็วพิมพ์ดีด (Typing Test)</strong> วัดค่าความเร็วคำต่อนาที (WPM) และความแม่นยำ (Accuracy) แบบเรียลไทม์ เล่นได้ทันทีบนเว็บเบราว์เซอร์โดยไม่ต้องดาวน์โหลดโปรแกรมและไม่ต้องสมัครสมาชิก
                             </p>
                         </div>
 
-                        <div className="bg-white/70 p-4 rounded-2xl border border-gray-100 shadow-xs">
-                            <h2 className="font-bold text-gray-800 text-sm mb-2 flex items-center gap-1.5">
-                                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                                ทดสอบพิมพ์ดีด เช็คความเร็ว WPM ฟรี
-                            </h2>
-                            <p className="text-gray-500 text-xs">
-                                <strong>ทดสอบพิมพ์ดีด</strong> (Typing Test) แบบจับเวลา 15, 30 หรือ 60 วินาที คำนวณความเร็วคำต่อนาที (WPM - Words Per Minute) พร้อมวิเคราะห์ความแม่นยำ (Accuracy) แบบเรียลไทม์ และรายงานสถิติตัวอักษรที่พิมพ์ผิดบ่อยเพื่อให้คุณนำไปฝึกฝนแก้ไขได้ตรงจุด
-                            </p>
+                        {/* 2. Internal Links Hub (ช่วยให้ Google สร้าง Sitelinks หน้าบทเรียน, ทดสอบ WPM, จัดอันดับ แทนหน้าเข้าสู่ระบบ) */}
+                        <nav aria-label="หมวดหมู่การฝึกพิมพ์ดีดหลักบน PIMWAI" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <Link
+                                href="/lessons"
+                                className="group bg-white/80 hover:bg-white p-4 rounded-2xl border border-gray-100 hover:border-[#5cb5db]/50 shadow-xs transition-all flex flex-col justify-between"
+                            >
+                                <div>
+                                    <h2 className="font-bold text-gray-800 group-hover:text-[#0c648b] text-sm mb-1.5 flex items-center justify-between">
+                                        <span>บทเรียนฝึกพิมพ์สัมผัส 10 นิ้ว</span>
+                                        <ChevronRight size={15} className="text-gray-400 group-hover:text-[#5cb5db] transition-transform group-hover:translate-x-0.5" />
+                                    </h2>
+                                    <p className="text-gray-500 text-xs">
+                                        แบบฝึกหัดพิมพ์ดีดกว่า 100 ด่าน เริ่มตั้งแต่ฝึกพิมพ์แป้นเหย้า <strong>ฟ ห ก ด ่ า ส ว</strong> แป้นบน แป้นล่าง สระ และวรรณยุกต์ ไปจนถึงระดับสูง
+                                    </p>
+                                </div>
+                            </Link>
+
+                            <Link
+                                href="/tests"
+                                className="group bg-white/80 hover:bg-white p-4 rounded-2xl border border-gray-100 hover:border-emerald-400/50 shadow-xs transition-all flex flex-col justify-between"
+                            >
+                                <div>
+                                    <h2 className="font-bold text-gray-800 group-hover:text-emerald-700 text-sm mb-1.5 flex items-center justify-between">
+                                        <span>ทดสอบความเร็วพิมพ์ดีด (WPM)</span>
+                                        <ChevronRight size={15} className="text-gray-400 group-hover:text-emerald-500 transition-transform group-hover:translate-x-0.5" />
+                                    </h2>
+                                    <p className="text-gray-500 text-xs">
+                                        สอบวัดความเร็วการพิมพ์ดีดแบบจับเวลา 1 นาที, 3 นาที และ 5 นาที พร้อมกราฟวิเคราะห์ตัวอักษรที่พิมพ์ผิดบ่อยเพื่อแก้ไขจุดอ่อน
+                                    </p>
+                                </div>
+                            </Link>
+
+                            <Link
+                                href="/rankings"
+                                className="group bg-white/80 hover:bg-white p-4 rounded-2xl border border-gray-100 hover:border-amber-400/50 shadow-xs transition-all flex flex-col justify-between"
+                            >
+                                <div>
+                                    <h2 className="font-bold text-gray-800 group-hover:text-amber-600 text-sm mb-1.5 flex items-center justify-between">
+                                        <span>จัดอันดับคนพิมพ์เร็ว (Leaderboard)</span>
+                                        <ChevronRight size={15} className="text-gray-400 group-hover:text-amber-500 transition-transform group-hover:translate-x-0.5" />
+                                    </h2>
+                                    <p className="text-gray-500 text-xs">
+                                        ตารางจัดอันดับนักพิมพ์สัมผัสที่มีความเร็ว WPM และระดับแรงค์สูงสุดในไทย แข่งขันเก็บ EXP และสะสมดาวไปกับเพื่อนๆ
+                                    </p>
+                                </div>
+                            </Link>
+
+                            <Link
+                                href="/news"
+                                className="group bg-white/80 hover:bg-white p-4 rounded-2xl border border-gray-100 hover:border-purple-400/50 shadow-xs transition-all flex flex-col justify-between"
+                            >
+                                <div>
+                                    <h2 className="font-bold text-gray-800 group-hover:text-purple-700 text-sm mb-1.5 flex items-center justify-between">
+                                        <span>เทคนิคพิมพ์เร็ว & อัปเดตระบบ</span>
+                                        <ChevronRight size={15} className="text-gray-400 group-hover:text-purple-500 transition-transform group-hover:translate-x-0.5" />
+                                    </h2>
+                                    <p className="text-gray-500 text-xs">
+                                        ติดตามฟีเจอร์ใหม่ โหมดฝึกพิมพ์บทความ และการปรับปรุงระบบฝึกพิมพ์ดีดบน PIMWAI ให้ลื่นไหลในทุกอุปกรณ์
+                                    </p>
+                                </div>
+                            </Link>
+                        </nav>
+
+                        {/* 3. คู่มือวางนิ้วแป้นเหย้า 10 นิ้ว (Home Row Guide: คีย์เวิร์ดหลักที่คนค้นหาเยอะมาก) */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="bg-white/75 p-5 rounded-2xl border border-gray-100 shadow-xs">
+                                <h2 className="font-bold text-gray-800 text-sm mb-2 flex items-center gap-1.5">
+                                    <span className="w-2 h-2 rounded-full bg-[#5cb5db]"></span>
+                                    วิธีวางนิ้วพิมพ์สัมผัส 10 นิ้ว แป้นเหย้า (ฟ ห ก ด - ่ า ส ว)
+                                </h2>
+                                <p className="text-gray-500 text-xs mb-3">
+                                    หัวใจสำคัญของการ<strong>ฝึกพิมพ์สัมผัส 10 นิ้ว</strong>ให้เร็วโดยไม่ต้องก้มมองแป้นพิมพ์ คือการวางนิ้วทั้งสองข้างไว้ที่<strong>แป้นเหย้า (Home Row)</strong> เสมอ:
+                                </p>
+                                <div className="grid grid-cols-2 gap-3 text-xs text-gray-600 bg-gray-50/80 p-3 rounded-xl border border-gray-100">
+                                    <div>
+                                        <div className="font-bold text-gray-800 mb-1">มือซ้าย (ฟ ห ก ด / A S D F)</div>
+                                        <ul className="space-y-0.5 text-[11px] text-gray-500">
+                                            <li>• นิ้วก้อยซ้าย: แป้น <strong>ฟ</strong> (A)</li>
+                                            <li>• นิ้วนางซ้าย: แป้น <strong>ห</strong> (S)</li>
+                                            <li>• นิ้วกลางซ้าย: แป้น <strong>ก</strong> (D)</li>
+                                            <li>• นิ้วชี้ซ้าย: แป้น <strong>ด</strong> (F)</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <div className="font-bold text-gray-800 mb-1">มือขวา (่ า ส ว / J K L ;)</div>
+                                        <ul className="space-y-0.5 text-[11px] text-gray-500">
+                                            <li>• นิ้วชี้ขวา: แป้น <strong>ไม้เอก ่</strong> (J)</li>
+                                            <li>• นิ้วกลางขวา: แป้น <strong>า</strong> (K)</li>
+                                            <li>• นิ้วนางขวา: แป้น <strong>ส</strong> (L)</li>
+                                            <li>• นิ้วก้อยขวา: แป้น <strong>ว</strong> (;)</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-white/75 p-5 rounded-2xl border border-gray-100 shadow-xs">
+                                <h2 className="font-bold text-gray-800 text-sm mb-2 flex items-center gap-1.5">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                    มาตรฐานความเร็วพิมพ์ดีด (WPM) และการสอบราชการ
+                                </h2>
+                                <p className="text-gray-500 text-xs mb-3">
+                                    ค่า <strong>WPM (Words Per Minute)</strong> คือจำนวนคำที่พิมพ์ได้ถูกต้องในเวลา 1 นาที ซึ่งใช้เป็นเกณฑ์วัดทักษะการพิมพ์งานและสอบปฏิบัติคอมพิวเตอร์:
+                                </p>
+                                <ul className="space-y-1.5 text-xs text-gray-500">
+                                    <li>• <strong className="text-gray-700">20 – 30 WPM:</strong> ระดับผู้เริ่มต้น คุ้นเคยกับตำแหน่งแป้นเหย้าและสระพื้นฐาน</li>
+                                    <li>• <strong className="text-gray-700">35 – 50 WPM:</strong> ระดับมาตรฐานวัยทำงาน และผ่านเกณฑ์สอบพิมพ์ดีดหน่วยงานราชการ/เอกชนส่วนใหญ่</li>
+                                    <li>• <strong className="text-gray-700">60 – 80+ WPM:</strong> ระดับนักพิมพ์สัมผัสมืออาชีพ พิมพ์ได้คล่องแคล่วโดยไม่ต้องมองคีย์บอร์ด 100%</li>
+                                </ul>
+                            </div>
                         </div>
 
-                        <div className="bg-white/70 p-4 rounded-2xl border border-gray-100 shadow-xs">
-                            <h2 className="font-bold text-gray-800 text-sm mb-2 flex items-center gap-1.5">
-                                <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                                โหมดพิมพ์ด่วน เล่นได้ทันที ไม่ต้องล็อกอิน
+                        {/* 4. คำถามที่พบบ่อย (FAQ Semantic Content สอดคล้องกับ FAQPage Schema) */}
+                        <div className="bg-white/75 p-5 rounded-2xl border border-gray-100 shadow-xs">
+                            <h2 className="font-bold text-gray-800 text-sm mb-3">
+                                คำถามที่พบบ่อยเกี่ยวกับการฝึกพิมพ์ดีด (FAQ)
                             </h2>
-                            <p className="text-gray-500 text-xs">
-                                ฝึกพิมพ์ได้ทันทีโดยไม่ต้องผ่านขั้นตอนยุ่งยาก คลังคำศัพท์ภาษาไทยความถี่สูงกว่า 1,000 คำ สะสมค่าประสบการณ์ (EXP) ปลดล็อกแรงค์ และแข่งจัดอันดับความเร็วพิมพ์กับผู้ใช้ทั่วประเทศได้ฟรี 100%
-                            </p>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                                <div>
+                                    <h3 className="font-bold text-gray-700 mb-1">ฝึกพิมพ์ดีดอย่างไรให้พิมพ์เร็วขึ้น?</h3>
+                                    <p className="text-gray-500">
+                                        เริ่มจากการฝึกวางนิ้วที่แป้นเหย้า (ฟ ห ก ด ่ า ส ว) โดยไม่มองแป้นพิมพ์ เน้นความแม่นยำ (Accuracy 95% ขึ้นไป) ก่อนความเร็ว และฝึกต่อเนื่องวันละ 15–20 นาทีเพื่อให้กล้ามเนื้อจดจำตำแหน่งแป้น (Muscle Memory)
+                                    </p>
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-gray-700 mb-1">PIMWAI ใช้งานฟรีไหม ต้องสมัครสมาชิกหรือเปล่า?</h3>
+                                    <p className="text-gray-500">
+                                        ใช้งานฟรี 100% ไม่มีโฆษณาคั่น สามารถเริ่มฝึกพิมพ์ด่วนและทดสอบความเร็ว WPM ได้ทันทีโดยไม่ต้องล็อกอิน หรือหากเข้าสู่ระบบก็จะสามารถบันทึกสถิติ สะสม EXP และจัดอันดับแรงค์ข้ามอุปกรณ์ได้
+                                    </p>
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-gray-700 mb-1">รองรับการฝึกพิมพ์ภาษาอะไรบ้าง?</h3>
+                                    <p className="text-gray-500">
+                                        รองรับทั้งการฝึกพิมพ์ดีดภาษาไทย (แป้นเกษมณี) และภาษาอังกฤษ (QWERTY) มีทั้งโหมดสุ่มคำศัพท์ความถี่สูง 1,000 คำ โหมดบทความเรื่องสั้น โหมดจับเวลา และบทเรียนสอนวางนิ้วตั้งแต่เริ่มต้น
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </section>

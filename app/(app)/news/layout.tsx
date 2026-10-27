@@ -1,24 +1,24 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-    title: 'ข่าวสาร & บันทึกการอัปเดตระบบ PIMWAI',
-    description: 'ติดตามข่าวสารการอัปเดตฟีเจอร์ใหม่ บทเรียนพิมพ์สัมผัส และเทคนิคการฝึกพิมพ์ดีดล่าสุดจาก PIMWAI',
+    title: 'ข่าวสารอัปเดต & เทคนิคการฝึกพิมพ์สัมผัสให้เร็วขึ้น',
+    description: 'ติดตามข่าวสารการอัปเดตฟีเจอร์ใหม่ บทเรียนพิมพ์สัมผัส 10 นิ้ว และเทคนิคการฝึกพิมพ์ดีดให้เร็วและแม่นยำขึ้นจากทีมพัฒนา PIMWAI',
     keywords: [
         'ข่าวสาร PIMWAI',
         'อัปเดตพิมพ์ดีด',
         'บันทึกการอัปเดต PIMWAI',
-        'ฟีเจอร์ใหม่พิมพ์ดีด',
         'เทคนิคพิมพ์สัมผัส',
+        'วิธีพิมพ์ดีดให้เร็ว',
         'Pimwai Changelog'
     ],
     alternates: {
         canonical: 'https://pimwai.vercel.app/news',
     },
     openGraph: {
-        title: 'ข่าวสาร & บันทึกการอัปเดตระบบ PIMWAI',
+        title: 'ข่าวสารอัปเดต & เทคนิคการฝึกพิมพ์สัมผัสให้เร็วขึ้น | PIMWAI',
         description: 'ติดตามข่าวสารการอัปเดตฟีเจอร์ใหม่ บทเรียนพิมพ์สัมผัส และเทคนิคการฝึกพิมพ์ดีดล่าสุดจาก PIMWAI',
         url: 'https://pimwai.vercel.app/news',
-        siteName: 'PIMWAI',
+        siteName: 'PIMWAI (พิมพ์ไว)',
         images: [
             {
                 url: '/Bannerlink.png',

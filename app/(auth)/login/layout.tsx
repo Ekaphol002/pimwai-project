@@ -1,14 +1,17 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: 'เข้าสู่ระบบ | PIMWAI',
-  description: 'เข้าสู่ระบบเพื่อบันทึกสถิติการพิมพ์ ดูอันดับคะแนน และติดตามพัฒนาการของคุณ',
+  title: {
+    absolute: 'เข้าสู่ระบบ | PIMWAI',
+  },
+  description: 'เข้าสู่ระบบ PIMWAI เพื่อบันทึกสถิติความเร็วพิมพ์ดีด (WPM) สะสม EXP เลื่อนแรงค์ และติดตามพัฒนาการฝึกพิมพ์สัมผัสของคุณ',
   robots: {
     index: false,
     follow: false,
-  },
-  alternates: {
-    canonical: 'https://pimwai.vercel.app/login',
+    googleBot: {
+      index: false,
+      follow: false,
+    },
   },
 };
 

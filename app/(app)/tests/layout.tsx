@@ -1,26 +1,31 @@
 import StickyNavbar from '@/components/StickyNavbar/StickyNavbar';
-
-import type { Metadata } from 'next'
+import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'ทดสอบความเร็วพิมพ์ดีด ทดสอบ WPM วิเคราะห์คำผิด',
-  description: 'ทดสอบความเร็วในการพิมพ์ ทดสอบ WPM ภาษาไทยและอังกฤษ พร้อมระบบวิเคราะห์จุดอ่อนการพิมพ์ เช็คคำที่พิมพ์ผิดบ่อย และดูสถิติกราฟความเร็ว',
+  title: 'ทดสอบพิมพ์ดีดออนไลน์ เช็คความเร็ว WPM & วิเคราะห์คำผิด',
+  description: 'ทดสอบความเร็วพิมพ์ดีด (Typing Speed Test) จับเวลา 1, 3 และ 5 นาที วัดค่า WPM และความแม่นยำ พร้อมระบบวิเคราะห์ตัวอักษรที่พิมพ์ผิดบ่อยฟรี',
   keywords: [
+    'ทดสอบพิมพ์ดีด',
     'ทดสอบความเร็วพิมพ์ดีด',
     'ทดสอบ WPM',
-    'พิมพ์ดีดออนไลน์',
+    'วัดความเร็วการพิมพ์',
+    'สอบพิมพ์ดีดออนไลน์',
     'วิเคราะห์คำผิดพิมพ์ดีด',
-    'แก้ปัญหาพิมพ์ผิดบ่อย',
-    'ฝึกพิมพ์แก้คำผิด',
     'กราฟความเร็วพิมพ์ดีด',
-    'Typing Error Analysis',
-    'ประวัติการสอบพิมพ์ดีด',
-    'หาจุดอ่อนการพิมพ์สัมผัส'
+    'Typing Speed Test Thai'
   ],
   alternates: {
     canonical: 'https://pimwai.vercel.app/tests',
   },
-}
+  openGraph: {
+    title: 'ทดสอบพิมพ์ดีดออนไลน์ เช็คความเร็ว WPM & วิเคราะห์คำผิด | PIMWAI',
+    description: 'สอบวัดความเร็วการพิมพ์ดีด 1, 3 และ 5 นาที เช็คค่า WPM พร้อมกราฟวิเคราะห์จุดอ่อนตัวอักษรที่พิมพ์ผิดบ่อย',
+    url: 'https://pimwai.vercel.app/tests',
+    siteName: 'PIMWAI (พิมพ์ไว)',
+    type: 'website',
+    locale: 'th_TH',
+  },
+};
 
 export default function AppLayout({
   children,
@@ -29,16 +34,11 @@ export default function AppLayout({
 }) {
   return (
     <div className="flex flex-col">
-
       <StickyNavbar />
-
-      <div className="flex flex-1 w-full max-w-screen-2xl mx-auto bg-gray-200"> {/* (พื้นหลังเทาอ่อน) */}
-
+      <div className="flex flex-1 w-full max-w-screen-2xl mx-auto bg-gray-200">
         <main className="flex-1 overflow-y-auto">
-          {children} {/* <-- {children} คือ LessonsPage ของคุณ */}
+          {children}
         </main>
-
-
       </div>
     </div>
   );

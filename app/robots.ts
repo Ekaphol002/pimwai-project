@@ -5,7 +5,15 @@ export default function robots(): MetadataRoute.Robots {
         rules: [
             {
                 userAgent: '*',
-                allow: ['/', '/lessons', '/tests', '/farm', '/rankings', '/news'],
+                allow: [
+                    '/',
+                    '/lessons',
+                    '/tests',
+                    '/rankings',
+                    '/news',
+                    '/lesson/',
+                    '/typing-test/',
+                ],
                 disallow: [
                     '/api/',
                     '/admin/',
@@ -14,12 +22,9 @@ export default function robots(): MetadataRoute.Robots {
                     '/login',
                     '/login/*',
                     '/progress/',
-                    '/lesson/',
-                    '/typing-test/',
+                    '/settings',
+                    '/reset-account',
                     '/*?*callbackUrl*',
-                    '/_next/static/media/*.woff2',
-                    '/_next/static/media/*.woff',
-                    '/*?*level=*',
                 ],
             }
         ],
