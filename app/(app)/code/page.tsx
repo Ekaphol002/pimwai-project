@@ -1,20 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import { useSession } from 'next-auth/react';
-import Link from 'next/link';
 import {
-    Code2,
-    Lock,
     Volume2,
     VolumeX,
-    Sparkles,
     CheckCircle2,
-    Clock,
-    Zap,
-    Target,
-    AlertCircle,
-    ArrowLeft,
     FileCode,
     Terminal,
     X,
@@ -41,6 +32,7 @@ interface CodeSnippet {
 interface CodeWordToken {
     globalIdx: number;
     word: string;
+    chars: string[];
     lineNum: number;
     isLastInLine: boolean;
 }
@@ -142,6 +134,10 @@ const getTodayTimeStorageKey = (email?: string | null) => {
         : `pimwai_code_today_time_guest_${todayStr}`;
 };
 
+// สร้าง Storage Key สำหรับจำความคืบหน้าของโค้ดที่พิมพ์ค้างไว้ (ถึงคำไหน / โค้ดชุดไหน)
+const getProgressStorageKey = (email?: string | null) =>
+    email ? `pimwai_code_progress_${email}` : 'pimwai_code_progress_guest';
+
 // แปลงเวลาเป็นข้อความภาษาไทยตามสูตร Farm Mode (เช่น "1 ชม. 25 นาที" หรือ "45 นาที 10 วิ" หรือ "15 วิ")
 const formatFarmTimeDetailed = (totalSec: number) => {
     if (!totalSec || totalSec <= 0) return "0 วิ";
@@ -186,6 +182,7 @@ function parseCodeIntoLines(codeText: string): { lines: CodeLine[]; allTokens: C
             const token: CodeWordToken = {
                 globalIdx: globalCounter++,
                 word: w,
+                chars: w.split(''),
                 lineNum,
                 isLastInLine: wIdx === rawWords.length - 1
             };
@@ -204,6 +201,82 @@ function parseCodeIntoLines(codeText: string): { lines: CodeLine[]; allTokens: C
     return { lines, allTokens };
 }
 
+// ⚡ Memoized Word Component: ป้องกันการ Re-render คำอื่นๆ ทั้งหน้าเวลาพิมพ์ทีละตัวอักษร (แก้ปัญหาคอมวิทยาลัยช้า/หน่วง 100%)
+interface MemoCodeWordProps {
+    wToken: CodeWordToken;
+    isCompleted: boolean;
+    isActive: boolean;
+    activeInput: string;
+    completedTyped: string | undefined;
+    untypedClass: string;
+    registerWordRef: (idx: number, el: HTMLSpanElement | null) => void;
+}
+
+const MemoCodeWord = memo(function MemoCodeWord({
+    wToken,
+    isCompleted,
+    isActive,
+    activeInput,
+    completedTyped,
+    untypedClass,
+    registerWordRef
+}: MemoCodeWordProps) {
+    const targetWord = wToken.word;
+    const targetChars = wToken.chars;
+    const currentTyped = isActive ? activeInput : (isCompleted ? (completedTyped || '') : '');
+
+    return (
+        <>
+            <span
+                ref={el => registerWordRef(wToken.globalIdx, el)}
+                className="relative inline-flex items-baseline font-mono"
+            >
+                {targetChars.map((char, cIdx) => {
+                    let colorClass = untypedClass;
+
+                    if (isCompleted) {
+                        const isCorrect = cIdx < currentTyped.length && currentTyped[cIdx] === char;
+                        colorClass = isCorrect ? 'text-gray-800' : 'text-red-500';
+                    } else if (isActive) {
+                        if (cIdx < currentTyped.length) {
+                            const isCorrect = currentTyped[cIdx] === char;
+                            colorClass = isCorrect ? 'text-gray-800' : 'text-red-500';
+                        }
+                    }
+
+                    return (
+                        <span key={cIdx} className={colorClass}>
+                            {char}
+                        </span>
+                    );
+                })}
+
+                {/* ตัวอักษรที่พิมพ์เกินคำเป้าหมาย (Overflow Characters) */}
+                {(isActive || isCompleted) && currentTyped.length > targetWord.length && (
+                    <span className="text-red-500">
+                        {currentTyped.slice(targetWord.length)}
+                    </span>
+                )}
+            </span>
+
+            {/* Fixed Monospace Space between words */}
+            {!wToken.isLastInLine && (
+                <span className={`select-none font-mono ${untypedClass}`}> </span>
+            )}
+        </>
+    );
+}, (prev, next) => {
+    // อัปเดตเฉพาะคำที่สถานะเปลี่ยน หรือคำที่กำลังพิมพ์อยู่เท่านั้น คำอื่นอีกหลายร้อยคำไม่ต้องวาดใหม่เลย!
+    return (
+        prev.isActive === next.isActive &&
+        prev.isCompleted === next.isCompleted &&
+        prev.activeInput === next.activeInput &&
+        prev.completedTyped === next.completedTyped &&
+        prev.untypedClass === next.untypedClass &&
+        prev.wToken === next.wToken
+    );
+});
+
 export default function CodeTypingPage() {
     const { data: session } = useSession();
 
@@ -212,6 +285,7 @@ export default function CodeTypingPage() {
     const [selectedSnippetId, setSelectedSnippetId] = useState<string>(PRESET_SNIPPETS[0].id);
     const [isCustomModalOpen, setIsCustomModalOpen] = useState(false);
     const [isSavingToServer, setIsSavingToServer] = useState(false);
+    const [isSyncingProgress, setIsSyncingProgress] = useState(false);
 
     // Contrast Level for Target Follow Text (ความเข้มตัวพิมพ์ตาม)
     const [contrastLevel, setContrastLevel] = useState<ContrastLevel>('medium');
@@ -220,6 +294,54 @@ export default function CodeTypingPage() {
     const [customTitle, setCustomTitle] = useState('');
     const [customLanguage, setCustomLanguage] = useState('TypeScript');
     const [customCode, setCustomCode] = useState('');
+
+    // Farm Mode Typing Engine States
+    const [activeWordIdx, setActiveWordIdx] = useState<number>(0);
+    const [inputBuffer, setInputBuffer] = useState<string>('');
+    const [typedWordsHistory, setTypedWordsHistory] = useState<{ [tokenIdx: number]: string }>({});
+
+    // Live Metrics
+    const [startTime, setStartTime] = useState<number | null>(null);
+    const [elapsedSeconds, setElapsedSeconds] = useState(0);
+    const [todayCodeTimeSeconds, setTodayCodeTimeSeconds] = useState<number>(0);
+    const [isFinished, setIsFinished] = useState(false);
+    const [totalKeystrokes, setTotalKeystrokes] = useState(0);
+    const [correctKeystrokes, setCorrectKeystrokes] = useState(0);
+    const [errorCount, setErrorCount] = useState(0);
+    const [isSoundOn, setIsSoundOn] = useState(true);
+
+    // ⏱️ Refs สำหรับจับเวลาและซิงค์ข้อมูลเข้าในรหัส (Account Sync) แบบลื่นไหลไม่กระตุก
+    const lastTypingTimeRef = useRef<number>(0);
+    const lastTimerTickTimeRef = useRef<number>(0);
+    const activeTypingAccumulatedMsRef = useRef<number>(0);
+    const unsyncedSecondsRef = useRef<number>(0);
+    const isDirtyProgressRef = useRef<boolean>(false);
+    const isSyncingRef = useRef<boolean>(false);
+    const hasRestoredInitialProgressRef = useRef<boolean>(false);
+
+    // Live Refs เพื่อให้อ่านค่าล่าสุดใน Interval / Unload โดยไม่ต้องสร้าง Closure ใหม่ทุกครั้งที่กดคีย์บอร์ด
+    const selectedSnippetIdRef = useRef<string>(selectedSnippetId);
+    const activeWordIdxRef = useRef<number>(activeWordIdx);
+    const inputBufferRef = useRef<string>(inputBuffer);
+    const typedWordsHistoryRef = useRef<{ [tokenIdx: number]: string }>(typedWordsHistory);
+    const todayCodeTimeSecondsRef = useRef<number>(todayCodeTimeSeconds);
+
+    useEffect(() => { selectedSnippetIdRef.current = selectedSnippetId; }, [selectedSnippetId]);
+    useEffect(() => { activeWordIdxRef.current = activeWordIdx; }, [activeWordIdx]);
+    useEffect(() => { inputBufferRef.current = inputBuffer; }, [inputBuffer]);
+    useEffect(() => { typedWordsHistoryRef.current = typedWordsHistory; }, [typedWordsHistory]);
+    useEffect(() => { todayCodeTimeSecondsRef.current = todayCodeTimeSeconds; }, [todayCodeTimeSeconds]);
+
+    // Smooth Floating Caret Ref (อัปเดตผ่าน DOM ตรงๆ ระดับ GPU 60fps ไม่ต้องเรียก setState ทุกครั้งที่พิมพ์!)
+    const caretElRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLTextAreaElement>(null);
+    const textContainerRef = useRef<HTMLDivElement>(null);
+    const wordElementsRef = useRef<{ [idx: number]: HTMLSpanElement | null }>({});
+    const typedPartRef = useRef<HTMLSpanElement>(null);
+
+    const registerWordRef = useCallback((idx: number, el: HTMLSpanElement | null) => {
+        wordElementsRef.current[idx] = el;
+    }, []);
 
     // Load saved contrast level
     useEffect(() => {
@@ -242,124 +364,273 @@ export default function CodeTypingPage() {
         }
     };
 
-    // Load snippets from database (Account) & localStorage
+    // ☁️ ฟังก์ชันบันทึกความคืบหน้าและเวลาวันนี้ลง LocalStorage + ซิงค์เข้าในรหัสบัญชี (Database)
+    const saveProgressToLocalStorage = useCallback((
+        snippetId: string,
+        wordIdx: number,
+        buffer: string,
+        history: { [tokenIdx: number]: string }
+    ) => {
+        try {
+            const key = getProgressStorageKey(session?.user?.email);
+            localStorage.setItem(key, JSON.stringify({
+                selectedSnippetId: snippetId,
+                activeWordIdx: wordIdx,
+                inputBuffer: buffer,
+                typedWordsHistory: history,
+                updatedAt: new Date().toISOString()
+            }));
+        } catch {
+            // ignore
+        }
+    }, [session?.user?.email]);
+
+    const syncProgressToServer = useCallback(async (forceSync = false) => {
+        if (!session?.user?.email) return;
+        if (isSyncingRef.current && !forceSync) return;
+        if (!isDirtyProgressRef.current && unsyncedSecondsRef.current <= 0 && !forceSync) return;
+
+        isSyncingRef.current = true;
+        setIsSyncingProgress(true);
+
+        const addedSec = unsyncedSecondsRef.current;
+        unsyncedSecondsRef.current = 0;
+        isDirtyProgressRef.current = false;
+
+        try {
+            const res = await fetch('/api/code/progress', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    selectedSnippetId: selectedSnippetIdRef.current,
+                    activeWordIdx: activeWordIdxRef.current,
+                    inputBuffer: inputBufferRef.current,
+                    typedWordsHistory: typedWordsHistoryRef.current,
+                    todayTimeSeconds: todayCodeTimeSecondsRef.current,
+                    addedSeconds: addedSec
+                })
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                if (data.success && typeof data.todayTimeSeconds === 'number') {
+                    const mergedTime = Math.max(todayCodeTimeSecondsRef.current, data.todayTimeSeconds);
+                    setTodayCodeTimeSeconds(mergedTime);
+                    todayCodeTimeSecondsRef.current = mergedTime;
+                    try {
+                        const timeKey = getTodayTimeStorageKey(session?.user?.email);
+                        localStorage.setItem(timeKey, String(mergedTime));
+                    } catch {
+                        // ignore
+                    }
+                }
+            } else {
+                unsyncedSecondsRef.current += addedSec;
+                isDirtyProgressRef.current = true;
+            }
+        } catch {
+            unsyncedSecondsRef.current += addedSec;
+            isDirtyProgressRef.current = true;
+        } finally {
+            isSyncingRef.current = false;
+            setIsSyncingProgress(false);
+        }
+    }, [session?.user?.email]);
+
+    // โหลด Snippets + เวลาวันนี้ + ตำแหน่งโค้ดล่าสุดที่พิมพ์ค้างไว้ในรหัสบัญชี
     useEffect(() => {
         let isMounted = true;
 
-        async function fetchSnippets() {
+        async function loadAllAccountData() {
             try {
-                // 1. Initial fast load from account-specific localStorage
-                const storageKey = getCodeStorageKey(session?.user?.email);
-                let localCustom: CodeSnippet[] = [];
-                let saved = localStorage.getItem(storageKey);
-                if (!saved && !session?.user?.email) {
-                    saved = localStorage.getItem('pimwai_custom_code_snippets');
+                const email = session?.user?.email;
+
+                // 1. โหลดเวลาวันนี้จาก LocalStorage ก่อนเพื่อให้แสดงผลทันใจ
+                let localTodaySec = 0;
+                const timeKey = getTodayTimeStorageKey(email);
+                const savedTime = localStorage.getItem(timeKey);
+                if (savedTime) {
+                    const parsedTime = parseInt(savedTime, 10);
+                    if (!isNaN(parsedTime) && parsedTime > 0) {
+                        localTodaySec = parsedTime;
+                        if (isMounted) {
+                            setTodayCodeTimeSeconds(localTodaySec);
+                            todayCodeTimeSecondsRef.current = localTodaySec;
+                        }
+                    }
                 }
-                if (saved) {
-                    const parsed = JSON.parse(saved);
+
+                // 2. โหลด Custom Snippets จาก LocalStorage
+                const storageKey = getCodeStorageKey(email);
+                let localCustom: CodeSnippet[] = [];
+                let savedSnippets = localStorage.getItem(storageKey);
+                if (!savedSnippets && !email) {
+                    savedSnippets = localStorage.getItem('pimwai_custom_code_snippets');
+                }
+                if (savedSnippets) {
+                    const parsed = JSON.parse(savedSnippets);
                     if (Array.isArray(parsed) && parsed.length > 0) {
                         localCustom = parsed;
                     }
                 }
 
-                // 2. If logged in, fetch saved snippets from PostgreSQL database account
-                if (session?.user?.email) {
-                    const res = await fetch('/api/code/snippets');
-                    if (res.ok) {
-                        const data = await res.json();
-                        if (data.success && Array.isArray(data.snippets)) {
-                            const serverSnippets: CodeSnippet[] = data.snippets;
+                let allAvailableSnippets = [...PRESET_SNIPPETS, ...localCustom];
+
+                // 3. โหลดความคืบหน้าล่าสุดจาก LocalStorage
+                let localProgress: any = null;
+                const progressKey = getProgressStorageKey(email);
+                const savedProgressStr = localStorage.getItem(progressKey);
+                if (savedProgressStr) {
+                    try {
+                        localProgress = JSON.parse(savedProgressStr);
+                    } catch {
+                        localProgress = null;
+                    }
+                }
+
+                // 4. ถ้าล็อกอินแล้ว ดึงทั้ง Snippets และ Progress (เวลาวันนี้ + พิมพ์ถึงตรงไหน) จากฐานข้อมูลในรหัส
+                if (email) {
+                    const [snippetsRes, progressRes] = await Promise.all([
+                        fetch('/api/code/snippets').catch(() => null),
+                        fetch('/api/code/progress').catch(() => null)
+                    ]);
+
+                    if (snippetsRes && snippetsRes.ok) {
+                        const sData = await snippetsRes.json();
+                        if (sData.success && Array.isArray(sData.snippets)) {
+                            const serverSnippets: CodeSnippet[] = sData.snippets;
                             const serverIds = new Set(serverSnippets.map(s => s.id));
                             const combined = [...serverSnippets];
 
-                            // Include any local snippets not yet synced to server
                             for (const loc of localCustom) {
                                 if (!serverIds.has(loc.id) && !serverSnippets.some(s => s.title === loc.title && s.code === loc.code)) {
                                     combined.push(loc);
                                 }
                             }
-
-                            if (isMounted) {
-                                setSnippets([...PRESET_SNIPPETS, ...combined]);
+                            allAvailableSnippets = [...PRESET_SNIPPETS, ...combined];
+                            try {
                                 localStorage.setItem(storageKey, JSON.stringify(combined));
+                            } catch {
+                                // ignore
+                            }
+                        }
+                    }
+
+                    if (isMounted) {
+                        setSnippets(allAvailableSnippets);
+                    }
+
+                    if (progressRes && progressRes.ok) {
+                        const pData = await progressRes.json();
+                        if (pData.success) {
+                            const serverTodaySec = Number(pData.todayTimeSeconds) || 0;
+                            const bestTodaySec = Math.max(localTodaySec, serverTodaySec);
+                            if (isMounted) {
+                                setTodayCodeTimeSeconds(bestTodaySec);
+                                todayCodeTimeSecondsRef.current = bestTodaySec;
+                                try {
+                                    localStorage.setItem(timeKey, String(bestTodaySec));
+                                } catch {
+                                    // ignore
+                                }
+                            }
+
+                            // ถ้าเวลาในเครื่องมากกว่าบนเซิร์ฟเวอร์ ให้ซิงค์ขึ้นเซิร์ฟเวอร์ด้วย
+                            if (localTodaySec > serverTodaySec) {
+                                isDirtyProgressRef.current = true;
+                            }
+
+                            // เลือกความคืบหน้าที่ใหม่กว่าระหว่างเครื่องกับรหัสบัญชีบนเซิร์ฟเวอร์
+                            const serverProg = pData.progress;
+                            let targetProg = serverProg;
+                            if (localProgress && serverProg) {
+                                const localTime = localProgress.updatedAt ? new Date(localProgress.updatedAt).getTime() : 0;
+                                const serverTime = serverProg.updatedAt ? new Date(serverProg.updatedAt).getTime() : 0;
+                                if (localTime > serverTime) {
+                                    targetProg = localProgress;
+                                    isDirtyProgressRef.current = true;
+                                }
+                            } else if (localProgress && !serverProg) {
+                                targetProg = localProgress;
+                                isDirtyProgressRef.current = true;
+                            }
+
+                            if (targetProg && isMounted && !hasRestoredInitialProgressRef.current) {
+                                hasRestoredInitialProgressRef.current = true;
+                                const validSnippet = allAvailableSnippets.find(s => s.id === targetProg.selectedSnippetId) || allAvailableSnippets[0];
+                                const { allTokens: tokensForSnippet } = parseCodeIntoLines(validSnippet.code);
+                                const safeIdx = Math.min(
+                                    Math.max(0, Number(targetProg.activeWordIdx) || 0),
+                                    Math.max(0, tokensForSnippet.length - 1)
+                                );
+
+                                setSelectedSnippetId(validSnippet.id);
+                                selectedSnippetIdRef.current = validSnippet.id;
+                                setActiveWordIdx(safeIdx);
+                                activeWordIdxRef.current = safeIdx;
+                                setInputBuffer(targetProg.inputBuffer || '');
+                                inputBufferRef.current = targetProg.inputBuffer || '';
+                                setTypedWordsHistory(targetProg.typedWordsHistory || {});
+                                typedWordsHistoryRef.current = targetProg.typedWordsHistory || {};
+
+                                saveProgressToLocalStorage(
+                                    validSnippet.id,
+                                    safeIdx,
+                                    targetProg.inputBuffer || '',
+                                    targetProg.typedWordsHistory || {}
+                                );
                                 return;
                             }
                         }
                     }
+                } else {
+                    if (isMounted) {
+                        setSnippets(allAvailableSnippets);
+                    }
                 }
 
-                if (isMounted) {
-                    setSnippets([...PRESET_SNIPPETS, ...localCustom]);
+                // Fallback: กู้คืนตำแหน่งพิมพ์ล่าสุดจาก LocalStorage (กรณีไม่ได้ล็อกอิน หรือยังไม่มีบนเซิร์ฟเวอร์)
+                if (localProgress && isMounted && !hasRestoredInitialProgressRef.current) {
+                    hasRestoredInitialProgressRef.current = true;
+                    const validSnippet = allAvailableSnippets.find(s => s.id === localProgress.selectedSnippetId) || allAvailableSnippets[0];
+                    const { allTokens: tokensForSnippet } = parseCodeIntoLines(validSnippet.code);
+                    const safeIdx = Math.min(
+                        Math.max(0, Number(localProgress.activeWordIdx) || 0),
+                        Math.max(0, tokensForSnippet.length - 1)
+                    );
+
+                    setSelectedSnippetId(validSnippet.id);
+                    selectedSnippetIdRef.current = validSnippet.id;
+                    setActiveWordIdx(safeIdx);
+                    activeWordIdxRef.current = safeIdx;
+                    setInputBuffer(localProgress.inputBuffer || '');
+                    inputBufferRef.current = localProgress.inputBuffer || '';
+                    setTypedWordsHistory(localProgress.typedWordsHistory || {});
+                    typedWordsHistoryRef.current = localProgress.typedWordsHistory || {};
                 }
             } catch (e) {
-                console.error('Failed to load code snippets', e);
+                console.error('Failed to load code account data:', e);
             }
         }
 
-        fetchSnippets();
+        loadAllAccountData();
         return () => { isMounted = false; };
-    }, [session?.user?.email]);
+    }, [session?.user?.email, saveProgressToLocalStorage]);
 
     const currentSnippet = useMemo(() => {
         return snippets.find(s => s.id === selectedSnippetId) || snippets[0];
     }, [snippets, selectedSnippetId]);
 
-    // ⚡ Performance Optimization for Low-End PCs: Memoize parsing so it runs ONLY when snippet changes, NOT on every keystroke!
+    // ⚡ Performance Optimization: แปลงโค้ดเฉพาะตอนเปลี่ยนชุดโค้ดเท่านั้น ไม่รันซ้ำตอนพิมพ์
     const { lines, allTokens } = useMemo(() => {
         return parseCodeIntoLines(currentSnippet.code);
     }, [currentSnippet.code]);
 
-    // Farm Mode Typing Engine States
-    const [activeWordIdx, setActiveWordIdx] = useState<number>(0);
-    const [inputBuffer, setInputBuffer] = useState<string>('');
-    const [typedWordsHistory, setTypedWordsHistory] = useState<{ [tokenIdx: number]: string }>({});
-    const [completedWordsStatus, setCompletedWordsStatus] = useState<{ [tokenIdx: number]: 'correct' | 'incorrect' }>({});
-
-    // Live Metrics
-    const [startTime, setStartTime] = useState<number | null>(null);
-    const [elapsedSeconds, setElapsedSeconds] = useState(0);
-    const [todayCodeTimeSeconds, setTodayCodeTimeSeconds] = useState<number>(0);
-    const [isFinished, setIsFinished] = useState(false);
-    const [totalKeystrokes, setTotalKeystrokes] = useState(0);
-    const [correctKeystrokes, setCorrectKeystrokes] = useState(0);
-    const [errorCount, setErrorCount] = useState(0);
-    const [isSoundOn, setIsSoundOn] = useState(true);
-
-    // ⏱️ Refs สำหรับจับเวลาตามสูตร Farm Mode เป๊ะๆ (Active Typing Detection)
-    const lastTypingTimeRef = useRef<number>(0);
-    const lastTimerTickTimeRef = useRef<number>(0);
-    const activeTypingAccumulatedMsRef = useRef<number>(0);
-
-    // Smooth Floating Caret Coords
-    const [caretCoords, setCaretCoords] = useState<{ left: number; top: number; height: number }>({ left: 0, top: 0, height: 0 });
-
-    const inputRef = useRef<HTMLTextAreaElement>(null);
-    const textContainerRef = useRef<HTMLDivElement>(null);
-    const wordElementsRef = useRef<{ [idx: number]: HTMLSpanElement | null }>({});
-    const typedPartRef = useRef<HTMLSpanElement>(null);
-
-    // ⏱️ โหลดเวลาวันนี้ที่บันทึกไว้ (ออกเข้าใหม่ก็ยังเก็บ ไม่หาย)
-    useEffect(() => {
-        try {
-            const key = getTodayTimeStorageKey(session?.user?.email);
-            const saved = localStorage.getItem(key);
-            if (saved) {
-                const parsed = parseInt(saved, 10);
-                if (!isNaN(parsed) && parsed > 0) {
-                    setTodayCodeTimeSeconds(parsed);
-                    return;
-                }
-            }
-            setTodayCodeTimeSeconds(0);
-        } catch {
-            setTodayCodeTimeSeconds(0);
-        }
-    }, [session?.user?.email]);
-
-    // ⚡ Fast & Lightweight Caret Position Calculation using offsetLeft/offsetTop (Zero expensive getBoundingClientRect reflows!)
+    // ⚡ Ultra-Fast Direct DOM Caret Update: เลื่อนเคอร์เซอร์ด้วย GPU Transform โดยไม่เรียก setState (ไม่เกิด React Re-render!)
     const updateCaretPosition = useCallback(() => {
         const currentWordEl = wordElementsRef.current[activeWordIdx];
-        if (!currentWordEl || !textContainerRef.current) return;
+        const caretEl = caretElRef.current;
+        if (!currentWordEl || !textContainerRef.current || !caretEl) return;
 
         let typedWidth = 0;
         if (typedPartRef.current) {
@@ -370,44 +641,49 @@ export default function CodeTypingPage() {
         const left = currentWordEl.offsetLeft + typedWidth;
         const top = currentWordEl.offsetTop + Math.max(0, (currentWordEl.offsetHeight - caretHeight) / 2);
 
-        setCaretCoords({ left, top, height: caretHeight });
-    }, [activeWordIdx, inputBuffer]);
+        caretEl.style.height = `${caretHeight}px`;
+        caretEl.style.transform = `translate3d(${left}px, ${top}px, 0)`;
+        caretEl.style.opacity = isFinished ? '0' : '1';
+    }, [activeWordIdx, isFinished]);
 
-    // Update Caret position on keystroke (lightweight)
+    // Update Caret position on keystroke (Direct DOM manipulation)
     useEffect(() => {
         updateCaretPosition();
-    }, [activeWordIdx, inputBuffer, updateCaretPosition]);
+    }, [activeWordIdx, inputBuffer, updateCaretPosition, currentSnippet.id]);
 
-    // ⚡ Performance Fix: Only scroll when activeWordIdx changes (NEVER on every keystroke in inputBuffer!)
+    // ⚡ Auto-Scroll เฉพาะเมื่อเปลี่ยนคำและหลุดขอบจอ และใช้การเลื่อนแบบไม่กิน CPU
     useEffect(() => {
         const currentWordEl = wordElementsRef.current[activeWordIdx];
-        if (currentWordEl && textContainerRef.current) {
+        const container = textContainerRef.current;
+        if (currentWordEl && container) {
             const wordTop = currentWordEl.offsetTop;
-            const containerScrollTop = textContainerRef.current.scrollTop;
-            const containerHeight = textContainerRef.current.clientHeight;
+            const containerScrollTop = container.scrollTop;
+            const containerHeight = container.clientHeight;
 
-            // Scroll only when exiting visible boundary to eliminate animation lag
             if (wordTop < containerScrollTop + 30 || wordTop > containerScrollTop + containerHeight - 70) {
-                textContainerRef.current.scrollTo({
-                    top: Math.max(0, wordTop - 50),
-                    behavior: 'smooth'
-                });
+                container.scrollTop = Math.max(0, wordTop - 60);
             }
         }
-    }, [activeWordIdx]);
+    }, [activeWordIdx, currentSnippet.id]);
 
     useEffect(() => {
         window.addEventListener('resize', updateCaretPosition);
         return () => window.removeEventListener('resize', updateCaretPosition);
     }, [updateCaretPosition]);
 
-    // Reset practice
+    // Reset practice (เริ่มพิมพ์โค้ดชุดนั้นใหม่ตั้งแต่ต้น หรือสลับไปชุดอื่น)
     const resetPractice = useCallback((newSnippetId?: string) => {
-        if (newSnippetId) setSelectedSnippetId(newSnippetId);
+        const targetId = newSnippetId || selectedSnippetIdRef.current;
+        if (newSnippetId) {
+            setSelectedSnippetId(newSnippetId);
+            selectedSnippetIdRef.current = newSnippetId;
+        }
         setActiveWordIdx(0);
+        activeWordIdxRef.current = 0;
         setInputBuffer('');
+        inputBufferRef.current = '';
         setTypedWordsHistory({});
-        setCompletedWordsStatus({});
+        typedWordsHistoryRef.current = {};
         setStartTime(null);
         setElapsedSeconds(0);
         setIsFinished(false);
@@ -417,10 +693,17 @@ export default function CodeTypingPage() {
         lastTypingTimeRef.current = 0;
         lastTimerTickTimeRef.current = 0;
         activeTypingAccumulatedMsRef.current = 0;
-        setTimeout(() => inputRef.current?.focus(), 50);
-    }, []);
 
-    // ⏱️ นับเวลาเล่นเฉพาะขณะกำลังพิมพ์อยู่จริง (สูตร Farm Mode เป๊ะ: ตรวจจับทุก 200ms และหยุดทันทีเมื่อหยุดพิมพ์เกิน 1.2 วินาที)
+        // บันทึกสถานะที่รีเซ็ตลงในเครื่องและคิวซิงค์เข้าบัญชี
+        saveProgressToLocalStorage(targetId, 0, '', {});
+        isDirtyProgressRef.current = true;
+        setTimeout(() => {
+            syncProgressToServer(true);
+            inputRef.current?.focus();
+        }, 50);
+    }, [saveProgressToLocalStorage, syncProgressToServer]);
+
+    // ⏱️ นับเวลาเล่นเฉพาะขณะกำลังพิมพ์อยู่จริง (สูตร Farm Mode เป๊ะ + ประหยัด CPU สำหรับคอมสเปคต่ำ)
     useEffect(() => {
         if (!startTime || isFinished) return;
 
@@ -440,11 +723,14 @@ export default function CodeTypingPage() {
                 activeTypingAccumulatedMsRef.current += deltaMs;
 
                 // สะสมเวลาพิมพ์จริงครบทุกๆ 1,000 มิลลิวินาที (1 วินาทีเต็ม)
-                while (activeTypingAccumulatedMsRef.current >= 1000) {
-                    activeTypingAccumulatedMsRef.current -= 1000;
-                    setElapsedSeconds(prev => prev + 1);
+                if (activeTypingAccumulatedMsRef.current >= 1000) {
+                    const addedSec = Math.floor(activeTypingAccumulatedMsRef.current / 1000);
+                    activeTypingAccumulatedMsRef.current %= 1000;
+
+                    setElapsedSeconds(prev => prev + addedSec);
                     setTodayCodeTimeSeconds(prev => {
-                        const nextSec = prev + 1;
+                        const nextSec = prev + addedSec;
+                        todayCodeTimeSecondsRef.current = nextSec;
                         try {
                             const key = getTodayTimeStorageKey(session?.user?.email);
                             localStorage.setItem(key, String(nextSec));
@@ -453,15 +739,52 @@ export default function CodeTypingPage() {
                         }
                         return nextSec;
                     });
+
+                    unsyncedSecondsRef.current += addedSec;
+                    isDirtyProgressRef.current = true;
                 }
             } else {
                 // ถ้าหยุดพิมพ์เกิน 1.2 วินาที ให้ตัดเศษ ms ทิ้ง เพื่อหยุดเวลาทันทีอย่างสมบูรณ์
                 activeTypingAccumulatedMsRef.current = 0;
             }
-        }, 200);
+        }, 250);
 
         return () => clearInterval(interval);
     }, [startTime, isFinished, session?.user?.email]);
+
+    // ☁️ ซิงค์เวลาและตำแหน่งโค้ดที่พิมพ์ค้างไว้เข้าในรหัสอัตโนมัติ (ทุก 4 วินาทีเมื่อมีการพิมพ์ และเมื่อสลับหน้า/ปิดแท็บ)
+    useEffect(() => {
+        if (!session?.user?.email) return;
+
+        const syncInterval = setInterval(() => {
+            if (isDirtyProgressRef.current || unsyncedSecondsRef.current > 0) {
+                syncProgressToServer();
+            }
+        }, 4000);
+
+        const handleBeforeUnload = () => {
+            if ((isDirtyProgressRef.current || unsyncedSecondsRef.current > 0) && session?.user?.email) {
+                const payload = JSON.stringify({
+                    selectedSnippetId: selectedSnippetIdRef.current,
+                    activeWordIdx: activeWordIdxRef.current,
+                    inputBuffer: inputBufferRef.current,
+                    typedWordsHistory: typedWordsHistoryRef.current,
+                    todayTimeSeconds: todayCodeTimeSecondsRef.current,
+                    addedSeconds: unsyncedSecondsRef.current
+                });
+                navigator.sendBeacon?.('/api/code/progress', new Blob([payload], { type: 'application/json' }));
+            }
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => {
+            clearInterval(syncInterval);
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+            if (isDirtyProgressRef.current || unsyncedSecondsRef.current > 0) {
+                syncProgressToServer(true);
+            }
+        };
+    }, [session?.user?.email, syncProgressToServer]);
 
     // Calculate metrics
     const wpm = useMemo(() => {
@@ -509,12 +832,10 @@ export default function CodeTypingPage() {
             if (isSoundOn) soundManager.playKeySound();
 
             const isWordCorrect = inputBuffer === currentToken.word;
+            const nextHistory = { ...typedWordsHistoryRef.current, [activeWordIdx]: inputBuffer };
 
-            setTypedWordsHistory(prev => ({ ...prev, [activeWordIdx]: inputBuffer }));
-            setCompletedWordsStatus(prev => ({
-                ...prev,
-                [activeWordIdx]: isWordCorrect ? 'correct' : 'incorrect'
-            }));
+            setTypedWordsHistory(nextHistory);
+            typedWordsHistoryRef.current = nextHistory;
 
             setTotalKeystrokes(prev => prev + 1);
 
@@ -524,15 +845,29 @@ export default function CodeTypingPage() {
                 setErrorCount(prev => prev + 1);
             }
 
-            // ถ้าเป็นคำสุดท้าย
+            // ถ้าเป็นคำสุดท้ายของโค้ดชุดนี้
             if (activeWordIdx + 1 >= allTokens.length) {
                 setIsFinished(true);
+                // เมื่อพิมพ์จบชุด ให้เซ็ตตำแหน่งกลับไปที่ 0 เผื่อเปิดมาใหม่จะได้พร้อมเล่นทันที แต่เก็บเวลาวันนี้ไว้ครบถ้วน
+                saveProgressToLocalStorage(selectedSnippetIdRef.current, 0, '', {});
+                activeWordIdxRef.current = 0;
+                inputBufferRef.current = '';
+                typedWordsHistoryRef.current = {};
+                isDirtyProgressRef.current = true;
+                syncProgressToServer(true);
                 toast.success('🎉 พิมพ์โค้ดเสร็จสมบูรณ์!');
                 return;
             }
 
-            setActiveWordIdx(prev => prev + 1);
+            const nextWordIdx = activeWordIdx + 1;
+            setActiveWordIdx(nextWordIdx);
+            activeWordIdxRef.current = nextWordIdx;
             setInputBuffer('');
+            inputBufferRef.current = '';
+
+            // เซฟตำแหน่งคำปัจจุบันลงเครื่องทันที + ตั้งสถานะให้ซิงค์เข้ารหัส
+            saveProgressToLocalStorage(selectedSnippetIdRef.current, nextWordIdx, '', nextHistory);
+            isDirtyProgressRef.current = true;
             return;
         }
 
@@ -542,12 +877,20 @@ export default function CodeTypingPage() {
             if (isSoundOn) soundManager.playKeySound();
 
             if (inputBuffer.length > 0) {
-                setInputBuffer(prev => prev.slice(0, -1));
+                const nextBuf = inputBuffer.slice(0, -1);
+                setInputBuffer(nextBuf);
+                inputBufferRef.current = nextBuf;
+                saveProgressToLocalStorage(selectedSnippetIdRef.current, activeWordIdx, nextBuf, typedWordsHistoryRef.current);
+                isDirtyProgressRef.current = true;
             } else if (activeWordIdx > 0) {
                 const prevIdx = activeWordIdx - 1;
-                const prevTyped = typedWordsHistory[prevIdx] || '';
+                const prevTyped = typedWordsHistoryRef.current[prevIdx] || '';
                 setActiveWordIdx(prevIdx);
+                activeWordIdxRef.current = prevIdx;
                 setInputBuffer(prevTyped);
+                inputBufferRef.current = prevTyped;
+                saveProgressToLocalStorage(selectedSnippetIdRef.current, prevIdx, prevTyped, typedWordsHistoryRef.current);
+                isDirtyProgressRef.current = true;
             }
             return;
         }
@@ -574,7 +917,12 @@ export default function CodeTypingPage() {
                 setErrorCount(prev => prev + 1);
             }
 
-            setInputBuffer(prev => prev + e.key);
+            const nextBuf = inputBuffer + e.key;
+            setInputBuffer(nextBuf);
+            inputBufferRef.current = nextBuf;
+
+            saveProgressToLocalStorage(selectedSnippetIdRef.current, activeWordIdx, nextBuf, typedWordsHistoryRef.current);
+            isDirtyProgressRef.current = true;
         }
     };
 
@@ -637,8 +985,12 @@ export default function CodeTypingPage() {
                     const finalCustom = [serverSnippet, ...existingCustom.filter(s => s.id !== tempId)];
                     setSnippets([...PRESET_SNIPPETS, ...finalCustom]);
                     setSelectedSnippetId(serverSnippet.id);
+                    selectedSnippetIdRef.current = serverSnippet.id;
                     localStorage.setItem(storageKey, JSON.stringify(finalCustom));
-                    toast.success('บันทึกโค้ดลงในบัญชีเรียบร้อย!');
+                    saveProgressToLocalStorage(serverSnippet.id, 0, '', {});
+                    isDirtyProgressRef.current = true;
+                    syncProgressToServer(true);
+                    toast.success('บันทึกโค้ดลงในรหัสบัญชีเรียบร้อย!');
                     return;
                 }
             } catch (err) {
@@ -678,8 +1030,6 @@ export default function CodeTypingPage() {
         toast.success('ลบโค้ดเรียบร้อย');
     };
 
-
-
     const untypedClass = CONTRAST_CONFIG[contrastLevel].textClass;
 
     return (
@@ -689,7 +1039,7 @@ export default function CodeTypingPage() {
             <div className="w-full max-w-5xl flex flex-col gap-5">
 
                 {/* 🌟 Top Control Pill - Pure White Card with Soft Shadow (สไตล์ Farm Mode) */}
-                <div className="bg-white px-5 sm:px-6 py-3 rounded-3xl shadow-lg shadow-blue-500/5 border border-blue-50/60 flex flex-wrap items-center justify-between gap-3 text-sm text-gray-500">
+                <div className="bg-white px-5 sm:px-6 py-3 rounded-3xl shadow-md border border-blue-50/60 flex flex-wrap items-center justify-between gap-3 text-sm text-gray-500">
 
                     {/* Left: Snippets Selector */}
                     <div className="flex flex-wrap items-center gap-1.5">
@@ -700,8 +1050,12 @@ export default function CodeTypingPage() {
                                 <button
                                     key={s.id}
                                     type="button"
-                                    onClick={() => resetPractice(s.id)}
-                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer text-xs sm:text-sm ${isSelected
+                                    onClick={() => {
+                                        if (s.id !== selectedSnippetId) {
+                                            resetPractice(s.id);
+                                        }
+                                    }}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-colors cursor-pointer text-xs sm:text-sm ${isSelected
                                         ? 'bg-[#5cb5db] text-white shadow-xs font-bold'
                                         : 'hover:text-[#5cb5db] hover:bg-gray-50'
                                         }`}
@@ -709,7 +1063,7 @@ export default function CodeTypingPage() {
                                     <span>{s.title}</span>
                                     {s.isCustom && (
                                         <>
-                                            <span title="บันทึกในบัญชีแล้ว">
+                                            <span title="บันทึกในรหัสบัญชีแล้ว">
                                                 <Cloud size={11} className={isSelected ? 'text-white/80' : 'text-blue-400'} />
                                             </span>
                                             <span
@@ -729,7 +1083,7 @@ export default function CodeTypingPage() {
                         <button
                             type="button"
                             onClick={() => setIsCustomModalOpen(true)}
-                            className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition cursor-pointer font-bold text-xs sm:text-sm ml-1"
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition-colors cursor-pointer font-bold text-xs sm:text-sm ml-1"
                         >
                             <Plus size={15} />
                             <span>ใส่โค้ดของคุณ</span>
@@ -747,7 +1101,7 @@ export default function CodeTypingPage() {
                                     key={lvl}
                                     type="button"
                                     onClick={() => handleContrastChange(lvl)}
-                                    className={`px-2 py-0.5 rounded-lg font-bold transition-all cursor-pointer ${contrastLevel === lvl
+                                    className={`px-2 py-0.5 rounded-lg font-bold transition-colors cursor-pointer ${contrastLevel === lvl
                                         ? 'bg-white text-gray-800 shadow-xs border border-gray-200'
                                         : 'text-gray-400 hover:text-gray-600'
                                         }`}
@@ -774,7 +1128,7 @@ export default function CodeTypingPage() {
                 {/* ⌨️ Main Typing Stream Box (กล่องสีขาวใหญ่ เหมือนโหมดฟาร์มเป๊ะ) */}
                 <div
                     onClick={() => inputRef.current?.focus()}
-                    className="w-full bg-white rounded-3xl p-6 sm:p-8 shadow-lg shadow-blue-500/5 relative min-h-[460px] flex flex-col justify-between overflow-hidden border border-blue-50 cursor-text"
+                    className="w-full bg-white rounded-3xl p-6 sm:p-8 shadow-md relative min-h-[460px] flex flex-col justify-between overflow-hidden border border-blue-50 cursor-text"
                 >
                     {/* Hidden Textarea for Input */}
                     <textarea
@@ -863,7 +1217,7 @@ export default function CodeTypingPage() {
                                             const nextIdx = (snippets.findIndex(s => s.id === selectedSnippetId) + 1) % snippets.length;
                                             resetPractice(snippets[nextIdx].id);
                                         }}
-                                        className="text-gray-400 hover:text-[#5cb5db] transition-all duration-150 hover:scale-115 active:scale-90 cursor-pointer p-3 rounded-2xl select-none"
+                                        className="text-gray-400 hover:text-[#5cb5db] transition-transform duration-150 hover:scale-110 active:scale-95 cursor-pointer p-3 rounded-2xl select-none"
                                         title="โค้ดถัดไป"
                                     >
                                         <ChevronRight size={34} strokeWidth={2.8} />
@@ -872,7 +1226,7 @@ export default function CodeTypingPage() {
                                     <button
                                         type="button"
                                         onClick={() => resetPractice()}
-                                        className="text-gray-400 hover:text-gray-800 transition-all duration-150 hover:scale-115 active:scale-90 cursor-pointer p-3 rounded-2xl select-none"
+                                        className="text-gray-400 hover:text-gray-800 transition-transform duration-150 hover:scale-110 active:scale-95 cursor-pointer p-3 rounded-2xl select-none"
                                         title="พิมพ์ซ้ำ (โค้ดเดิม)"
                                     >
                                         <RefreshCw size={28} strokeWidth={2.8} />
@@ -884,18 +1238,27 @@ export default function CodeTypingPage() {
                         <>
                             {/* Top Stats Header inside card */}
                             <div className="flex items-center justify-between gap-4 pb-4 mb-3 border-b border-gray-100">
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2.5 flex-wrap">
                                     <div className="px-3 py-1 bg-gradient-to-r from-[#0c648b] to-[#5cb5db] text-white font-black text-xs rounded-full uppercase tracking-wider shadow-xs">
                                         {currentSnippet.title}
                                     </div>
                                     <span className="px-2.5 py-0.5 bg-gray-100 border border-gray-200 text-gray-600 font-bold text-[11px] rounded-full">
                                         {currentSnippet.language}
                                     </span>
+                                    {session?.user?.email && (
+                                        <span
+                                            className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100"
+                                            title="บันทึกเวลาและจุดที่พิมพ์ค้างไว้เข้าในรหัสอัตโนมัติ สลับคอมเล่นต่อได้ทันที"
+                                        >
+                                            <Cloud size={11} className={isSyncingProgress ? "animate-bounce" : ""} />
+                                            <span className="hidden sm:inline">{isSyncingProgress ? 'กำลังซิงค์...' : 'ซิงค์ในรหัสแล้ว'}</span>
+                                        </span>
+                                    )}
                                 </div>
 
-                                {/* Right Area: เวลาวันนี้ (วางไว้ข้างซ้ายปุ่มรีเซ็ต ตามรูป) + Quick Reset Button */}
+                                {/* Right Area: เวลาวันนี้ (วางไว้ข้างซ้ายปุ่มรีเซ็ต) + Quick Reset Button */}
                                 <div className="flex items-center gap-2.5 sm:gap-3.5 select-none">
-                                    <div className="flex items-center gap-1.5 text-xs sm:text-sm font-bold text-gray-400" title="เวลาพิมพ์โค้ดของวันนี้ทั้งหมด">
+                                    <div className="flex items-center gap-1.5 text-xs sm:text-sm font-bold text-gray-400" title="เวลาพิมพ์โค้ดของวันนี้ทั้งหมด (ซิงค์เข้าในรหัสบัญชี)">
                                         <span>เวลาวันนี้:</span>
                                         <strong className="text-sm sm:text-base font-black text-gray-800 logo-font">
                                             {formatFarmTimeDetailed(todayCodeTimeSeconds)}
@@ -907,31 +1270,30 @@ export default function CodeTypingPage() {
                                     <button
                                         type="button"
                                         onClick={() => resetPractice()}
-                                        className="text-gray-400 hover:text-gray-700 hover:scale-110 active:scale-95 transition cursor-pointer p-1.5"
-                                        title="เริ่มใหม่ (Restart)"
+                                        className="text-gray-400 hover:text-gray-700 hover:scale-110 active:scale-95 transition-transform cursor-pointer p-1.5"
+                                        title="เริ่มพิมพ์โค้ดชุดนี้ใหม่ตั้งแต่ต้น (Restart)"
                                     >
                                         <RefreshCw size={18} />
                                     </button>
                                 </div>
                             </div>
 
-                            {/* ⌨️ Code Text Stream Area (Farm Mode Ultra-Smooth Engine) */}
+                            {/* ⌨️ Code Text Stream Area (High-Performance Memoized Engine สำหรับคอมทุกสเปค) */}
                             <div
                                 ref={textContainerRef}
                                 className="relative flex-1 overflow-x-auto overflow-y-auto max-h-[380px] font-mono text-lg sm:text-xl leading-relaxed py-4 pr-2 antialiased select-none"
                             >
-                                {/* 🎯 Farm Mode Container-Level Floating Caret (เลื่อนสมูท นุ่มนวล ไม่ดันตัวหนังสือ 100%) */}
-                                {!isFinished && caretCoords.height > 0 && (
-                                    <div
-                                        className="absolute left-0 top-0 w-[2.5px] bg-[#5cb5db] rounded-full pointer-events-none z-30 animate-pulse"
-                                        style={{
-                                            height: `${caretCoords.height}px`,
-                                            transform: `translate3d(${caretCoords.left}px, ${caretCoords.top}px, 0)`,
-                                            transition: 'transform 80ms ease-out',
-                                            willChange: 'transform',
-                                        }}
-                                    />
-                                )}
+                                {/* 🎯 Direct-DOM GPU Caret (เลื่อนสมูท 60fps โดยไม่ก่อให้เกิด React Re-render และไม่ใช้ animate-pulse ที่กินเครื่อง) */}
+                                <div
+                                    ref={caretElRef}
+                                    className="absolute left-0 top-0 w-[2.5px] bg-[#5cb5db] rounded-full pointer-events-none z-30"
+                                    style={{
+                                        height: '22px',
+                                        transform: 'translate3d(0px, 0px, 0)',
+                                        transition: 'transform 65ms ease-out',
+                                        willChange: 'transform',
+                                    }}
+                                />
 
                                 {/* Reference span สำหรับวัดความกว้างของตัวที่พิมพ์ในคำ เพื่อวางตำแหน่ง Caret ให้เป๊ะ */}
                                 <span
@@ -960,60 +1322,22 @@ export default function CodeTypingPage() {
                                                     </span>
                                                 )}
 
-                                                {/* Words on this line */}
+                                                {/* Words on this line (Memoized to prevent lag on school PCs) */}
                                                 {line.words.map((wToken) => {
                                                     const isCompleted = wToken.globalIdx < activeWordIdx;
                                                     const isActive = wToken.globalIdx === activeWordIdx;
-                                                    const targetWord = wToken.word;
-                                                    const targetChars = targetWord.split('');
 
                                                     return (
-                                                        <React.Fragment key={wToken.globalIdx}>
-                                                            <span
-                                                                ref={el => { wordElementsRef.current[wToken.globalIdx] = el; }}
-                                                                className="relative inline-flex items-baseline font-mono"
-                                                            >
-                                                                {/* 🔒 ทุกตัวอักษรมีโครงสร้าง DOM เท่ากัน 100% ป้องกันตัวอักษรขยับหรือกระตุก */}
-                                                                {targetChars.map((char, cIdx) => {
-                                                                    let colorClass = untypedClass;
-
-                                                                    if (isCompleted) {
-                                                                        const userTyped = typedWordsHistory[wToken.globalIdx] || '';
-                                                                        const isCorrect = cIdx < userTyped.length && userTyped[cIdx] === char;
-                                                                        colorClass = isCorrect ? 'text-gray-800' : 'text-red-500';
-                                                                    } else if (isActive) {
-                                                                        const isTyped = cIdx < inputBuffer.length;
-                                                                        if (isTyped) {
-                                                                            const isCorrect = inputBuffer[cIdx] === char;
-                                                                            colorClass = isCorrect ? 'text-gray-800' : 'text-red-500';
-                                                                        }
-                                                                    }
-
-                                                                    return (
-                                                                        <span key={cIdx} className={colorClass}>
-                                                                            {char}
-                                                                        </span>
-                                                                    );
-                                                                })}
-
-                                                                {/* ตัวอักษรที่พิมพ์เกินคำเป้าหมาย (Overflow Characters) */}
-                                                                {isActive && inputBuffer.length > targetWord.length && (
-                                                                    <span className="text-red-500">
-                                                                        {inputBuffer.slice(targetWord.length)}
-                                                                    </span>
-                                                                )}
-                                                                {isCompleted && (typedWordsHistory[wToken.globalIdx]?.length || 0) > targetWord.length && (
-                                                                    <span className="text-red-500">
-                                                                        {typedWordsHistory[wToken.globalIdx].slice(targetWord.length)}
-                                                                    </span>
-                                                                )}
-                                                            </span>
-
-                                                            {/* Fixed Monospace Space between words */}
-                                                            {!wToken.isLastInLine && (
-                                                                <span className={`select-none font-mono ${untypedClass}`}> </span>
-                                                            )}
-                                                        </React.Fragment>
+                                                        <MemoCodeWord
+                                                            key={wToken.globalIdx}
+                                                            wToken={wToken}
+                                                            isCompleted={isCompleted}
+                                                            isActive={isActive}
+                                                            activeInput={isActive ? inputBuffer : ''}
+                                                            completedTyped={isCompleted ? typedWordsHistory[wToken.globalIdx] : undefined}
+                                                            untypedClass={untypedClass}
+                                                            registerWordRef={registerWordRef}
+                                                        />
                                                     );
                                                 })}
                                             </div>
@@ -1025,8 +1349,8 @@ export default function CodeTypingPage() {
                             {/* Bottom Helper Bar */}
                             <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-400">
                                 <div className="flex items-center gap-2">
-                                    <span className="w-2 h-2 rounded-full bg-[#5cb5db] animate-ping" />
-                                    <span>เคาะ <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded font-bold border border-gray-200">Spacebar</kbd> เพื่อจบคำ หรือ <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded font-bold border border-gray-200">Enter</kbd> เมื่อจบบรรทัด</span>
+                                    <span className="w-2 h-2 rounded-full bg-[#5cb5db]" />
+                                    <span>เคาะ <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded font-bold border border-gray-200">Spacebar</kbd> เพื่อจบคำ หรือ <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded font-bold border border-gray-200">Enter</kbd> เมื่อจบบรรทัด (เซฟจุดที่พิมพ์อัตโนมัติ)</span>
                                 </div>
                                 <div className="flex items-center gap-3 font-mono">
                                     <span>คำ: {activeWordIdx} / {allTokens.length}</span>
@@ -1040,7 +1364,7 @@ export default function CodeTypingPage() {
 
             {/* 📝 Modal: ใส่โค้ดของคุณ (Custom Snippet Modal) */}
             {isCustomModalOpen && (
-                <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+                <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
                     <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-blue-50">
                         <div className="flex items-center justify-between pb-4 border-b border-gray-100 mb-5">
                             <div className="flex items-center gap-2.5">

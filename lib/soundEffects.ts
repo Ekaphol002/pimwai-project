@@ -172,8 +172,13 @@ class SoundManager {
 
         let audio = pool.find(a => a.paused || a.ended);
         if (!audio) {
-            audio = new Audio(sound.file);
-            pool.push(audio);
+            if (pool.length < 6) {
+                audio = new Audio(sound.file);
+                pool.push(audio);
+            } else {
+                // รีไซเคิลตัวแรกใน pool ทันทีเมื่อครบ 6 ตัว ป้องกัน Memory Leak และกันคอมเก่าแล็คตอนเล่นนานๆ
+                audio = pool[0];
+            }
         }
 
         audio.volume = this.sfxVolume;
