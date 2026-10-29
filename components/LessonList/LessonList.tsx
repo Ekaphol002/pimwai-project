@@ -1,10 +1,9 @@
 "use client";
 
-import { Play, RotateCcw, Star, Award, ArrowRight, Check } from 'lucide-react';
+import { Play, RotateCcw, Star, Check } from 'lucide-react';
 import Link from 'next/link';
 
-// --- 1. Interfaces (ปรับปรุงใหม่ให้รับข้อมูลจาก DB ได้) ---
-export interface SubLesson { // export เพื่อให้ไฟล์อื่นเรียกใช้ได้
+export interface SubLesson {
   id: string;
   title?: string;
   status: string; // 'not_started' | 'completed'
@@ -27,10 +26,9 @@ export interface LessonUnit {
 interface LessonListProps {
   title: string;
   introText?: string;
-  lessons: LessonUnit[]; // รับ Array ของ LessonUnit ที่ถูกต้อง
+  lessons: LessonUnit[];
 }
 
-// --- 2. Button Function ---
 function LessonButton({
   status,
   lessonId,
@@ -57,7 +55,7 @@ function LessonButton({
 
   if (status === 'completed') {
     return (
-      <Link href={targetUrl}>
+      <Link href={targetUrl} rel="nofollow">
         <button className={`${baseStyle} bg-white text-green-700 hover:bg-gray-100`}>
           <RotateCcw className="w-3.5 h-3.5" />
           Restart
@@ -67,7 +65,7 @@ function LessonButton({
   }
   if (status === 'resume') {
     return (
-      <Link href={targetUrl}>
+      <Link href={targetUrl} rel="nofollow">
         <button className={`${baseStyle} bg-yellow-400 text-yellow-900 hover:bg-yellow-500`}>
           <Play className="w-3.5 h-3.5 mr-0.5" fill="currentColor" />
           Resume
@@ -77,7 +75,7 @@ function LessonButton({
   }
   if (status === 'start') {
     return (
-      <Link href={targetUrl}>
+      <Link href={targetUrl} rel="nofollow">
         <button className={`${baseStyle} bg-blue-200 text-white hover:bg-blue-200`}>
           <Play className="w-3.5 h-3.5 mr-0.5" fill="currentColor" />
           Start
@@ -88,7 +86,6 @@ function LessonButton({
   return null;
 }
 
-// --- 3. Interactive Bar Component ---
 function InteractiveBar({
   status,
   lessonId,
@@ -110,7 +107,6 @@ function InteractiveBar({
   isNextUp?: boolean,
   label?: string
 }) {
-
   let colorClass = 'bg-gray-200';
   let isClickable = false;
   const hasPlayed = status === 'completed' || isUnitCompleted || (status === 'resume' && stars > 0);
@@ -126,7 +122,6 @@ function InteractiveBar({
       colorClass = 'bg-yellow-400 hover:bg-yellow-500';
       isClickable = true;
     } else if (isNextUp) {
-      // ปกติสีเทา แต่ Hover แล้วเป็นสีเหลือง
       colorClass = 'bg-gray-200 hover:bg-yellow-400';
       isClickable = true;
     }
@@ -164,7 +159,7 @@ function InteractiveBar({
       </div>
 
       {isClickable ? (
-        <Link href={`/lesson/${lessonId}/${subLessonId}`} className="block w-full cursor-pointer">
+        <Link href={`/lesson/${lessonId}/${subLessonId}`} rel="nofollow" className="block w-full cursor-pointer">
           {barContent}
         </Link>
       ) : (
@@ -176,9 +171,7 @@ function InteractiveBar({
   );
 }
 
-// --- 4. Main Component ---
 export default function LessonList({ title, lessons }: LessonListProps) {
-
   const cleanTitle = (t: string) => {
     const parts = t.split(':');
     return parts.length > 1 ? parts[1].trim() : t;
@@ -188,11 +181,16 @@ export default function LessonList({ title, lessons }: LessonListProps) {
     <div className="w-[90%] bg-[#5cb5db] rounded-b-lg p-6 pt-1 text-white shadow-xl text-left font-logo ml-11">
       <hr className="border-1 mt-4 mb-4" />
 
-      <h2 className="text-2xl mb-4 font-bold animate-fadeInDown">
-        {title}
-      </h2>
+      <div className="mb-4 animate-fadeInDown">
+        <h1 className="text-2xl font-bold">
+          {title} — บทเรียนฝึกพิมพ์สัมผัส 10 นิ้ว
+        </h1>
+        <p className="text-xs sm:text-sm text-white/90 font-medium mt-1">
+          ฝึกวางนิ้วตามหลักการพิมพ์สัมผัสตั้งแต่แป้นเหย้า (ฟ ห ก ด ่ า ส ว) แป้นบน แป้นล่าง สระ และวรรณยุกต์อย่างเป็นระบบ
+        </p>
+      </div>
 
-      {/* 🏆 Victory Celebration Banner (อยู่ใต้หัวข้อแบบฝึกหัด และสีป้ายปลดล็อกเปลี่ยนตามสกิลบัฟ) */}
+      {/* 🏆 Victory Celebration Banner */}
       {lessons.length > 0 && lessons.every(l => l.status === 'completed') && (() => {
         const isBeginner = title.includes('เริ่มต้น') || title.includes('Beginner');
         const isIntermediate = title.includes('ปานกลาง') || title.includes('Intermediate');
@@ -200,7 +198,6 @@ export default function LessonList({ title, lessons }: LessonListProps) {
         const nextLabel = 'ระดับต่อไป';
         const buffName = isBeginner ? 'เกราะป้องกัน Double Shield' : isIntermediate ? 'คำทองคำ Golden Words +15%' : 'สถานะปรมาจารย์พิมพ์ไว';
 
-        // สีป้ายปลดล็อกตามสกิล: เขียว (เกราะป้องกัน), ส้ม/ทอง (คำทองคำ), ม่วง (บัฟระดับสูง)
         const badgeColor = isBeginner
           ? 'bg-emerald-500 text-white border-emerald-400'
           : isIntermediate
@@ -216,9 +213,9 @@ export default function LessonList({ title, lessons }: LessonListProps) {
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2.5 flex-wrap">
-                  <h3 className="text-base sm:text-lg font-bold text-gray-800 tracking-tight">
+                  <h2 className="text-base sm:text-lg font-bold text-gray-800 tracking-tight">
                     สำเร็จการฝึกฝน{title.replace('แบบฝึกหัด - ', '')}ครบทุกบทเรียน
-                  </h3>
+                  </h2>
                   <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${badgeColor}`}>
                     ปลดล็อก {buffName}
                   </span>
@@ -256,7 +253,6 @@ export default function LessonList({ title, lessons }: LessonListProps) {
             `}
             style={{ animationDelay: `${index * 0.05}s` }}
           >
-
             <div className="flex items-center gap-4">
               <div className="flex-1 flex items-center gap-4">
                 <div className={`
@@ -268,10 +264,10 @@ export default function LessonList({ title, lessons }: LessonListProps) {
                 </div>
 
                 <div className="flex-1">
-                  <h3 className={`text-xl font-bold ${unit.status === 'completed' ? 'text-white' : 'text-gray-800'
+                  <h2 className={`text-xl font-bold ${unit.status === 'completed' ? 'text-white' : 'text-gray-800'
                     }`}>
                     {unit.title}
-                  </h3>
+                  </h2>
 
                   {unit.avgSpeed && (
                     <div className="pt-1">
@@ -299,8 +295,6 @@ export default function LessonList({ title, lessons }: LessonListProps) {
             {unit.subLessons && (unit.status === 'completed' || unit.status === 'resume' || unit.status === 'start') && (
               <div className="flex gap-1.5 pt-2 h-3 items-end">
                 {unit.subLessons?.map((subLesson, subIndex) => {
-                  const isDone = subLesson.status === 'completed' || unit.status === 'completed';
-                  // (Mockup Data สำหรับการแสดงผล - อนาคตจะเอาค่าจริงจาก DB)
                   const displayStars = subLesson.stars || 0;
                   const displayWpm = subLesson.wpm || 0;
                   const displayAcc = subLesson.acc || 0;
@@ -325,7 +319,6 @@ export default function LessonList({ title, lessons }: LessonListProps) {
                 })}
               </div>
             )}
-
           </div>
         ))}
       </div>

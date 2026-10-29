@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { User, Loader2, Star, Crown, Flame, Flag, AlertTriangle, X, Check, Sparkles } from 'lucide-react';
+import { User, Loader2, Star, Crown, Flame, Flag, AlertTriangle, X } from 'lucide-react';
 import { useSession } from "next-auth/react";
 import toast, { Toaster } from 'react-hot-toast';
 import { calculateRankInfo } from '@/lib/rankUtils';
@@ -30,7 +30,7 @@ interface LeaderboardItem {
 }
 
 export default function LeaderboardPage() {
-    const { data: session, status } = useSession();
+    const { data: session } = useSession();
 
     const userData = session?.user as UserWithId | undefined;
     const currentUserId = userData?.id;
@@ -145,7 +145,6 @@ export default function LeaderboardPage() {
         }
     };
 
-    const topUser = leaderboardData.length > 0 ? leaderboardData[0] : null;
     const isMeInList = (userId: string) => userId === currentUserId;
 
     const filteredLeaderboard = leaderboardData.filter(item => {
@@ -153,17 +152,7 @@ export default function LeaderboardPage() {
         return true;
     });
 
-    const championRankInfo = (topUser && mode === 'rank') ? calculateRankInfo(topUser.displayVal2, true) : { rank: 1, stars: 0, rankName: '', thaiRankName: '' };
-
-    if (status === "loading" || isInitialLoading) {
-        return (
-            <div className="h-screen flex flex-col items-center justify-center text-gray-400">
-                <Loader2 size={64} className="animate-spin mb-4 text-[#5cb5db]" />
-                <p className="text-xl font-bold">กำลังโหลดข้อมูล...</p>
-            </div>
-        );
-    }
-
+    const isLoadingRows = isInitialLoading || isTableLoading;
     const top1 = filteredLeaderboard[0];
     const top2 = filteredLeaderboard[1];
     const top3 = filteredLeaderboard[2];
@@ -185,12 +174,12 @@ export default function LeaderboardPage() {
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 z-20 gap-4">
                         <div className="flex flex-col">
                             <div className="flex items-center gap-3">
-                                <h2 className="text-white text-3xl sm:text-4xl font-black tracking-wide drop-shadow-sm logo-font">
+                                <h1 className="text-white text-3xl sm:text-4xl font-black tracking-wide drop-shadow-sm logo-font">
                                     Leaderboard
-                                </h2>
+                                </h1>
                             </div>
                             <p className="text-white/80 text-xs sm:text-sm font-medium mt-1">
-                                ตารางจัดอันดับผู้ฝึกพิมพ์ดีดที่มีความเร็ว ความแม่นยำ และความต่อเนื่องสูงสุด
+                                ตารางจัดอันดับผู้ฝึกพิมพ์ดีดที่มีความเร็ว (WPM) ความแม่นยำ ระดับแรงค์ และความต่อเนื่องสูงสุดในประเทศไทย
                             </p>
                         </div>
 
@@ -253,7 +242,7 @@ export default function LeaderboardPage() {
                         {filteredLeaderboard.length > 0 && (
                             <div
                                 key={`${mode}-${selectedTime}`}
-                                className={`flex justify-center items-end gap-2 sm:gap-6 md:gap-8 relative z-10 ${isTableLoading ? 'opacity-0' : 'animate-slide-up-podium'
+                                className={`flex justify-center items-end gap-2 sm:gap-6 md:gap-8 relative z-10 ${isLoadingRows ? 'opacity-0' : 'animate-slide-up-podium'
                                     }`}
                             >
                                 {top2 && (
@@ -267,6 +256,7 @@ export default function LeaderboardPage() {
                                             <div className="flex items-center gap-2 bg-white/95 backdrop-blur-sm pl-1 pr-3 sm:pr-4 py-1 rounded-full border border-gray-100 shadow-sm">
                                                 <img
                                                     src={top2.user.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(top2.user.username)}&background=eceff1`}
+                                                    alt={top2.user.username}
                                                     className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 rounded-full object-cover"
                                                     onError={(e) => { e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(top2.user.username)}&background=eceff1`; }}
                                                 />
@@ -288,6 +278,7 @@ export default function LeaderboardPage() {
                                             <div className="flex items-center gap-2 bg-white/95 backdrop-blur-sm pl-1 pr-3 sm:pr-4 py-1 rounded-full border border-gray-100 shadow-sm">
                                                 <img
                                                     src={top1.user.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(top1.user.username)}&background=eceff1`}
+                                                    alt={top1.user.username}
                                                     className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 rounded-full object-cover"
                                                     onError={(e) => { e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(top1.user.username)}&background=eceff1`; }}
                                                 />
@@ -310,6 +301,7 @@ export default function LeaderboardPage() {
                                             <div className="flex items-center gap-2 bg-white/95 backdrop-blur-sm pl-1 pr-3 sm:pr-4 py-1 rounded-full border border-gray-100 shadow-sm">
                                                 <img
                                                     src={top3.user.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(top3.user.username)}&background=eceff1`}
+                                                    alt={top3.user.username}
                                                     className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 rounded-full object-cover"
                                                     onError={(e) => { e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(top3.user.username)}&background=eceff1`; }}
                                                 />
@@ -326,7 +318,7 @@ export default function LeaderboardPage() {
                     {/* Leaderboard Table Container */}
                     <div className="bg-white/95 backdrop-blur-xl rounded-[2rem] flex flex-col flex-grow shadow-inner overflow-hidden relative z-20 border border-white">
                         <div className="overflow-y-auto flex-grow h-[500px] sm:h-[600px] [&::-webkit-scrollbar]:hidden p-2 sm:p-4" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                            {isTableLoading ? (
+                            {isLoadingRows ? (
                                 <div className="flex flex-col gap-2 animate-pulse mt-2">
                                     {[1, 2, 3, 4, 5, 6, 7].map(i => (
                                         <div key={i} className="h-[72px] sm:h-[88px] bg-gray-200/50 rounded-2xl w-full"></div>
@@ -334,7 +326,7 @@ export default function LeaderboardPage() {
                                 </div>
                             ) : filteredLeaderboard.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center h-full">
-                                    <img src="/ranktest.png" className="h-32 mb-4 opacity-30 grayscale" />
+                                    <img src="/ranktest.png" alt="Empty Leaderboard" className="h-32 mb-4 opacity-30 grayscale" />
                                     <span className="text-gray-400 font-bold text-2xl">ยังไม่มีข้อมูลในหมวดหมู่นี้</span>
                                 </div>
                             ) : (
@@ -346,7 +338,7 @@ export default function LeaderboardPage() {
                                         const effectiveExpForRank = mode === 'rank' ? user.displayVal2 : (user.user?.currentExp || 0);
                                         const { rank: userRank, stars: userStars } = calculateRankInfo(effectiveExpForRank, index < 10);
 
-                                        let rankBadge = (
+                                        const rankBadge = (
                                             <span className={`text-xl sm:text-2xl font-black w-10 text-center logo-font ${isMe ? 'text-white' : 'text-gray-500'}`}>
                                                 {displayRank}
                                             </span>
@@ -483,7 +475,7 @@ export default function LeaderboardPage() {
                         </div>
 
                         {/* Sticky "My Rank" Bottom Bar */}
-                        {myRankData && !isTableLoading && (
+                        {myRankData && !isLoadingRows && (
                             <div className="border-t border-gray-100 bg-gray-50/90 backdrop-blur-md p-4 sm:px-8 sm:py-5 flex items-center justify-between">
                                 <div className="flex items-center gap-4 sm:gap-6">
                                     <div className="flex flex-col items-center justify-center border-r border-gray-200 pr-4 sm:pr-6">
@@ -581,7 +573,7 @@ export default function LeaderboardPage() {
                         )}
 
                         {/* Guest Mode Notice in Leaderboard */}
-                        {!session?.user && !isTableLoading && (
+                        {!session?.user && !isLoadingRows && (
                             <div className="border-t border-gray-100 bg-gray-100 backdrop-blur-md p-4 sm:px-8 sm:py-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
                                 <div className="flex items-center gap-3">
                                     <div>
@@ -591,6 +583,7 @@ export default function LeaderboardPage() {
                                 </div>
                                 <a
                                     href="/login"
+                                    rel="nofollow"
                                     className="px-5 py-2.5 bg-[#5cb5db] hover:bg-[#4ba3c9] text-white font-bold text-xs rounded-2xl shadow-xs transition shrink-0 inline-flex items-center gap-1.5"
                                 >
                                     เข้าสู่ระบบเพื่อร่วมชิงอันดับ
