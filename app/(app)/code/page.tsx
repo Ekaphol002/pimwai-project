@@ -44,9 +44,10 @@ interface CodeLine {
     words: CodeWordToken[];
 }
 
-type ContrastLevel = 'light' | 'medium' | 'high' | 'solid';
+type ContrastLevel = 'hidden' | 'light' | 'medium' | 'high' | 'solid';
 
 const CONTRAST_CONFIG: Record<ContrastLevel, { label: string; textClass: string; desc: string }> = {
+    hidden: { label: 'ปิด', textClass: 'text-transparent', desc: '0% (ซ่อนตัวเขียนตาม แต่ตรวจปกติ)' },
     light: { label: 'อ่อน', textClass: 'text-gray-300 dark:text-gray-600', desc: '30%' },
     medium: { label: 'ปานกลาง', textClass: 'text-gray-400 dark:text-gray-500', desc: '50%' },
     high: { label: 'คมชัด', textClass: 'text-gray-500 dark:text-gray-400', desc: '70%' },
@@ -224,6 +225,7 @@ const MemoCodeWord = memo(function MemoCodeWord({
     const targetWord = wToken.word;
     const targetChars = wToken.chars;
     const currentTyped = isActive ? activeInput : (isCompleted ? (completedTyped || '') : '');
+    const isHiddenFollow = untypedClass === 'text-transparent';
 
     return (
         <>
@@ -233,20 +235,35 @@ const MemoCodeWord = memo(function MemoCodeWord({
             >
                 {targetChars.map((char, cIdx) => {
                     let colorClass = untypedClass;
+                    let displayChar = char;
 
                     if (isCompleted) {
-                        const isCorrect = cIdx < currentTyped.length && currentTyped[cIdx] === char;
-                        colorClass = isCorrect ? 'text-gray-800' : 'text-red-500';
+                        if (cIdx < currentTyped.length) {
+                            const isCorrect = currentTyped[cIdx] === char;
+                            colorClass = isCorrect ? 'text-gray-800' : 'text-red-500';
+                            if (isHiddenFollow) {
+                                displayChar = currentTyped[cIdx];
+                            }
+                        } else {
+                            // กรณีเคาะข้ามคำก่อนพิมพ์ครบทุกตัวอักษร
+                            colorClass = 'text-red-500';
+                            if (isHiddenFollow) {
+                                displayChar = '_';
+                            }
+                        }
                     } else if (isActive) {
                         if (cIdx < currentTyped.length) {
                             const isCorrect = currentTyped[cIdx] === char;
                             colorClass = isCorrect ? 'text-gray-800' : 'text-red-500';
+                            if (isHiddenFollow) {
+                                displayChar = currentTyped[cIdx];
+                            }
                         }
                     }
 
                     return (
                         <span key={cIdx} className={colorClass}>
-                            {char}
+                            {displayChar}
                         </span>
                     );
                 })}
