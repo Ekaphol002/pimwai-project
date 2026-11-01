@@ -56,70 +56,246 @@ const CONTRAST_CONFIG: Record<ContrastLevel, { label: string; textClass: string;
 
 const PRESET_SNIPPETS: CodeSnippet[] = [
     {
-        id: 'react-hook',
-        title: 'React useDebounce',
-        language: 'TypeScript',
-        code: `import { useState, useEffect } from 'react';
-
-export function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value);
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
-
-  return debouncedValue;
-}`
+        id: 'php-config',
+        title: '1. config.php',
+        language: 'PHP',
+        code: `<?php
+try {
+    $conn = new PDO("mysql:host=localhost;dbname=competition_db;charset=utf8", "root", "", [
+        PDO::ATTR_ERRMODE => PDO::ATTR_ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+    ]);
+} catch (PDOException $e) {
+    die("Connection failed: " . $e->getMessage());
+}
+?>`
     },
     {
-        id: 'nextjs-api',
-        title: 'Next.js API Route',
-        language: 'TypeScript',
-        code: `import { NextResponse } from 'next/server';
+        id: 'php-dashboard',
+        title: '2. dashboard.php',
+        language: 'PHP',
+        code: `<?php
+require_once 'auth.php';
+require_once 'config.php';
 
-export async function POST(req: Request) {
-  try {
-    const { email, password } = await req.json();
+$stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
+$stmt->execute([$_SESSION['user_id']]);
+$user = $stmt->fetch();
+?>
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>แดชบอร์ด</title>
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+</head>
+<body class="bg-light">
+<nav class="navbar navbar-dark bg-primary shadow-sm">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="dashboard.php">ระบบสมาชิก</a>
+        <div class="d-flex align-items-center gap-2 text-white">
+            <span><?= $user['firstname'] . ' ' . $user['lastname'] ?></span>
+            <a href="logout.php" class="btn btn-sm btn-light">ออกจากระบบ</a>
+        </div>
+    </div>
+</nav>
+<div class="container col-md-8 mt-4">
+    <div class="card shadow-sm p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4>สวัสดีคุณ <?= $user['firstname'] . ' ' . $user['lastname'] ?></h4>
+            <span class="badge <?= $user['role'] === 'admin' ? 'bg-danger' : 'bg-secondary' ?>">สถานะ: <?= $user['role'] ?></span>
+        </div>
+        <hr>
+        <p><b>รหัสสมาชิก (ID):</b> #<?= $user['id'] ?></p>
+        <p><b>อีเมล:</b> <?= $user['email'] ?></p>
+        <p><b>วันที่สมัครสมาชิก:</b> <?= $user['created_at'] ?></p>
+        <div class="d-flex gap-2 mt-3">
+            <?php if ($user['role'] === 'admin'): ?>
+                <a href="admin_dashboard.php" class="btn btn-dark">จัดการระบบ (Admin)</a>
+            <?php endif; ?>
+            <a href="profile.php" class="btn btn-primary">แก้ไขข้อมูลส่วนตัว</a>
+            <a href="logout.php" class="btn btn-outline-danger ms-auto">ออกจากระบบ</a>
+        </div>
+    </div>
+</div>
+</body>
+</html>`
+    },
+    {
+        id: 'php-admin-dashboard',
+        title: '3. admin_dashboard.php',
+        language: 'PHP',
+        code: `<?php
+require_once 'auth.php';
+require_once 'config.php';
 
-    if (!email || !password) {
-      return NextResponse.json({ error: 'Missing credentials' }, { status: 400 });
+if ($_SESSION['role'] !== 'admin') {
+    header("Location: dashboard.php");
+    exit();
+}
+
+if (isset($_GET['delete']) && $_GET['delete'] != $_SESSION['user_id']) {
+    $conn->prepare("DELETE FROM users WHERE id = ?")->execute([$_GET['delete']]);
+    header("Location: admin_dashboard.php");
+    exit();
+}
+
+if (isset($_GET['toggle_role']) && $_GET['toggle_role'] != $_SESSION['user_id']) {
+    $conn->prepare("UPDATE users SET role = IF(role='admin','user','admin') WHERE id = ?")->execute([$_GET['toggle_role']]);
+    header("Location: admin_dashboard.php");
+    exit();
+}
+
+$all_users = $conn->query("SELECT * FROM users ORDER BY id ASC")->fetchAll();
+?>
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>จัดการระบบ (Admin)</title>
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+</head>
+<body class="bg-light">
+<nav class="navbar navbar-dark bg-dark shadow-sm">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="admin_dashboard.php">ระบบจัดการผู้ใช้งาน (Admin)</a>
+        <div class="d-flex gap-2">
+            <a href="dashboard.php" class="btn btn-sm btn-outline-light">หน้าแดชบอร์ด</a>
+            <a href="logout.php" class="btn btn-sm btn-danger">ออกจากระบบ</a>
+        </div>
+    </div>
+</nav>
+<div class="container mt-4">
+    <div class="card shadow-sm p-4">
+        <h5 class="fw-bold mb-3">รายชื่อสมาชิกทั้งหมด (<?= count($all_users) ?> คน)</h5>
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr><th>ID</th><th>ชื่อ - นามสกุล</th><th>อีเมล</th><th>สิทธิ์</th><th>วันที่สมัคร</th><th class="text-center">จัดการ</th></tr>
+            </thead>
+            <tbody>
+                <?php foreach ($all_users as $u): ?>
+                <tr>
+                    <td>#<?= $u['id'] ?></td>
+                    <td><?= $u['firstname'] . ' ' . $u['lastname'] ?></td>
+                    <td><?= $u['email'] ?></td>
+                    <td><span class="badge <?= $u['role'] === 'admin' ? 'bg-danger' : 'bg-secondary' ?>"><?= $u['role'] ?></span></td>
+                    <td><?= $u['created_at'] ?></td>
+                    <td class="text-center">
+                        <?php if ($u['id'] != $_SESSION['user_id']): ?>
+                            <a href="?toggle_role=<?= $u['id'] ?>" class="btn btn-sm btn-outline-dark" onclick="return confirm('เปลี่ยนสิทธิ์ผู้ใช้นี้?')">สลับสิทธิ์</a>
+                            <a href="?delete=<?= $u['id'] ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('ยืนยันการลบสมาชิก?')">ลบ</a>
+                        <?php else: ?>
+                            <span class="text-muted small">บัญชีของคุณ</span>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>`
+    },
+    {
+        id: 'php-profile',
+        title: '4. profile.php',
+        language: 'PHP',
+        code: `<?php
+require_once 'auth.php';
+require_once 'config.php';
+
+$uid = $_SESSION['user_id'];
+$error = $success = '';
+
+$stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
+$stmt->execute([$uid]);
+$user = $stmt->fetch();
+
+if ($_POST) {
+    $action = $_POST['action'] ?? '';
+
+    if ($action === 'update_profile') {
+        $fn = trim($_POST['firstname']);
+        $ln = trim($_POST['lastname']);
+        if (!$fn || !$ln) {
+            $error = "กรุณากรอกชื่อและนามสกุลให้ครบ";
+        } else {
+            $conn->prepare("UPDATE users SET firstname = ?, lastname = ? WHERE id = ?")->execute([$fn, $ln, $uid]);
+            $_SESSION['firstname'] = $user['firstname'] = $fn;
+            $_SESSION['lastname']  = $user['lastname']  = $ln;
+            $success = "บันทึกข้อมูลส่วนตัวเรียบร้อยแล้ว";
+        }
+    } elseif ($action === 'change_password') {
+        $old = $_POST['old_password'];
+        $new = $_POST['new_password'];
+        $con = $_POST['confirm_password'];
+
+        if (!password_verify($old, $user['password'])) $error = "รหัสผ่านเดิมไม่ถูกต้อง";
+        elseif (strlen($new) < 6)                      $error = "รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร";
+        elseif ($new !== $con)                         $error = "รหัสผ่านใหม่และการยืนยันไม่ตรงกัน";
+        else {
+            $hash = password_hash($new, PASSWORD_BCRYPT);
+            $conn->prepare("UPDATE users SET password = ? WHERE id = ?")->execute([$hash, $uid]);
+            $user['password'] = $hash;
+            $success = "เปลี่ยนรหัสผ่านสำเร็จเรียบร้อยแล้ว";
+        }
     }
+}
+?>
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>แก้ไขข้อมูลส่วนตัว</title>
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+</head>
+<body class="bg-light">
+<nav class="navbar navbar-dark bg-primary shadow-sm">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="dashboard.php">ระบบสมาชิก</a>
+        <div class="d-flex gap-2">
+            <a href="dashboard.php" class="btn btn-sm btn-outline-light">กลับหน้าแดชบอร์ด</a>
+            <a href="logout.php" class="btn btn-sm btn-light">ออกจากระบบ</a>
+        </div>
+    </div>
+</nav>
+<div class="container col-md-7 mt-4 pb-5">
+    <?php if ($success): ?><div class="alert alert-success"><?= $success ?></div><?php endif; ?>
+    <?php if ($error): ?><div class="alert alert-danger"><?= $error ?></div><?php endif; ?>
 
-    return NextResponse.json({ success: true, message: 'Authenticated' });
-  } catch (error) {
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
-  }
-}`
-    },
-    {
-        id: 'python-algo',
-        title: 'Python Quicksort',
-        language: 'Python',
-        code: `def quicksort(arr):
-    if len(arr) <= 1:
-        return arr
-    pivot = arr[len(arr) // 2]
-    left = [x for x in arr if x < pivot]
-    middle = [x for x in arr if x == pivot]
-    right = [x for x in arr if x > pivot]
-    return quicksort(left) + middle + quicksort(right)`
-    },
-    {
-        id: 'sql-query',
-        title: 'SQL Leaderboard Query',
-        language: 'SQL',
-        code: `SELECT u.id, u.name, u.xp,
-       RANK() OVER (ORDER BY u.xp DESC) as rank_pos
-FROM "User" u
-WHERE u."showInLeaderboard" = true
-ORDER BY u.xp DESC
-LIMIT 50;`
+    <div class="card shadow-sm p-4 mb-4">
+        <h5 class="fw-bold mb-3">แก้ไขข้อมูลส่วนตัว</h5>
+        <form method="POST">
+            <input type="hidden" name="action" value="update_profile">
+            <div class="row mb-3">
+                <div class="col"><label>ชื่อจริง</label><input name="firstname" class="form-control" value="<?= $user['firstname'] ?>" required></div>
+                <div class="col"><label>นามสกุล</label><input name="lastname" class="form-control" value="<?= $user['lastname'] ?>" required></div>
+            </div>
+            <div class="mb-3"><label>อีเมล (ไม่สามารถแก้ไขได้)</label><input class="form-control bg-light" value="<?= $user['email'] ?>" disabled></div>
+            <button class="btn btn-primary">บันทึกข้อมูล</button>
+        </form>
+    </div>
+
+    <div class="card shadow-sm p-4">
+        <h5 class="fw-bold mb-3">เปลี่ยนรหัสผ่าน</h5>
+        <form method="POST">
+            <input type="hidden" name="action" value="change_password">
+            <div class="mb-3"><label>รหัสผ่านเดิม</label><input type="password" name="old_password" id="p1" class="form-control" required></div>
+            <div class="row mb-3">
+                <div class="col"><label>รหัสผ่านใหม่</label><input type="password" name="new_password" id="p2" class="form-control" minlength="6" required></div>
+                <div class="col"><label>ยืนยันรหัสผ่านใหม่</label><input type="password" name="confirm_password" id="p3" class="form-control" minlength="6" required></div>
+            </div>
+            <div class="mb-3">
+                <input type="checkbox" id="show" onclick="p1.type = p2.type = p3.type = this.checked ? 'text' : 'password'">
+                <label for="show">แสดงรหัสผ่าน</label>
+            </div>
+            <button class="btn btn-warning fw-bold">เปลี่ยนรหัสผ่าน</button>
+        </form>
+    </div>
+</div>
+</body>
+</html>`
     }
 ];
 
@@ -294,6 +470,48 @@ const MemoCodeWord = memo(function MemoCodeWord({
     );
 });
 
+// สร้างคำใบ้ขั้นตอนของบรรทัดปัจจุบัน เพื่อช่วยให้จำโครงสร้างโค้ดได้โดยไม่ต้องเปิดดูตัวเขียนตาม
+function getLineStepHint(words: CodeWordToken[]): string {
+    if (!words || words.length === 0) return '';
+    const lineStr = words.map(w => w.word).join(' ');
+
+    if (lineStr === '<?php' || lineStr === '?>') return 'เปิด/ปิดแท็ก PHP';
+    if (lineStr.includes("require_once 'auth.php'")) return 'ดึงไฟล์เช็กการล็อกอิน (auth.php)';
+    if (lineStr.includes("require_once 'config.php'")) return 'ดึงไฟล์เชื่อมต่อฐานข้อมูล (config.php)';
+    if (lineStr.includes('new PDO(')) return 'เชื่อมต่อฐานข้อมูล MySQL ด้วย PDO (localhost, competition_db, root)';
+    if (lineStr.includes('ATTR_ERRMODE')) return 'ตั้งค่า PDO ให้แจ้งเตือนข้อผิดพลาดแบบ Exception';
+    if (lineStr.includes('ATTR_DEFAULT_FETCH_MODE')) return 'ตั้งค่า PDO ให้ดึงข้อมูลเป็น Array ชื่อคอลัมน์ (FETCH_ASSOC)';
+    if (lineStr.includes('catch (PDOException')) return 'ดักจับข้อผิดพลาดกรณีต่อฐานข้อมูลไม่สำเร็จ';
+    if (lineStr.includes('die(')) return 'หยุดทำงานและแสดงข้อความเมื่อเชื่อมต่อล้มเหลว';
+    if (lineStr.includes('SELECT * FROM users WHERE id = ?')) return 'เตรียมคำสั่ง SQL ดึงข้อมูลผู้ใช้ปัจจุบันจาก id';
+    if (lineStr.includes('->execute([$_SESSION') || lineStr.includes('->execute([$uid])')) return 'ส่งค่า id ของผู้ใช้ที่ล็อกอินเข้าไปรันคำสั่ง SQL';
+    if (lineStr.includes('$user = $stmt->fetch()')) return 'ดึงข้อมูลผู้ใช้เก็บลงตัวแปร $user';
+    if (lineStr.includes("role'] !== 'admin'")) return 'เช็กสิทธิ์: ถ้าไม่ใช่ admin ให้ดีดกลับหน้า dashboard.php';
+    if (lineStr.includes("$_GET['delete']")) return 'เช็กการกดปุ่มลบสมาชิก (และห้ามลบตัวเอง)';
+    if (lineStr.includes('DELETE FROM users WHERE id = ?')) return 'สั่งลบสมาชิกออกจากตาราง users ตาม id ที่ส่งมา';
+    if (lineStr.includes("$_GET['toggle_role']")) return 'เช็กการกดปุ่มสลับสิทธิ์ (และห้ามสลับสิทธิ์ตัวเอง)';
+    if (lineStr.includes("UPDATE users SET role = IF(")) return 'สลับค่า role ระหว่าง admin กับ user ในคำสั่ง SQL เดียว';
+    if (lineStr.includes('SELECT * FROM users ORDER BY id ASC')) return 'ดึงรายชื่อสมาชิกทั้งหมดเรียงตาม id จากน้อยไปมาก';
+    if (lineStr.includes("action === 'update_profile'")) return 'ส่วนบันทึกการแก้ไขชื่อจริง-นามสกุล';
+    if (lineStr.includes('UPDATE users SET firstname = ?, lastname = ?')) return 'อัปเดตชื่อและนามสกุลลงฐานข้อมูลตาม id';
+    if (lineStr.includes("$_SESSION['firstname']")) return 'อัปเดตชื่อใน SESSION ให้เปลี่ยนทันที';
+    if (lineStr.includes("$_SESSION['lastname']")) return 'อัปเดตนามสกุลใน SESSION ให้เปลี่ยนทันที';
+    if (lineStr.includes("action === 'change_password'")) return 'ส่วนตรวจสอบและเปลี่ยนรหัสผ่านใหม่';
+    if (lineStr.includes('password_verify(')) return 'ตรวจสอบว่ารหัสผ่านเดิมตรงกับในฐานข้อมูลหรือไม่';
+    if (lineStr.includes('strlen($new) < 6')) return 'ตรวจสอบความยาวรหัสผ่านใหม่ต้องไม่ต่ำกว่า 6 ตัวอักษร';
+    if (lineStr.includes('$new !== $con')) return 'ตรวจสอบว่ารหัสผ่านใหม่และยืนยันรหัสผ่านตรงกันหรือไม่';
+    if (lineStr.includes('password_hash(')) return 'เข้ารหัสรหัสผ่านใหม่ด้วย PASSWORD_BCRYPT';
+    if (lineStr.includes('UPDATE users SET password = ?')) return 'บันทึกรหัสผ่านใหม่ที่เข้ารหัสแล้วลงฐานข้อมูล';
+    if (lineStr.includes('<link rel="stylesheet"')) return 'ดึงไฟล์ CSS ของ Bootstrap (css/bootstrap.min.css)';
+    if (lineStr.includes('<nav class="navbar')) return 'แถบเมนูด้านบน (Bootstrap Navbar)';
+    if (lineStr.includes('<table class="table')) return 'ตารางแสดงข้อมูลสมาชิก (Bootstrap Table)';
+    if (lineStr.includes('foreach ($all_users as $u)')) return 'วนลูปแสดงข้อมูลสมาชิกทีละคน ($u)';
+    if (lineStr.includes('?toggle_role=')) return 'ปุ่มกดสลับสิทธิ์พร้อม confirm ยืนยัน';
+    if (lineStr.includes('?delete=')) return 'ปุ่มกดลบสมาชิกพร้อม confirm ยืนยัน';
+    if (lineStr.includes('onclick="p1.type')) return 'ติ๊กถูกเพื่อสลับแสดง/ซ่อนรหัสผ่าน (text / password)';
+    return '';
+}
+
 export default function CodeTypingPage() {
     const { data: session } = useSession();
 
@@ -306,6 +524,16 @@ export default function CodeTypingPage() {
 
     // Contrast Level for Target Follow Text (ความเข้มตัวพิมพ์ตาม)
     const [contrastLevel, setContrastLevel] = useState<ContrastLevel>('medium');
+    const [isPeekingLine, setIsPeekingLine] = useState(false);
+    const peekTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const triggerLinePeek = useCallback(() => {
+        setIsPeekingLine(true);
+        if (peekTimeoutRef.current) clearTimeout(peekTimeoutRef.current);
+        peekTimeoutRef.current = setTimeout(() => {
+            setIsPeekingLine(false);
+        }, 2200);
+    }, []);
 
     // Form state for creating custom snippet
     const [customTitle, setCustomTitle] = useState('');
@@ -823,10 +1051,26 @@ export default function CodeTypingPage() {
     }, [totalKeystrokes, correctKeystrokes]);
 
     const currentToken = allTokens[activeWordIdx];
+    const activeLineObj = useMemo(() => {
+        if (!currentToken) return null;
+        return lines.find(l => l.lineNum === currentToken.lineNum) || null;
+    }, [lines, currentToken]);
+
+    const activeLineHint = useMemo(() => {
+        if (!activeLineObj) return '';
+        return getLineStepHint(activeLineObj.words);
+    }, [activeLineObj]);
 
     // Handle typing events strictly following Farm Mode principle
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (isFinished || !currentToken) return;
+
+        // กด Tab เพื่อแอบดูคำใบ้บรรทัดปัจจุบันชั่วคราว (มีประโยชน์มากตอนปิดตัวเขียนตาม)
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            triggerLinePeek();
+            return;
+        }
 
         const now = Date.now();
         lastTypingTimeRef.current = now;
@@ -1262,6 +1506,21 @@ export default function CodeTypingPage() {
                                     <span className="px-2.5 py-0.5 bg-gray-100 border border-gray-200 text-gray-600 font-bold text-[11px] rounded-full">
                                         {currentSnippet.language}
                                     </span>
+                                    {activeLineHint && (
+                                        <span className="px-3 py-0.5 bg-amber-50 border border-amber-200 text-amber-800 font-bold text-xs rounded-full">
+                                            💡 {activeLineHint}
+                                        </span>
+                                    )}
+                                    {contrastLevel === 'hidden' && (
+                                        <button
+                                            type="button"
+                                            onClick={triggerLinePeek}
+                                            className="px-2.5 py-0.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 font-bold text-[11px] rounded-full cursor-pointer transition-colors"
+                                            title="กดปุ่ม Tab บนคีย์บอร์ดเพื่อแอบดูบรรทัดปัจจุบันชั่วคราว 2 วินาที"
+                                        >
+                                            แอบดูบรรทัดนี้ (กด Tab)
+                                        </button>
+                                    )}
                                     {session?.user?.email && (
                                         <span
                                             className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100"
@@ -1343,6 +1602,9 @@ export default function CodeTypingPage() {
                                                 {line.words.map((wToken) => {
                                                     const isCompleted = wToken.globalIdx < activeWordIdx;
                                                     const isActive = wToken.globalIdx === activeWordIdx;
+                                                    const effectiveUntypedClass = (contrastLevel === 'hidden' && isPeekingLine && currentToken?.lineNum === line.lineNum)
+                                                        ? 'text-gray-400'
+                                                        : untypedClass;
 
                                                     return (
                                                         <MemoCodeWord
@@ -1352,7 +1614,7 @@ export default function CodeTypingPage() {
                                                             isActive={isActive}
                                                             activeInput={isActive ? inputBuffer : ''}
                                                             completedTyped={isCompleted ? typedWordsHistory[wToken.globalIdx] : undefined}
-                                                            untypedClass={untypedClass}
+                                                            untypedClass={effectiveUntypedClass}
                                                             registerWordRef={registerWordRef}
                                                         />
                                                     );
