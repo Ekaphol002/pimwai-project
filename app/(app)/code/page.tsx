@@ -1161,8 +1161,8 @@ export default function CodeTypingPage() {
                         /* Results Screen inside Card */
                         <div className="py-6 flex flex-col justify-between flex-1">
                             <div className="text-center">
-                                <div className="inline-flex items-center justify-center p-3.5 bg-emerald-50 text-emerald-500 rounded-3xl mb-4 border border-emerald-100">
-                                    <CheckCircle2 size={44} />
+                                <div className="inline-flex items-center justify-center text-emerald-500 mb-3">
+                                    <CheckCircle2 size={48} />
                                 </div>
                                 <h2 className="text-2xl sm:text-3xl font-black text-gray-800 tracking-tight mb-2">
                                     ยอดเยี่ยม! คุณพิมพ์โค้ดชุดนี้ผ่านแล้ว
