@@ -48,10 +48,10 @@ type ContrastLevel = 'hidden' | 'light' | 'medium' | 'high' | 'solid';
 
 const CONTRAST_CONFIG: Record<ContrastLevel, { label: string; textClass: string; desc: string }> = {
     hidden: { label: 'ปิด', textClass: 'text-transparent', desc: '0% (ซ่อนตัวเขียนตาม แต่ตรวจปกติ)' },
-    light: { label: 'อ่อน', textClass: 'text-gray-300 dark:text-gray-600', desc: '30%' },
-    medium: { label: 'ปานกลาง', textClass: 'text-gray-400 dark:text-gray-500', desc: '50%' },
-    high: { label: 'คมชัด', textClass: 'text-gray-500 dark:text-gray-400', desc: '70%' },
-    solid: { label: 'เข้มชัดเจน', textClass: 'text-gray-700 dark:text-gray-200', desc: '90%' },
+    light: { label: 'อ่อน', textClass: 'text-gray-300', desc: '30%' },
+    medium: { label: 'ปานกลาง', textClass: 'text-gray-400', desc: '50%' },
+    high: { label: 'คมชัด', textClass: 'text-gray-500', desc: '70%' },
+    solid: { label: 'เข้มชัดเจน', textClass: 'text-gray-700', desc: '90%' },
 };
 
 const PRESET_SNIPPETS: CodeSnippet[] = [
@@ -1662,7 +1662,7 @@ export default function CodeTypingPage() {
                                     value={customTitle}
                                     onChange={(e) => setCustomTitle(e.target.value)}
                                     placeholder="เช่น My Algorithm, Auth Middleware..."
-                                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:border-[#5cb5db] focus:bg-white transition"
+                                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-[#5cb5db] focus:bg-white transition"
                                     maxLength={40}
                                     required
                                 />
@@ -1675,7 +1675,7 @@ export default function CodeTypingPage() {
                                 <select
                                     value={customLanguage}
                                     onChange={(e) => setCustomLanguage(e.target.value)}
-                                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:border-[#5cb5db] focus:bg-white transition cursor-pointer"
+                                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm text-gray-800 focus:outline-none focus:border-[#5cb5db] focus:bg-white transition cursor-pointer"
                                 >
                                     <option value="TypeScript">TypeScript</option>
                                     <option value="JavaScript">JavaScript</option>
@@ -1699,7 +1699,7 @@ export default function CodeTypingPage() {
                                     onChange={(e) => setCustomCode(e.target.value)}
                                     rows={8}
                                     placeholder="// Paste your code here..."
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl font-mono text-xs sm:text-sm focus:outline-none focus:border-[#5cb5db] focus:bg-white transition"
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl font-mono text-xs sm:text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-[#5cb5db] focus:bg-white transition"
                                     required
                                 />
                             </div>
