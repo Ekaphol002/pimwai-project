@@ -61,10 +61,7 @@ const PRESET_SNIPPETS: CodeSnippet[] = [
         language: 'PHP',
         code: `<?php
 try {
-    $conn = new PDO("mysql:host=localhost;dbname=competition_db;charset=utf8", "root", "", [
-        PDO::ATTR_ERRMODE => PDO::ATTR_ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
-    ]);
+    $conn = new PDO("mysql:host=localhost;dbname=competition_db;charset=utf8", "root", "");
 } catch (PDOException $e) {
     die("Connection failed: " . $e->getMessage());
 }
@@ -1057,9 +1054,9 @@ export default function CodeTypingPage() {
     }, [lines, currentToken]);
 
     const activeLineHint = useMemo(() => {
-        if (!activeLineObj) return '';
+        if (currentSnippet.isCustom || !activeLineObj) return '';
         return getLineStepHint(activeLineObj.words);
-    }, [activeLineObj]);
+    }, [currentSnippet.isCustom, activeLineObj]);
 
     // Handle typing events strictly following Farm Mode principle
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -1506,29 +1503,20 @@ export default function CodeTypingPage() {
                                     <span className="px-2.5 py-0.5 bg-gray-100 border border-gray-200 text-gray-600 font-bold text-[11px] rounded-full">
                                         {currentSnippet.language}
                                     </span>
-                                    {activeLineHint && (
-                                        <span className="px-3 py-0.5 bg-amber-50 border border-amber-200 text-amber-800 font-bold text-xs rounded-full">
-                                            💡 {activeLineHint}
+                                    {!currentSnippet.isCustom && activeLineHint && (
+                                        <span className="px-3 py-1 bg-gray-800 text-white font-bold text-xs rounded-full shadow-xs">
+                                            คำใบ้: {activeLineHint}
                                         </span>
                                     )}
-                                    {contrastLevel === 'hidden' && (
+                                    {!currentSnippet.isCustom && contrastLevel === 'hidden' && (
                                         <button
                                             type="button"
                                             onClick={triggerLinePeek}
-                                            className="px-2.5 py-0.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 font-bold text-[11px] rounded-full cursor-pointer transition-colors"
+                                            className="px-3 py-1 bg-[#0c648b] hover:bg-[#094b69] text-white font-bold text-xs rounded-full shadow-xs cursor-pointer transition-colors"
                                             title="กดปุ่ม Tab บนคีย์บอร์ดเพื่อแอบดูบรรทัดปัจจุบันชั่วคราว 2 วินาที"
                                         >
                                             แอบดูบรรทัดนี้ (กด Tab)
                                         </button>
-                                    )}
-                                    {session?.user?.email && (
-                                        <span
-                                            className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100"
-                                            title="บันทึกเวลาและจุดที่พิมพ์ค้างไว้เข้าในรหัสอัตโนมัติ สลับคอมเล่นต่อได้ทันที"
-                                        >
-                                            <Cloud size={11} className={isSyncingProgress ? "animate-bounce" : ""} />
-                                            <span className="hidden sm:inline">{isSyncingProgress ? 'กำลังซิงค์...' : 'ซิงค์ในรหัสแล้ว'}</span>
-                                        </span>
                                     )}
                                 </div>
 
