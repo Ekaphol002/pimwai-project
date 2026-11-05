@@ -166,8 +166,9 @@ export default function RootLayout({
   };
 
   return (
-    <html lang="th">
+    <html lang="th" style={{ colorScheme: 'light only' }}>
       <head>
+        <meta name="color-scheme" content="light only" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

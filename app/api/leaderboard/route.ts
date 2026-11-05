@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { calculateTotalDays, toDateKey } from '@/lib/streakUtils';
+import { calculateCurrentStreak, calculateTotalDays, toDateKey } from '@/lib/streakUtils';
 import { calculateRankInfo } from '@/lib/rankUtils';
 
 export const dynamic = 'force-dynamic';
@@ -100,6 +100,9 @@ export async function GET(request: Request) {
         // ---------------------------------------------------------
         else if (mode === 'rank') {
             const users = await prisma.user.findMany({
+                where: {
+                    showInLeaderboard: { not: false }
+                },
                 orderBy: [
                     { currentExp: 'desc' }, // EXP มากสุดขึ้นก่อน
                     { rank: 'desc' }
@@ -151,48 +154,58 @@ export async function GET(request: Request) {
             }
         }
         else if (mode === 'streak') {
-            const allUsers = await prisma.user.findMany({
-                select: { id: true, username: true, name: true, image: true, rank: true, currentExp: true }
+            // คำนวณจำนวนวันที่เล่นทั้งหมด (Total Days) ในระดับ Database (PostgreSQL) โดยตรง
+            // เพื่อไม่ต้องดึงข้อมูล 85,000+ แถวมาประมวลผลใน Node.js ซึ่งทำให้โหลดช้าหรือค้าง
+            const streakRows = await prisma.$queryRaw<{ userId: string; total_days: number }[]>`
+                SELECT "userId", COUNT(DISTINCT d)::int AS total_days
+                FROM (
+                    SELECT "userId", (("updatedAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Bangkok')::date AS d FROM "LessonProgress"
+                    UNION ALL
+                    SELECT "userId", (("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Bangkok')::date AS d FROM "SpeedTestResult"
+                    UNION ALL
+                    SELECT "userId", (("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Bangkok')::date AS d FROM "FarmSession"
+                    UNION ALL
+                    SELECT "id" AS "userId", (("lastPlayedAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Bangkok')::date AS d FROM "User" WHERE "lastPlayedAt" IS NOT NULL
+                ) t
+                WHERE "userId" IS NOT NULL AND d IS NOT NULL
+                GROUP BY "userId"
+                HAVING COUNT(DISTINCT d) > 0
+                ORDER BY total_days DESC
+            `;
+
+            const topCandidateIds = streakRows.slice(0, 70).map(r => r.userId);
+            if (currentUserId && !topCandidateIds.includes(currentUserId)) {
+                topCandidateIds.push(currentUserId);
+            }
+
+            const users = await prisma.user.findMany({
+                where: { id: { in: topCandidateIds } },
+                select: { id: true, username: true, name: true, image: true, rank: true, currentExp: true, showInLeaderboard: true }
+            });
+            const userMap = new Map(users.map(u => [u.id, u]));
+
+            const validList: any[] = [];
+            for (const row of streakRows) {
+                const u = userMap.get(row.userId);
+                if (!u || u.showInLeaderboard === false) continue;
+                validList.push({
+                    user: {
+                        ...u,
+                        username: u.username || u.name || "User"
+                    },
+                    userId: u.id,
+                    id: u.id,
+                    streak: row.total_days
+                });
+            }
+
+            // เรียงลำดับตามจำนวนวันที่เล่นทั้งหมด และถ้าวันเท่ากันให้เรียงตาม EXP
+            validList.sort((a, b) => {
+                if (b.streak !== a.streak) return b.streak - a.streak;
+                return (b.user.currentExp || 0) - (a.user.currentExp || 0);
             });
 
-            const [lessons, tests, farmSessions] = await Promise.all([
-                prisma.lessonProgress.findMany({
-                    select: { userId: true, updatedAt: true }
-                }),
-                prisma.speedTestResult.findMany({
-                    select: { userId: true, createdAt: true }
-                }),
-                prisma.farmSession.findMany({
-                    select: { userId: true, createdAt: true }
-                })
-            ]);
-
-            const userStreaks: any[] = [];
-            
-            allUsers.forEach((user: any) => {
-                const userLessons = lessons.filter(l => l.userId === user.id).map(l => toDateKey(l.updatedAt));
-                const userTests = tests.filter(t => t.userId === user.id).map(t => toDateKey(t.createdAt));
-                const userFarm = farmSessions.filter(f => f.userId === user.id).map(f => toDateKey(f.createdAt));
-                const activityDates = [...userLessons, ...userTests, ...userFarm];
-                
-                const streak = calculateTotalDays(activityDates);
-                if (streak > 0) {
-                    userStreaks.push({
-                        user: {
-                            ...user,
-                            username: user.username || user.name || "User"
-                        },
-                        userId: user.id,
-                        id: user.id,
-                        streak: streak
-                    });
-                }
-            });
-
-            userStreaks.sort((a, b) => b.streak - a.streak);
-            const topStreaks = userStreaks.slice(0, 50);
-            
-            leaderboard = topStreaks.map((u, index) => ({
+            leaderboard = validList.slice(0, 50).map((u, index) => ({
                 ...u,
                 rankOrder: index + 1,
                 displayVal1: u.streak,
@@ -203,12 +216,18 @@ export async function GET(request: Request) {
             if (currentUserId) {
                 myData = leaderboard.find(item => item.userId === currentUserId);
                 if (!myData) {
-                    const myUser = userStreaks.find(u => u.userId === currentUserId);
-                    if (myUser) {
+                    const myRow = streakRows.find(r => r.userId === currentUserId);
+                    const meObj = userMap.get(currentUserId);
+                    if (meObj) {
                         myData = {
-                            ...myUser,
+                            user: {
+                                ...meObj,
+                                username: meObj.username || meObj.name || "User"
+                            },
+                            userId: currentUserId,
+                            id: currentUserId,
                             rankOrder: null,
-                            displayVal1: myUser.streak,
+                            displayVal1: myRow?.total_days || 0,
                             displayVal2: 0,
                             isSpeedMode: false
                         };

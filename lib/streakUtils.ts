@@ -16,31 +16,14 @@ export const getStartOfTodayBangkok = () => {
     return new Date(`${todayStr}T00:00:00+07:00`);
 };
 
+export const calculateTotalDays = (activityDates: string[]) => {
+    if (!activityDates || activityDates.length === 0) return 0;
+    return new Set(activityDates.filter(Boolean)).size;
+};
+
+// แสดงจำนวนวันที่เข้าฝึกพิมพ์ทั้งหมด (Total Active Days) ให้ตรงกันทั้ง Navbar, ActivityGraph และ Leaderboard
 export const calculateCurrentStreak = (activityDates: string[]) => {
-    const today = new Date();
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    const todayKey = toDateKey(today);
-    const yesterdayKey = toDateKey(yesterday);
-    const activitySet = new Set(activityDates);
-
-    // ถ้าวันนี้และเมื่อวานไม่ได้ทำเลย streak เป็น 0
-    if (!activitySet.has(todayKey) && !activitySet.has(yesterdayKey)) return 0;
-
-    let streak = 0;
-    // เริ่มนับจากวันนี้ ถ้าวันนี้ไม่มีก็เริ่มนับจากเมื่อวาน
-    let checkDate = activitySet.has(todayKey) ? today : yesterday;
-
-    while (true) {
-        if (activitySet.has(toDateKey(checkDate))) {
-            streak++;
-            checkDate.setDate(checkDate.getDate() - 1); // ถอยหลังไปเรื่อยๆ
-        } else {
-            break; // หยุดเมื่อเจอวันว่าง
-        }
-    }
-    return streak;
+    return calculateTotalDays(activityDates);
 };
 
 export const calculateLongestStreak = (activityDates: string[]) => {
@@ -73,9 +56,4 @@ export const calculateLongestStreak = (activityDates: string[]) => {
     }
     
     return maxStreak;
-};
-
-export const calculateTotalDays = (activityDates: string[]) => {
-    if (!activityDates || activityDates.length === 0) return 0;
-    return new Set(activityDates.filter(Boolean)).size;
 };

@@ -43,6 +43,32 @@ export default function LeaderboardPage() {
 
     const [isInitialLoading, setIsInitialLoading] = useState(true);
     const [isTableLoading, setIsTableLoading] = useState(false);
+    const [podiumImagesReady, setPodiumImagesReady] = useState(false);
+
+    // Preload รูปตัวละครบนแท่น Top 3 ล่วงหน้า เพื่อไม่ให้ป้ายชื่อหรือพื้นหลังเด้งขึ้นมาก่อนรูปโหลดเสร็จ
+    useEffect(() => {
+        const srcs = ['/top1.png', '/top2.png', '/top3.png', '/ranktest.png'];
+        let loadedCount = 0;
+        let isCancelled = false;
+
+        const markLoaded = () => {
+            loadedCount += 1;
+            if (!isCancelled && loadedCount >= srcs.length) {
+                setPodiumImagesReady(true);
+            }
+        };
+
+        srcs.forEach((src) => {
+            const img = new window.Image();
+            img.onload = markLoaded;
+            img.onerror = markLoaded;
+            img.src = src;
+        });
+
+        return () => {
+            isCancelled = true;
+        };
+    }, []);
 
     // Custom Context Menu State (คลิกขวา)
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number; userId: string; userName: string } | null>(null);
@@ -152,7 +178,20 @@ export default function LeaderboardPage() {
         return true;
     });
 
+    const handleModeChange = (newMode: 'speed' | 'rank' | 'streak') => {
+        if (newMode === mode) return;
+        setIsTableLoading(true);
+        setMode(newMode);
+    };
+
+    const handleTimeChange = (newTime: 1 | 3 | 5) => {
+        if (newTime === selectedTime) return;
+        setIsTableLoading(true);
+        setSelectedTime(newTime);
+    };
+
     const isLoadingRows = isInitialLoading || isTableLoading;
+    const isPodiumReady = !isLoadingRows && podiumImagesReady && filteredLeaderboard.length > 0;
     const top1 = filteredLeaderboard[0];
     const top2 = filteredLeaderboard[1];
     const top3 = filteredLeaderboard[2];
@@ -186,7 +225,7 @@ export default function LeaderboardPage() {
                         {/* Mode Selector (Speed / Rank / Streak) placed at Top-Right */}
                         <div className="bg-white p-1 rounded-full flex items-center shadow-sm shrink-0">
                             <button
-                                onClick={() => setMode('speed')}
+                                onClick={() => handleModeChange('speed')}
                                 className={`px-5 py-2 rounded-full font-bold text-xs sm:text-sm transition-all duration-300 cursor-pointer ${mode === 'speed'
                                     ? 'bg-[#5cb5db] text-white shadow-xs'
                                     : 'text-[#5cb5db] hover:bg-gray-50'
@@ -195,7 +234,7 @@ export default function LeaderboardPage() {
                                 Speed
                             </button>
                             <button
-                                onClick={() => setMode('rank')}
+                                onClick={() => handleModeChange('rank')}
                                 className={`px-5 py-2 rounded-full font-bold text-xs sm:text-sm transition-all duration-300 cursor-pointer ${mode === 'rank'
                                     ? 'bg-[#5cb5db] text-white shadow-xs'
                                     : 'text-[#5cb5db] hover:bg-gray-50'
@@ -204,7 +243,7 @@ export default function LeaderboardPage() {
                                 Rank
                             </button>
                             <button
-                                onClick={() => setMode('streak')}
+                                onClick={() => handleModeChange('streak')}
                                 className={`px-5 py-2 rounded-full font-bold text-xs sm:text-sm transition-all duration-300 flex items-center gap-1 cursor-pointer ${mode === 'streak'
                                     ? 'bg-[#5cb5db] text-white shadow-xs'
                                     : 'text-[#5cb5db] hover:bg-gray-50'
@@ -222,7 +261,7 @@ export default function LeaderboardPage() {
                                 {[1, 3, 5].map((time) => (
                                     <button
                                         key={time}
-                                        onClick={() => setSelectedTime(time as 1 | 3 | 5)}
+                                        onClick={() => handleTimeChange(time as 1 | 3 | 5)}
                                         className={`px-4 sm:px-5 py-1.5 sm:py-2 rounded-full font-bold text-xs sm:text-sm transition-all duration-300 cursor-pointer ${selectedTime === time
                                             ? 'bg-[#5cb5db] text-white shadow-xs'
                                             : 'text-[#5cb5db] hover:bg-gray-50'
@@ -237,13 +276,12 @@ export default function LeaderboardPage() {
                         )}
                     </div>
 
-                    {/* Top 3 Podium Container (Kept in DOM so images preload behind table smoothly) */}
-                    <div className="relative min-h-[140px] sm:min-h-[220px] md:min-h-[280px] w-full flex items-end justify-center">
-                        {filteredLeaderboard.length > 0 && (
+                    {/* Top 3 Podium Container (แสดงเมื่อโหลดทั้งข้อมูลตารางและรูปตัวละครเสร็จสมบูรณ์แล้วเท่านั้น) */}
+                    <div className="relative min-h-[160px] sm:min-h-[240px] md:min-h-[300px] pt-4 sm:pt-6 w-full flex items-end justify-center">
+                        {isPodiumReady && (
                             <div
                                 key={`${mode}-${selectedTime}`}
-                                className={`flex justify-center items-end gap-2 sm:gap-6 md:gap-8 relative z-10 ${isLoadingRows ? 'opacity-0' : 'animate-slide-up-podium'
-                                    }`}
+                                className="flex justify-center items-end gap-2 sm:gap-6 md:gap-8 relative z-10 animate-slide-up-podium"
                             >
                                 {top2 && (
                                     <div

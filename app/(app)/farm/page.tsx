@@ -28,9 +28,11 @@ import {
     X,
     Lock,
     Check,
-    BookOpen
+    BookOpen,
+    Music
 } from 'lucide-react';
 import ExpBar from '@/components/ExpBar/ExpBar';
+import QuickAudioModal from '@/components/QuickAudioModal/QuickAudioModal';
 import { calculateRankInfo, getRankMultiplierConfig } from '@/lib/rankUtils';
 import { soundManager } from '@/lib/soundEffects';
 import { thaiKeyDisplayMap, thaiShiftKeyDisplayMap } from '@/lib/keyMaps';
@@ -111,6 +113,17 @@ export default function FarmPage() {
     const [includePunctuation, setIncludePunctuation] = useState<boolean>(false);
     const [includeNumbers, setIncludeNumbers] = useState<boolean>(false);
     const [isSoundOn, setIsSoundOn] = useState<boolean>(true);
+    const [isAudioModalOpen, setIsAudioModalOpen] = useState<boolean>(false);
+    const [isBgmPlaying, setIsBgmPlaying] = useState<boolean>(false);
+
+    // ซิงค์สถานะเสียงคีย์บอร์ดและเพลงพื้นหลังกับ soundManager แบบเรียลไทม์
+    useEffect(() => {
+        const unsub = soundManager.subscribe((state) => {
+            setIsSoundOn(state.selectedKbSound !== 'none');
+            setIsBgmPlaying(state.isBgmPlaying);
+        });
+        return () => unsub();
+    }, []);
 
     // 💾 บันทึกและจดจำตัวเลือกทั้งหมดของผู้ใช้ในรหัสนั้นๆ (Account-specific Settings Memory)
     useEffect(() => {
@@ -958,6 +971,13 @@ export default function FarmPage() {
     // 7. Keyboard Event Handler
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
+            if (isAudioModalOpen) {
+                if (e.key === 'Escape') {
+                    setIsAudioModalOpen(false);
+                }
+                return;
+            }
+
             // ข้ามการตรวจจับหากผู้ใช้กำลังพิมพ์อยู่ใน input หรือ textarea ใดๆ
             const target = e.target as HTMLElement | null;
             if (
@@ -1345,6 +1365,7 @@ export default function FarmPage() {
         correctKeystrokes,
         totalKeystrokes,
         isSoundOn,
+        isAudioModalOpen,
         mode,
         zenType,
         quoteLength,
@@ -1431,199 +1452,199 @@ export default function FarmPage() {
             <main className={`flex-1 w-full max-w-6xl mx-auto px-4 py-6 sm:py-8 flex flex-col items-center justify-center transition-all ${isFocusMode ? 'cursor-none' : ''}`}>
 
                 {/* 🌟 Top Quick Config Bar (ซ่อนอัตโนมัติเมื่อเริ่มพิมพ์ จนกว่าจะขยับเมาส์) */}
-                <div className={`bg-white px-6 py-3 rounded-3xl shadow-lg shadow-blue-500/5 flex flex-wrap items-center justify-center gap-3 sm:gap-6 mb-6 text-xs sm:text-sm font-bold text-gray-500 transition-all duration-300 ease-in-out ${isFocusMode
+                <div className={`flex flex-wrap items-stretch justify-center gap-2.5 mb-6 transition-all duration-300 ease-in-out ${isFocusMode
                     ? 'opacity-0 pointer-events-none -translate-y-4'
                     : 'opacity-100 translate-y-0'
                     }`}>
+                    <div className="bg-white px-6 py-3 rounded-3xl shadow-lg shadow-blue-500/5 flex flex-wrap items-center justify-center gap-3 sm:gap-6 text-xs sm:text-sm font-bold text-gray-500">
 
-                    {/* Sub-Group: Language */}
-                    <div className="flex items-center gap-1.5 pr-3 sm:border-r border-gray-200">
-                        <button
-                            onClick={() => handleLanguageChange('thai')}
-                            className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer ${language === 'thai' ? 'bg-[#5cb5db] text-white shadow-xs font-bold' : 'hover:text-[#5cb5db]'
-                                }`}
-                        >
-                            <span>ไทย</span>
-                        </button>
-                        <button
-                            onClick={() => handleLanguageChange('english')}
-                            className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer ${language === 'english' ? 'bg-[#5cb5db] text-white shadow-xs font-bold' : 'hover:text-[#5cb5db]'
-                                }`}
-                        >
-                            <span>English</span>
-                        </button>
-                    </div>
-
-                    {/* Sub-Group: Punctuation & Numbers (ซ่อนในโหมดบทความ) */}
-                    {!isArticleMode && (
-                        <div className="flex items-center gap-2 pr-3 sm:border-r border-gray-200">
+                        {/* Sub-Group: Language */}
+                        <div className="flex items-center gap-1.5 pr-3 sm:border-r border-gray-200">
                             <button
-                                onClick={() => setIncludePunctuation(!includePunctuation)}
-                                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg transition-all cursor-pointer ${includePunctuation ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
+                                onClick={() => handleLanguageChange('thai')}
+                                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer ${language === 'thai' ? 'bg-[#5cb5db] text-white shadow-xs font-bold' : 'hover:text-[#5cb5db]'
                                     }`}
                             >
-                                <AtSign size={14} />
-                                <span>สัญลักษณ์</span>
+                                <span>ไทย</span>
                             </button>
-
                             <button
-                                onClick={() => setIncludeNumbers(!includeNumbers)}
-                                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg transition-all cursor-pointer ${includeNumbers ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
+                                onClick={() => handleLanguageChange('english')}
+                                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer ${language === 'english' ? 'bg-[#5cb5db] text-white shadow-xs font-bold' : 'hover:text-[#5cb5db]'
                                     }`}
                             >
-                                <Hash size={14} />
-                                <span>ตัวเลข</span>
+                                <span>English</span>
                             </button>
                         </div>
-                    )}
 
-                    {/* Sub-Group: Main Mode */}
-                    <div className="flex items-center gap-2 pr-3 sm:border-r border-gray-200">
-                        <button
-                            onClick={() => setMode('time')}
-                            className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer ${mode === 'time' ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
-                                }`}
-                        >
-                            <Clock size={15} />
-                            <span>เวลา</span>
-                        </button>
-
-                        <button
-                            onClick={() => setMode('words')}
-                            className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer ${mode === 'words' ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
-                                }`}
-                        >
-                            <Type size={15} />
-                            <span>คำ</span>
-                        </button>
-
-                        <button
-                            onClick={() => setMode('zen')}
-                            className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer ${mode === 'zen' ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
-                                }`}
-                        >
-                            <InfinityIcon size={15} />
-                            <span>พิมพ์ชิลล์ (Zen)</span>
-                        </button>
-
-                        <button
-                            onClick={() => setMode('quote')}
-                            className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer ${mode === 'quote' ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
-                                }`}
-                        >
-                            <BookOpen size={15} />
-                            <span>บทความ</span>
-                        </button>
-                    </div>
-
-                    {/* Sub-Group: Values (Time / Words / Quote) */}
-                    {mode === 'time' && (
-                        <div className="flex items-center gap-1">
-                            {[15, 30, 60, 120].map((t) => (
+                        {/* Sub-Group: Punctuation & Numbers (ซ่อนในโหมดบทความ) */}
+                        {!isArticleMode && (
+                            <div className="flex items-center gap-2 pr-3 sm:border-r border-gray-200">
                                 <button
-                                    key={t}
-                                    onClick={() => setTimeLimit(t)}
-                                    className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${timeLimit === t ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
+                                    onClick={() => setIncludePunctuation(!includePunctuation)}
+                                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg transition-all cursor-pointer ${includePunctuation ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
                                         }`}
                                 >
-                                    {t}
+                                    <AtSign size={14} />
+                                    <span>สัญลักษณ์</span>
                                 </button>
-                            ))}
-                        </div>
-                    )}
 
-                    {mode === 'words' && (
-                        <div className="flex items-center gap-1">
-                            {[10, 25, 50, 100].map((w) => (
                                 <button
-                                    key={w}
-                                    onClick={() => setWordLimit(w)}
-                                    className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${wordLimit === w ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
+                                    onClick={() => setIncludeNumbers(!includeNumbers)}
+                                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg transition-all cursor-pointer ${includeNumbers ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
                                         }`}
                                 >
-                                    {w}
-                                </button>
-                            ))}
-                        </div>
-                    )}
-
-                    {mode === 'zen' && (
-                        <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-1">
-                                <button
-                                    onClick={() => setZenType('words')}
-                                    className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${zenType === 'words' ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
-                                        }`}
-                                >
-                                    คำ
-                                </button>
-                                <button
-                                    onClick={() => setZenType('quote')}
-                                    className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${zenType === 'quote' ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
-                                        }`}
-                                >
-                                    บทความ
+                                    <Hash size={14} />
+                                    <span>ตัวเลข</span>
                                 </button>
                             </div>
-                            {zenType === 'quote' && (
-                                <div className="flex items-center gap-1 border-l border-gray-200 pl-2">
-                                    {(['all', 'short', 'medium', 'long'] as const).map((qLen) => {
-                                        const labels: Record<string, string> = {
-                                            all: 'สุ่มทั้งหมด',
-                                            short: 'สั้น',
-                                            medium: 'ปานกลาง',
-                                            long: 'ยาว'
-                                        };
-                                        return (
-                                            <button
-                                                key={qLen}
-                                                onClick={() => setQuoteLength(qLen)}
-                                                className={`px-1.5 py-0.5 rounded-md text-[13px] transition-all cursor-pointer ${quoteLength === qLen ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
-                                                    }`}
-                                            >
-                                                {labels[qLen]}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
-                    )}
+                        )}
 
-                    {mode === 'quote' && (
-                        <div className="flex items-center gap-1">
-                            {(['all', 'short', 'medium', 'long'] as const).map((qLen) => {
-                                const labels: Record<string, string> = {
-                                    all: 'สุ่มทั้งหมด',
-                                    short: 'สั้น',
-                                    medium: 'ปานกลาง',
-                                    long: 'ยาว'
-                                };
-                                return (
+                        {/* Sub-Group: Main Mode */}
+                        <div className="flex items-center gap-2 pr-3 sm:border-r border-gray-200">
+                            <button
+                                onClick={() => setMode('time')}
+                                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer ${mode === 'time' ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
+                                    }`}
+                            >
+                                <Clock size={15} />
+                                <span>เวลา</span>
+                            </button>
+
+                            <button
+                                onClick={() => setMode('words')}
+                                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer ${mode === 'words' ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
+                                    }`}
+                            >
+                                <Type size={15} />
+                                <span>คำ</span>
+                            </button>
+
+                            <button
+                                onClick={() => setMode('zen')}
+                                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer ${mode === 'zen' ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
+                                    }`}
+                            >
+                                <InfinityIcon size={15} />
+                                <span>พิมพ์ชิลล์ (Zen)</span>
+                            </button>
+
+                            <button
+                                onClick={() => setMode('quote')}
+                                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer ${mode === 'quote' ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
+                                    }`}
+                            >
+                                <BookOpen size={15} />
+                                <span>บทความ</span>
+                            </button>
+                        </div>
+
+                        {/* Sub-Group: Values (Time / Words / Quote) */}
+                        {mode === 'time' && (
+                            <div className="flex items-center gap-1">
+                                {[15, 30, 60, 120].map((t) => (
                                     <button
-                                        key={qLen}
-                                        onClick={() => setQuoteLength(qLen)}
-                                        className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${quoteLength === qLen ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
+                                        key={t}
+                                        onClick={() => setTimeLimit(t)}
+                                        className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${timeLimit === t ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
                                             }`}
                                     >
-                                        {labels[qLen]}
+                                        {t}
                                     </button>
-                                );
-                            })}
-                        </div>
-                    )}
+                                ))}
+                            </div>
+                        )}
 
-                    {/* Sound Toggle */}
-                    <div className="flex items-center">
-                        <button
-                            onClick={() => setIsSoundOn(!isSoundOn)}
-                            className="p-1.5 rounded-lg text-gray-400 hover:text-[#5cb5db] transition-colors cursor-pointer"
-                            title={isSoundOn ? "ปิดเสียงแป้นพิมพ์" : "เปิดเสียงแป้นพิมพ์"}
-                        >
-                            {isSoundOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
-                        </button>
+                        {mode === 'words' && (
+                            <div className="flex items-center gap-1">
+                                {[10, 25, 50, 100].map((w) => (
+                                    <button
+                                        key={w}
+                                        onClick={() => setWordLimit(w)}
+                                        className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${wordLimit === w ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
+                                            }`}
+                                    >
+                                        {w}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
+                        {mode === 'zen' && (
+                            <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        onClick={() => setZenType('words')}
+                                        className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${zenType === 'words' ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
+                                            }`}
+                                    >
+                                        คำ
+                                    </button>
+                                    <button
+                                        onClick={() => setZenType('quote')}
+                                        className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${zenType === 'quote' ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
+                                            }`}
+                                    >
+                                        บทความ
+                                    </button>
+                                </div>
+                                {zenType === 'quote' && (
+                                    <div className="flex items-center gap-1 border-l border-gray-200 pl-2">
+                                        {(['all', 'short', 'medium', 'long'] as const).map((qLen) => {
+                                            const labels: Record<string, string> = {
+                                                all: 'สุ่มทั้งหมด',
+                                                short: 'สั้น',
+                                                medium: 'ปานกลาง',
+                                                long: 'ยาว'
+                                            };
+                                            return (
+                                                <button
+                                                    key={qLen}
+                                                    onClick={() => setQuoteLength(qLen)}
+                                                    className={`px-1.5 py-0.5 rounded-md text-[13px] transition-all cursor-pointer ${quoteLength === qLen ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
+                                                        }`}
+                                                >
+                                                    {labels[qLen]}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {mode === 'quote' && (
+                            <div className="flex items-center gap-1">
+                                {(['all', 'short', 'medium', 'long'] as const).map((qLen) => {
+                                    const labels: Record<string, string> = {
+                                        all: 'สุ่มทั้งหมด',
+                                        short: 'สั้น',
+                                        medium: 'ปานกลาง',
+                                        long: 'ยาว'
+                                    };
+                                    return (
+                                        <button
+                                            key={qLen}
+                                            onClick={() => setQuoteLength(qLen)}
+                                            className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${quoteLength === qLen ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
+                                                }`}
+                                        >
+                                            {labels[qLen]}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+
                     </div>
 
+                    {/* 🎵 กล่องปุ่มตั้งค่าเสียง & เพลง แยกออกมาอยู่แถวเดียวกัน (กล่องเหมือนกัน ไอคอนสีเทาล้วน) */}
+                    <button
+                        onClick={() => setIsAudioModalOpen(true)}
+                        title="ตั้งค่าเสียงคีย์บอร์ด & เพลงพื้นหลัง"
+                        className="bg-white px-4 py-3 rounded-3xl shadow-lg shadow-blue-500/5 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-all cursor-pointer"
+                    >
+                        {isSoundOn ? <Volume2 size={18} /> : <VolumeX size={18} />}
+                    </button>
                 </div>
 
                 {/* ⌨️ Main Typing Stream Box */}
@@ -1673,17 +1694,17 @@ export default function FarmPage() {
                             {/* Main Content Area: Left (WPM & ACC vertically stacked, large font) + Right (Structured Stats Grid) */}
                             <div className="flex flex-col md:flex-row items-stretch gap-8 lg:gap-14 py-2 sm:py-4">
                                 {/* Left: WPM & ACC (Vertical Stack in Pimwai font, bold & large) */}
-                                <div className="flex flex-row md:flex-col justify-around md:justify-center gap-8 sm:gap-10 shrink-0 md:w-56 lg:w-64 select-none border-b md:border-b-0 md:border-r border-gray-100 dark:border-slate-800 pb-6 md:pb-0 md:pr-8">
+                                <div className="flex flex-row md:flex-col justify-around md:justify-center gap-8 sm:gap-10 shrink-0 md:w-56 lg:w-64 select-none border-b md:border-b-0 md:border-r border-gray-100 pb-6 md:pb-0 md:pr-8">
                                     <div>
-                                        <div className="text-sm sm:text-base font-bold text-gray-400 dark:text-gray-500 tracking-wider lowercase mb-1 logo-font">wpm</div>
+                                        <div className="text-sm sm:text-base font-bold text-gray-400 tracking-wider lowercase mb-1 logo-font">wpm</div>
                                         <div className="text-6xl sm:text-7xl lg:text-8xl font-black text-[#5cb5db] tracking-tight leading-none logo-font">
                                             {finalWpm}
                                         </div>
-                                        <div className="text-xs text-gray-400 dark:text-gray-500 font-medium mt-1">ความเร็วคำต่อนาที</div>
+                                        <div className="text-xs text-gray-400 font-medium mt-1">ความเร็วคำต่อนาที</div>
                                     </div>
                                     <div>
-                                        <div className="text-sm sm:text-base font-bold text-gray-400 dark:text-gray-500 tracking-wider lowercase mb-1 logo-font">acc</div>
-                                        <div className="text-6xl sm:text-7xl lg:text-8xl font-black text-gray-800 dark:text-gray-100 tracking-tight leading-none logo-font">
+                                        <div className="text-sm sm:text-base font-bold text-gray-400 tracking-wider lowercase mb-1 logo-font">acc</div>
+                                        <div className="text-6xl sm:text-7xl lg:text-8xl font-black text-gray-800 tracking-tight leading-none logo-font">
                                             {finalAcc}%
                                         </div>
                                     </div>
@@ -1692,11 +1713,11 @@ export default function FarmPage() {
                                 {/* Right: Detailed Stats Grid (Pimwai font, larger & prominent) */}
                                 <div className="flex-1 grid grid-cols-2 sm:grid-cols-3 gap-y-8 gap-x-8 sm:gap-x-12 items-center text-left py-2">
                                     <div>
-                                        <div className="text-sm sm:text-base font-bold text-gray-400 dark:text-gray-500 tracking-wider lowercase mb-1 logo-font">test type</div>
-                                        <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-gray-800 dark:text-gray-100 leading-tight logo-font">
+                                        <div className="text-sm sm:text-base font-bold text-gray-400 tracking-wider lowercase mb-1 logo-font">test type</div>
+                                        <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-gray-800 leading-tight logo-font">
                                             {mode === 'quote' ? (currentArticle ? `บทความ: ${currentArticle.title}` : 'บทความ') : `${mode} ${mode === 'time' ? timeLimit : wordLimit}`}
                                         </div>
-                                        <div className="text-xs sm:text-sm text-gray-400 dark:text-gray-500 font-medium mt-1">
+                                        <div className="text-xs sm:text-sm text-gray-400 font-medium mt-1">
                                             {language === 'english'
                                                 ? (includePunctuation ? 'english punct' : includeNumbers ? 'english num' : 'english basic')
                                                 : (includePunctuation ? 'thai punct' : includeNumbers ? 'thai num' : 'thai basic')
@@ -1705,51 +1726,51 @@ export default function FarmPage() {
                                     </div>
 
                                     <div>
-                                        <div className="text-sm sm:text-base font-bold text-gray-400 dark:text-gray-500 tracking-wider lowercase mb-1 logo-font">other</div>
-                                        <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-emerald-600 dark:text-emerald-400 leading-tight logo-font">
+                                        <div className="text-sm sm:text-base font-bold text-gray-400 tracking-wider lowercase mb-1 logo-font">other</div>
+                                        <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-emerald-600 leading-tight logo-font">
                                             +{roundExpEarned} exp
                                         </div>
-                                        <div className="text-xs sm:text-sm text-gray-400 dark:text-gray-500 font-medium mt-1">
+                                        <div className="text-xs sm:text-sm text-gray-400 font-medium mt-1">
                                             max {maxCombo} combo
                                         </div>
                                     </div>
 
                                     <div>
-                                        <div className="text-sm sm:text-base font-bold text-gray-400 dark:text-gray-500 tracking-wider lowercase mb-1 logo-font">raw</div>
-                                        <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-gray-800 dark:text-gray-100 leading-tight logo-font">
+                                        <div className="text-sm sm:text-base font-bold text-gray-400 tracking-wider lowercase mb-1 logo-font">raw</div>
+                                        <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-gray-800 leading-tight logo-font">
                                             {finalRawWpm}
                                         </div>
-                                        <div className="text-xs sm:text-sm text-gray-400 dark:text-gray-500 font-medium mt-1">
+                                        <div className="text-xs sm:text-sm text-gray-400 font-medium mt-1">
                                             wpm
                                         </div>
                                     </div>
 
                                     <div>
-                                        <div className="text-sm sm:text-base font-bold text-gray-400 dark:text-gray-500 tracking-wider lowercase mb-1 logo-font">characters</div>
-                                        <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-gray-800 dark:text-gray-100 tracking-tight leading-tight logo-font">
+                                        <div className="text-sm sm:text-base font-bold text-gray-400 tracking-wider lowercase mb-1 logo-font">characters</div>
+                                        <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-gray-800 tracking-tight leading-tight logo-font">
                                             {correctKeystrokes}/{incorrectCount}/0/0
                                         </div>
-                                        <div className="text-xs sm:text-sm text-gray-400 dark:text-gray-500 font-medium mt-1">
+                                        <div className="text-xs sm:text-sm text-gray-400 font-medium mt-1">
                                             cor / err / ext / mis
                                         </div>
                                     </div>
 
                                     <div>
-                                        <div className="text-sm sm:text-base font-bold text-gray-400 dark:text-gray-500 tracking-wider lowercase mb-1 logo-font">consistency</div>
-                                        <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-gray-800 dark:text-gray-100 leading-tight logo-font">
+                                        <div className="text-sm sm:text-base font-bold text-gray-400 tracking-wider lowercase mb-1 logo-font">consistency</div>
+                                        <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-gray-800 leading-tight logo-font">
                                             {finalAcc}%
                                         </div>
-                                        <div className="text-xs sm:text-sm text-gray-400 dark:text-gray-500 font-medium mt-1">
+                                        <div className="text-xs sm:text-sm text-gray-400 font-medium mt-1">
                                             accuracy rate
                                         </div>
                                     </div>
 
                                     <div>
-                                        <div className="text-sm sm:text-base font-bold text-gray-400 dark:text-gray-500 tracking-wider lowercase mb-1 logo-font">time</div>
-                                        <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-gray-800 dark:text-gray-100 leading-tight logo-font">
+                                        <div className="text-sm sm:text-base font-bold text-gray-400 tracking-wider lowercase mb-1 logo-font">time</div>
+                                        <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-gray-800 leading-tight logo-font">
                                             {finalElapsedSec}s
                                         </div>
-                                        <div className="text-xs sm:text-sm text-gray-400 dark:text-gray-500 font-medium mt-1">
+                                        <div className="text-xs sm:text-sm text-gray-400 font-medium mt-1">
                                             duration (ฟาร์มรวม: {formatFarmTimeDetailed(totalFarmTimeSeconds)})
                                         </div>
                                     </div>
@@ -1757,13 +1778,13 @@ export default function FarmPage() {
                             </div>
 
                             {/* Bottom Controls: Large Icon-only buttons (ChevronRight on left & RefreshCw on right) */}
-                            <div className="flex flex-col items-center justify-center gap-4 pt-8 border-t border-gray-100 dark:border-slate-800 mt-4">
+                            <div className="flex flex-col items-center justify-center gap-4 pt-8 border-t border-gray-100 mt-4">
                                 <div className="flex items-center justify-center gap-10 sm:gap-14">
                                     {/* 1. ปุ่มต่อไป (คำต่อไป) */}
                                     <button
                                         type="button"
                                         onClick={nextNewWords}
-                                        className="text-gray-400 hover:text-gray-800 dark:text-gray-500 dark:hover:text-gray-100 transition-all duration-150 hover:scale-115 active:scale-90 cursor-pointer p-3 rounded-2xl select-none"
+                                        className="text-gray-400 hover:text-gray-800 transition-all duration-150 hover:scale-115 active:scale-90 cursor-pointer p-3 rounded-2xl select-none"
                                         title="คำต่อไป (Tab)"
                                     >
                                         <ChevronRight size={34} strokeWidth={2.8} />
@@ -1773,7 +1794,7 @@ export default function FarmPage() {
                                     <button
                                         type="button"
                                         onClick={repeatSameWords}
-                                        className="text-gray-400 hover:text-gray-800 dark:text-gray-500 dark:hover:text-gray-100 transition-all duration-150 hover:scale-115 active:scale-90 cursor-pointer p-3 rounded-2xl select-none"
+                                        className="text-gray-400 hover:text-gray-800 transition-all duration-150 hover:scale-115 active:scale-90 cursor-pointer p-3 rounded-2xl select-none"
                                         title="เริ่มใหม่ (คำเดิม)"
                                     >
                                         <RefreshCw size={28} strokeWidth={2.8} />
@@ -2277,7 +2298,7 @@ export default function FarmPage() {
                                     <button
                                         type="button"
                                         onClick={nextNewWords}
-                                        className="text-gray-400 hover:text-gray-800 dark:text-gray-500 dark:hover:text-gray-100 transition-all duration-150 hover:scale-115 active:scale-90 cursor-pointer p-1.5 select-none"
+                                        className="text-gray-400 hover:text-gray-800 transition-all duration-150 hover:scale-115 active:scale-90 cursor-pointer p-1.5 select-none"
                                         title="คำต่อไป (Tab)"
                                     >
                                         <ChevronRight size={24} strokeWidth={2.8} />
@@ -2287,18 +2308,18 @@ export default function FarmPage() {
                                     <button
                                         type="button"
                                         onClick={repeatSameWords}
-                                        className="text-gray-400 hover:text-gray-800 dark:text-gray-500 dark:hover:text-gray-100 transition-all duration-150 hover:scale-115 active:scale-90 cursor-pointer p-1.5 select-none"
+                                        className="text-gray-400 hover:text-gray-800 transition-all duration-150 hover:scale-115 active:scale-90 cursor-pointer p-1.5 select-none"
                                         title="เริ่มใหม่ (คำเดิม)"
                                     >
                                         <RefreshCw size={20} strokeWidth={2.8} />
                                     </button>
 
-                                    <div className="w-[1px] h-4 bg-gray-200 dark:bg-slate-700 hidden sm:block mx-0.5"></div>
+                                    <div className="w-[1px] h-4 bg-gray-200 hidden sm:block mx-0.5"></div>
 
                                     {/* ⏱️ เวลาวันนี้: สไตล์เดียวกับ Accuracy ด้านขวา (สีดำ ฟอนต์เหมือนกัน) */}
                                     <div className="flex items-center gap-2 text-sm sm:text-base font-bold text-gray-400" title="เวลาพิมพ์ในโหมดฟาร์มของวันนี้ทั้งหมด">
                                         <span>เวลาวันนี้:</span>
-                                        <strong className="text-base sm:text-xl font-black text-gray-800 dark:text-gray-100 logo-font">
+                                        <strong className="text-base sm:text-xl font-black text-gray-800 logo-font">
                                             {formatFarmTimeDetailed(todayFarmTimeSeconds)}
                                         </strong>
                                     </div>
@@ -2309,18 +2330,18 @@ export default function FarmPage() {
                                     {/* 🌟 EXP ได้เท่าไหร่รอบนี้ */}
                                     <div className="flex items-center gap-2">
                                         <span className="text-xs sm:text-sm font-bold text-gray-400">EXP รอบนี้:</span>
-                                        <span className="text-base sm:text-xl font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1 logo-font">
+                                        <span className="text-base sm:text-xl font-black text-emerald-600 flex items-center gap-1 logo-font">
                                             <Sparkles size={16} className="text-yellow-500 fill-yellow-500 shrink-0" />
                                             +{roundExpEarned.toLocaleString()} EXP
                                         </span>
                                     </div>
 
-                                    <div className="w-[1px] h-4 bg-gray-200 dark:bg-slate-700 hidden sm:block"></div>
+                                    <div className="w-[1px] h-4 bg-gray-200 hidden sm:block"></div>
 
                                     {/* Accuracy */}
                                     <div className="flex items-center gap-2 text-sm sm:text-base font-bold text-gray-400">
                                         <span>Accuracy:</span>
-                                        <strong className="text-base sm:text-xl font-black text-gray-800 dark:text-gray-100 logo-font">{accuracy}%</strong>
+                                        <strong className="text-base sm:text-xl font-black text-gray-800 logo-font">{accuracy}%</strong>
                                     </div>
                                 </div>
                             </div>
@@ -2403,370 +2424,337 @@ export default function FarmPage() {
                     )}
                 </div>
 
-                {/* 📖 ป๊อปอัปคำอธิบายบัฟถาวรจากบทเรียน (Lesson Perks Explanation Modal) */}
+                {/* 📖 ป๊อปอัปคำอธิบายบัฟถาวรจากบทเรียน (Lesson Perks Modal - เรียบง่าย สะอาดตา) */}
                 {isPerkModalOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
                         <div
-                            className="bg-white rounded-3xl p-6 sm:p-8 max-w-xl w-full shadow-2xl border border-gray-100 relative animate-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:hidden"
-                            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                            onClick={() => setIsPerkModalOpen(false)}
+                            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 overscroll-none"
                         >
-                            {/* Close button */}
-                            <button
-                                type="button"
-                                onClick={() => setIsPerkModalOpen(false)}
-                                className="absolute top-5 right-5 p-1.5 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
-                                aria-label="ปิด"
+                            <div
+                                onClick={(e) => e.stopPropagation()}
+                                className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-gray-100 flex flex-col gap-5 text-gray-800"
                             >
-                                <X size={20} />
-                            </button>
+                                                {/* Header */}
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-2.5">
+                                                        <div>
+                                                            <h3 className="text-base font-black text-gray-800">
+                                                                บัฟติดตัวจากบทเรียน
+                                                            </h3>
+                                                            <p className="text-[11px] text-gray-400 font-medium">
+                                                                เรียนจบครบแต่ละระดับเพื่อปลดล็อกบัฟถาวรในโหมดฟาร์ม
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setIsPerkModalOpen(false)}
+                                                        className="p-1.5 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition cursor-pointer"
+                                                        aria-label="ปิด"
+                                                    >
+                                                        <X size={18} />
+                                                    </button>
+                                                </div>
 
-                            {/* Modal Header */}
-                            <div className="flex items-start sm:items-center justify-between gap-3 mb-4 pr-7">
-                                <div>
-                                    <div className="flex items-center gap-2">
-                                        <h3 className="text-base sm:text-lg font-black text-gray-800">
-                                            บัฟถาวรติดตัวจากบทเรียน (Lesson Perks)
-                                        </h3>
-                                    </div>
-                                    <p className="text-xs text-gray-500 font-medium">
-                                        เล่นบทเรียนให้จบครบแต่ละระดับ เพื่อรับบัฟช่วยเหลือติดตัวในโหมดฟาร์มเวลถาวร!
-                                    </p>
-                                </div>
-                            </div>
+                                                    {/* Perk Tiers List */}
+                                                    <div className="flex flex-col gap-2.5">
+                                                        {/* 1. Beginner */}
+                                                        <div className={`p-4 rounded-2xl flex flex-col gap-1.5 transition-colors ${lessonPerks.beginner
+                                                            ? 'bg-emerald-600 text-white shadow-sm'
+                                                            : 'bg-gray-50 border border-gray-100 text-gray-800'
+                                                            }`}>
+                                                            <div className="flex items-center justify-between">
+                                                                <div className="flex items-center gap-2">
+                                                                    <Shield size={16} className={lessonPerks.beginner ? 'text-white' : 'text-gray-400'} />
+                                                                    <span className={`text-xs sm:text-sm font-bold ${lessonPerks.beginner ? 'text-white' : 'text-gray-800'}`}>1. ระดับต้น (Beginner)</span>
+                                                                </div>
+                                                                <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 ${lessonPerks.beginner
+                                                                    ? 'bg-emerald-800 text-white'
+                                                                    : 'bg-gray-600 text-white'
+                                                                    }`}>
+                                                                    {lessonPerks.beginner ? <><Check size={11} strokeWidth={3} /> ปลดล็อกแล้ว</> : <><Lock size={11} /> ล็อกอยู่</>}
+                                                                </span>
+                                                            </div>
+                                                            <p className={`text-xs pl-6 leading-relaxed ${lessonPerks.beginner ? 'text-emerald-50' : 'text-gray-500'}`}>
+                                                                ได้รับเกราะกันพลาด 2 ครั้งต่อรอบ (พิมพ์ผิดคอมโบไม่หลุด) และโบนัสพิมพ์คำถูกครบโดยไม่กดลบ <span className={`font-bold ${lessonPerks.beginner ? 'text-white' : 'text-gray-700'}`}>+5 ถึง +20 EXP</span>
+                                                            </p>
+                                                        </div>
 
-                            {/* 3 Perk Cards List */}
-                            <div className="flex flex-col gap-3 my-4">
+                                                        {/* 2. Intermediate */}
+                                                        <div className={`p-4 rounded-2xl flex flex-col gap-1.5 transition-colors ${lessonPerks.intermediate
+                                                            ? 'bg-amber-500 text-white shadow-sm'
+                                                            : 'bg-gray-50 border border-gray-100 text-gray-800'
+                                                            }`}>
+                                                            <div className="flex items-center justify-between">
+                                                                <div className="flex items-center gap-2">
+                                                                    <Sparkles size={16} className={lessonPerks.intermediate ? 'text-white' : 'text-gray-400'} />
+                                                                    <span className={`text-xs sm:text-sm font-bold ${lessonPerks.intermediate ? 'text-white' : 'text-gray-800'}`}>2. ระดับกลาง (Intermediate)</span>
+                                                                </div>
+                                                                <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 ${lessonPerks.intermediate
+                                                                    ? 'bg-amber-700 text-white'
+                                                                    : 'bg-gray-600 text-white'
+                                                                    }`}>
+                                                                    {lessonPerks.intermediate ? <><Check size={11} strokeWidth={3} /> ปลดล็อกแล้ว</> : <><Lock size={11} /> ล็อกอยู่</>}
+                                                                </span>
+                                                            </div>
+                                                            <p className={`text-xs pl-6 leading-relaxed ${lessonPerks.intermediate ? 'text-amber-50' : 'text-gray-500'}`}>
+                                                                เพิ่มโอกาสเจอคำสีทองเป็น <span className={`font-bold ${lessonPerks.intermediate ? 'text-white' : 'text-gray-700'}`}>15%</span> และรับโบนัสพิเศษ <span className={`font-bold ${lessonPerks.intermediate ? 'text-white' : 'text-gray-700'}`}>+15 EXP</span> ทันทีเมื่อพิมพ์คำสีทองถูกครบโดยไม่กดลบ
+                                                            </p>
+                                                        </div>
 
-                                {/* 1. Beginner */}
-                                <div className={`p-4 rounded-2xl border transition-all ${lessonPerks.beginner
-                                    ? 'bg-emerald-50/60 border-emerald-200/90'
-                                    : 'bg-gray-50/80 border-gray-200'
-                                    }`}>
-                                    <div className="flex items-center justify-between mb-2">
-                                        <div className="flex items-center gap-2">
-                                            <div className={`p-1.5 rounded-xl ${lessonPerks.beginner ? 'text-emerald-600' : 'text-gray-500'}`}>
-                                                <Shield size={25} />
-                                            </div>
-                                            <div>
-                                                <h4 className="font-black text-sm text-gray-800">1. บทเรียนระดับต้น (Beginner)</h4>
-                                                <span className="text-[11px] text-gray-500 font-medium">เกราะกันพลาด & โบนัสพิมพ์เป๊ะ</span>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-1.5">
-                                            <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 ${lessonPerks.beginner
-                                                ? 'bg-emerald-100 text-emerald-800'
-                                                : 'bg-gray-200 text-gray-600'
-                                                }`}>
-                                                {lessonPerks.beginner ? <><Check size={12} /> ปลดล็อกแล้ว</> : <><Lock size={12} /> ยังไม่ปลดล็อก</>}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <ul className="text-xs space-y-1.5 text-gray-600 font-medium pl-5 list-disc">
-                                        <li>
-                                            <strong className="text-gray-800">🛡️ เกราะกันพลาด 2 ครั้งต่อรอบ (Double Shield):</strong> หากพิมพ์ผิดหรือสะกดวรรณยุกต์พลาด เกราะจะดูดซับความเสียหายไว้ <span className="text-emerald-700 font-bold">คอมโบไม่หลุด และตัวคูณไม่ลด</span>
-                                        </li>
-                                        <li>
-                                            <strong className="text-gray-800">✨ โบนัสพิมพ์เป๊ะคำยาว (Flawless Bounty):</strong> เคาะ Spacebar จบคำถูกต้อง 100% โดย<span className="underline decoration-emerald-500 underline-offset-2">ไม่กดปุ่ม Backspace เลย</span> รับโบนัสเริ่มต้นอย่างต่ำ <span className="text-emerald-700 font-black">+5 EXP</span> (คำปานกลาง <span className="text-emerald-700 font-black">+8 EXP</span>, คำยาว <span className="text-emerald-700 font-black">+12 ถึง 20 EXP</span>)
-                                        </li>
-                                    </ul>
-                                </div>
+                                                        {/* 3. Advanced */}
+                                                        <div className={`p-4 rounded-2xl flex flex-col gap-1.5 transition-colors ${lessonPerks.advanced
+                                                            ? 'bg-purple-600 text-white shadow-sm'
+                                                            : 'bg-gray-50 border border-gray-100 text-gray-800'
+                                                            }`}>
+                                                            <div className="flex items-center justify-between">
+                                                                <div className="flex items-center gap-2">
+                                                                    <Zap size={16} className={lessonPerks.advanced ? 'text-white' : 'text-gray-400'} />
+                                                                    <span className={`text-xs sm:text-sm font-bold ${lessonPerks.advanced ? 'text-white' : 'text-gray-800'}`}>3. ระดับสูง (Advanced)</span>
+                                                                </div>
+                                                                <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 ${lessonPerks.advanced
+                                                                    ? 'bg-purple-800 text-white'
+                                                                    : 'bg-gray-600 text-white'
+                                                                    }`}>
+                                                                    {lessonPerks.advanced ? <><Check size={11} strokeWidth={3} /> ปลดล็อกแล้ว</> : <><Lock size={11} /> ล็อกอยู่</>}
+                                                                </span>
+                                                            </div>
+                                                            <p className={`text-xs pl-6 leading-relaxed ${lessonPerks.advanced ? 'text-purple-50' : 'text-gray-500'}`}>
+                                                                บวกตัวคูณพื้นฐานถาวร <span className={`font-bold ${lessonPerks.advanced ? 'text-white' : 'text-gray-700'}`}>+0.5x</span> ขยายเพดานคอมโบสูงสุด <span className={`font-bold ${lessonPerks.advanced ? 'text-white' : 'text-gray-700'}`}>+10.0x</span> และเข้าโหมด Fever ทุกๆ 50 คอมโบ
+                                                            </p>
+                                                        </div>
+                                                    </div>
 
-                                {/* 2. Intermediate */}
-                                <div className={`p-4 rounded-2xl border transition-all ${lessonPerks.intermediate
-                                    ? 'bg-amber-50/60 border-amber-200/90'
-                                    : 'bg-gray-50/80 border-gray-200'
-                                    }`}>
-                                    <div className="flex items-center justify-between mb-2">
-                                        <div className="flex items-center gap-2">
-                                            <div className={`p-1.5 rounded-xl ${lessonPerks.intermediate ? 'text-amber-500' : 'text-gray-500'}`}>
-                                                <Sparkles size={25} />
-                                            </div>
-                                            <div>
-                                                <h4 className="font-black text-sm text-gray-800">2. บทเรียนระดับกลาง (Intermediate)</h4>
-                                                <span className="text-[11px] text-gray-500 font-medium">เพิ่มคำทองคำ & ล่าสมบัติก้อนโต</span>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-1.5">
-                                            <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 ${lessonPerks.intermediate
-                                                ? 'bg-amber-100 text-amber-800'
-                                                : 'bg-gray-200 text-gray-600'
-                                                }`}>
-                                                {lessonPerks.intermediate ? <><Check size={12} /> ปลดล็อกแล้ว</> : <><Lock size={12} /> ยังไม่ปลดล็อก</>}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <ul className="text-xs space-y-1.5 text-gray-600 font-medium pl-5 list-disc">
-                                        <li>
-                                            <strong className="text-gray-800">🌟 โอกาสพบคำทองคำพุ่งสูง (Golden Rush):</strong> โอกาสสุ่มเจอคำสีทองเพิ่มจาก 8% ขึ้นเป็น <span className="text-amber-700 font-black">15%</span> (คำสีทองให้โบนัสตัวคูณ +1.0x อยู่แล้ว)
-                                        </li>
-                                        <li>
-                                            <strong className="text-gray-800">💰 ล่าสมบัติคำทองคำ (Golden Bounty):</strong> เมื่อพิมพ์คำสีทองถูกต้องครบ 100% แบบ Flawless (ไม่กด Backspace) รับโบนัสสมดุล <span className="text-amber-700 font-black">+15 EXP</span> ทันที
-                                        </li>
-                                    </ul>
-                                </div>
-
-                                {/* 3. Advanced */}
-                                <div className={`p-4 rounded-2xl border transition-all ${lessonPerks.advanced
-                                    ? 'bg-purple-50/60 border-purple-200/90'
-                                    : 'bg-gray-50/80 border-gray-200'
-                                    }`}>
-                                    <div className="flex items-center justify-between mb-2">
-                                        <div className="flex items-center gap-2">
-                                            <div className={`p-1.5 rounded-xl ${lessonPerks.advanced ? 'text-purple-600' : 'text-gray-500'}`}>
-                                                <Zap size={25} />
-                                            </div>
-                                            <div>
-                                                <h4 className="font-black text-sm text-gray-800">3. บทเรียนระดับสูง (Advanced - บัฟโกงที่สุด!)</h4>
-                                                <span className="text-[11px] text-gray-500 font-medium">ตัวคูณถาวร + ทะลุขีดจำกัด + Fever Mode x2</span>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-1.5">
-                                            <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 ${lessonPerks.advanced
-                                                ? 'bg-purple-100 text-purple-800'
-                                                : 'bg-gray-200 text-gray-600'
-                                                }`}>
-                                                {lessonPerks.advanced ? <><Check size={12} /> ปลดล็อกแล้ว</> : <><Lock size={12} /> ยังไม่ปลดล็อก</>}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <ul className="text-xs space-y-1.5 text-gray-600 font-medium pl-5 list-disc">
-                                        <li>
-                                            <strong className="text-gray-800">⚡ ตัวคูณเพิ่มถาวรตลอดชีพ:</strong> บวกค่า Multiplier พื้นฐานเพิ่มอีก <span className="text-purple-700 font-black">+0.5x</span> ตลอดเวลา
-                                        </li>
-                                        <li>
-                                            <strong className="text-gray-800">🚀 ทะลุขีดจำกัดเพดานคอมโบ (Cap Breaker):</strong> ขยายเพดานตัวคูณคอมโบสูงสุดขึ้นไปอีก +10.0x
-                                        </li>
-                                        <li>
-                                            <strong className="text-gray-800">🔥 โหมดฟีเวอร์ไฟลุก (Fever Mode):</strong> ทุกๆ 50 คอมโบ (50, 100, 150...) เข้าสู่สถานะ Fever 5 วินาที <span className="text-rose-600 font-black">รับ EXP x2 ทุกตัวอักษร!</span>
-                                        </li>
-                                    </ul>
-                                </div>
-
-                            </div>
-
-                            {/* Modal Footer Actions */}
-                            <div className="flex items-center justify-between pt-4 border-t border-gray-100 gap-3 mt-4">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsPerkModalOpen(false)}
-                                    className="px-4 py-2 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-100 transition-colors cursor-pointer"
-                                >
-                                    เข้าใจแล้ว ปิดหน้าต่าง
-                                </button>
-                                <Link
-                                    href="/lessons"
-                                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#5cb5db] to-[#3aa5d2] hover:from-[#4ea9d0] hover:to-[#2e9bc9] text-white text-xs font-black shadow-md shadow-cyan-500/20 flex items-center gap-1.5 transition-all cursor-pointer hover:shadow-cyan-500/30"
-                                >
-                                    <span>ไปหน้าบทเรียนเพื่อปลดล็อกบัฟ</span>
-                                    <ChevronRight size={14} />
-                                </Link>
-                            </div>
-                        </div>
-                    </div>
+                                                                                {/* Footer */}
+                                                                                <div className="flex items-center justify-end gap-2">
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() => setIsPerkModalOpen(false)}
+                                                                                        className="px-4 py-2 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-100 transition cursor-pointer"
+                                                                                    >
+                                                                                        ปิด
+                                                                                    </button>
+                                                                                    <Link
+                                                                                        href="/lessons"
+                                                                                        className="px-4 py-2 rounded-xl bg-[#5cb5db] hover:bg-[#4a9ec2] text-white text-xs font-bold flex items-center gap-1 transition cursor-pointer shadow-xs"
+                                                                                    >
+                                                                                        <span>ไปหน้าบทเรียน</span>
+                                                                                        <ChevronRight size={14} />
+                                                                                    </Link>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
                 )}
 
-                {/* 🔍 SEO Semantic Section & Sitelinks Hub (Googlebot Crawl Content): กดซ่อน/พับเก็บได้ และซ่อนอัตโนมัติเมื่อเริ่มพิมพ์ (Focus Mode) */}
-                <section
-                    aria-label="ข้อมูลการฝึกพิมพ์ดีดและพิมพ์สัมผัส 10 นิ้ว"
-                    className={`w-full max-w-6xl mt-4 mb-6 text-gray-600 text-xs sm:text-sm leading-relaxed transition-all duration-300 ease-in-out ${isFocusMode
-                        ? 'opacity-0 pointer-events-none translate-y-4'
-                        : 'opacity-100 translate-y-0'
-                        }`}
-                >
-                    {/* แถบหัวข้อแบบพับเก็บได้ (มี H1 อยู่ใน DOM ตลอดเวลาเพื่อ SEO แต่ดูคลีนตาและกดซ่อน/เปิดได้) */}
-                    <div className="bg-white/80 px-5 py-3 rounded-2xl border border-gray-100 shadow-xs flex flex-wrap items-center justify-between gap-3">
-                        <h1 className="text-xs sm:text-sm font-bold text-gray-600">
-                            ฝึกพิมพ์ดีดออนไลน์ฟรี ฝึกพิมพ์สัมผัส 10 นิ้ว & ทดสอบความเร็ว WPM | PIMWAI (พิมพ์ไว)
-                        </h1>
+                                                                        {/* 🔍 SEO Semantic Section & Sitelinks Hub (Googlebot Crawl Content): กดซ่อน/พับเก็บได้ และซ่อนอัตโนมัติเมื่อเริ่มพิมพ์ (Focus Mode) */}
+                                                                        <section
+                                                                            aria-label="ข้อมูลการฝึกพิมพ์ดีดและพิมพ์สัมผัส 10 นิ้ว"
+                                                                            className={`w-full max-w-6xl mt-4 mb-6 text-gray-600 text-xs sm:text-sm leading-relaxed transition-all duration-300 ease-in-out ${isFocusMode
+                                                                                ? 'opacity-0 pointer-events-none translate-y-4'
+                                                                                : 'opacity-100 translate-y-0'
+                                                                                }`}
+                                                                        >
+                                                                            {/* แถบหัวข้อแบบพับเก็บได้ (มี H1 อยู่ใน DOM ตลอดเวลาเพื่อ SEO แต่ดูคลีนตาและกดซ่อน/เปิดได้) */}
+                                                                            <div className="bg-white/80 px-5 py-3 rounded-2xl border border-gray-100 shadow-xs flex flex-wrap items-center justify-between gap-3">
+                                                                                <h1 className="text-xs sm:text-sm font-bold text-gray-600">
+                                                                                    ฝึกพิมพ์ดีดออนไลน์ฟรี ฝึกพิมพ์สัมผัส 10 นิ้ว & ทดสอบความเร็ว WPM | PIMWAI (พิมพ์ไว)
+                                                                                </h1>
 
-                        <button
-                            type="button"
-                            onClick={toggleSeoExpanded}
-                            aria-expanded={isSeoExpanded}
-                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-gray-100 hover:bg-gray-200/80 text-gray-600 font-bold text-xs transition-colors cursor-pointer select-none"
-                        >
-                            <span>{isSeoExpanded ? 'ซ่อนคู่มือและข้อมูล' : 'ดูคู่มือวางนิ้ว 10 นิ้ว & ข้อมูลเพิ่มเติม'}</span>
-                            <ChevronRight
-                                size={14}
-                                className={`transition-transform duration-200 ${isSeoExpanded ? '-rotate-90' : 'rotate-90'}`}
-                            />
-                        </button>
-                    </div>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={toggleSeoExpanded}
+                                                                                    aria-expanded={isSeoExpanded}
+                                                                                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-gray-100 hover:bg-gray-200/80 text-gray-600 font-bold text-xs transition-colors cursor-pointer select-none"
+                                                                                >
+                                                                                    <span>{isSeoExpanded ? 'ซ่อนคู่มือและข้อมูล' : 'ดูคู่มือวางนิ้ว 10 นิ้ว & ข้อมูลเพิ่มเติม'}</span>
+                                                                                    <ChevronRight
+                                                                                        size={14}
+                                                                                        className={`transition-transform duration-200 ${isSeoExpanded ? '-rotate-90' : 'rotate-90'}`}
+                                                                                    />
+                                                                                </button>
+                                                                            </div>
 
-                    {/* เนื้อหา SEO ทั้งหมดคงอยู่ใน HTML DOM เสมอเพื่อให้ Googlebot เก็บข้อมูลได้ 100% แต่พับซ่อนด้วย CSS ได้ */}
-                    <div
-                        className={`space-y-6 transition-all duration-300 ease-in-out overflow-hidden ${isSeoExpanded
-                            ? 'max-h-[2500px] opacity-100 mt-4'
-                            : 'max-h-0 opacity-0 pointer-events-none mt-0'
-                            }`}
-                    >
-                        {/* 1. คำอธิบายหลัก */}
-                        <div className="bg-white/80 p-5 rounded-2xl border border-gray-100 shadow-xs">
-                            <p className="text-gray-500 text-xs sm:text-sm leading-relaxed">
-                                <strong>PIMWAI (พิมพ์ไว)</strong> คือแพลตฟอร์ม<strong>ฝึกพิมพ์ดีดออนไลน์ฟรี</strong>และโปรแกรม<strong>ฝึกพิมพ์สัมผัส 10 นิ้ว</strong>สำหรับคนไทย ออกแบบมาเพื่อช่วยให้คุณฝึกวางนิ้วบนแป้นพิมพ์ภาษาไทย (แป้นเหย้า <strong>ฟ ห ก ด ่ า ส ว</strong>) และภาษาอังกฤษ (<strong>A S D F - J K L ;</strong>) ได้อย่างถูกต้องตามหลักสรีรศาสตร์ พร้อมระบบ<strong>ทดสอบความเร็วพิมพ์ดีด (Typing Test)</strong> วัดค่าความเร็วคำต่อนาที (WPM) และความแม่นยำ (Accuracy) แบบเรียลไทม์ เล่นได้ทันทีบนเว็บเบราว์เซอร์โดยไม่ต้องดาวน์โหลดโปรแกรมและไม่ต้องสมัครสมาชิก
-                            </p>
-                        </div>
+                                                                            {/* เนื้อหา SEO ทั้งหมดคงอยู่ใน HTML DOM เสมอเพื่อให้ Googlebot เก็บข้อมูลได้ 100% แต่พับซ่อนด้วย CSS ได้ */}
+                                                                            <div
+                                                                                className={`space-y-6 transition-all duration-300 ease-in-out overflow-hidden ${isSeoExpanded
+                                                                                    ? 'max-h-[2500px] opacity-100 mt-4'
+                                                                                    : 'max-h-0 opacity-0 pointer-events-none mt-0'
+                                                                                    }`}
+                                                                            >
+                                                                                {/* 1. คำอธิบายหลัก */}
+                                                                                <div className="bg-white/80 p-5 rounded-2xl border border-gray-100 shadow-xs">
+                                                                                    <p className="text-gray-500 text-xs sm:text-sm leading-relaxed">
+                                                                                        <strong>PIMWAI (พิมพ์ไว)</strong> คือแพลตฟอร์ม<strong>ฝึกพิมพ์ดีดออนไลน์ฟรี</strong>และโปรแกรม<strong>ฝึกพิมพ์สัมผัส 10 นิ้ว</strong>สำหรับคนไทย ออกแบบมาเพื่อช่วยให้คุณฝึกวางนิ้วบนแป้นพิมพ์ภาษาไทย (แป้นเหย้า <strong>ฟ ห ก ด ่ า ส ว</strong>) และภาษาอังกฤษ (<strong>A S D F - J K L ;</strong>) ได้อย่างถูกต้องตามหลักสรีรศาสตร์ พร้อมระบบ<strong>ทดสอบความเร็วพิมพ์ดีด (Typing Test)</strong> วัดค่าความเร็วคำต่อนาที (WPM) และความแม่นยำ (Accuracy) แบบเรียลไทม์ เล่นได้ทันทีบนเว็บเบราว์เซอร์โดยไม่ต้องดาวน์โหลดโปรแกรมและไม่ต้องสมัครสมาชิก
+                                                                                    </p>
+                                                                                </div>
 
-                        {/* 2. Internal Links Hub (ช่วยให้ Google สร้าง Sitelinks หน้าบทเรียน, ทดสอบ WPM, จัดอันดับ แทนหน้าเข้าสู่ระบบ) */}
-                        <nav aria-label="หมวดหมู่การฝึกพิมพ์ดีดหลักบน PIMWAI" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <Link
-                                href="/lessons"
-                                className="group bg-white/80 hover:bg-white p-4 rounded-2xl border border-gray-100 hover:border-[#5cb5db]/50 shadow-xs transition-all flex flex-col justify-between"
-                            >
-                                <div>
-                                    <h2 className="font-bold text-gray-800 group-hover:text-[#0c648b] text-sm mb-1.5 flex items-center justify-between">
-                                        <span>บทเรียนฝึกพิมพ์สัมผัส 10 นิ้ว</span>
-                                        <ChevronRight size={15} className="text-gray-400 group-hover:text-[#5cb5db] transition-transform group-hover:translate-x-0.5" />
-                                    </h2>
-                                    <p className="text-gray-500 text-xs">
-                                        แบบฝึกหัดพิมพ์ดีดกว่า 100 ด่าน เริ่มตั้งแต่ฝึกพิมพ์แป้นเหย้า <strong>ฟ ห ก ด ่ า ส ว</strong> แป้นบน แป้นล่าง สระ และวรรณยุกต์ ไปจนถึงระดับสูง
-                                    </p>
-                                </div>
-                            </Link>
+                                                                                {/* 2. Internal Links Hub (ช่วยให้ Google สร้าง Sitelinks หน้าบทเรียน, ทดสอบ WPM, จัดอันดับ แทนหน้าเข้าสู่ระบบ) */}
+                                                                                <nav aria-label="หมวดหมู่การฝึกพิมพ์ดีดหลักบน PIMWAI" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                                                                    <Link
+                                                                                        href="/lessons"
+                                                                                        className="group bg-white/80 hover:bg-white p-4 rounded-2xl border border-gray-100 hover:border-[#5cb5db]/50 shadow-xs transition-all flex flex-col justify-between"
+                                                                                    >
+                                                                                        <div>
+                                                                                            <h2 className="font-bold text-gray-800 group-hover:text-[#0c648b] text-sm mb-1.5 flex items-center justify-between">
+                                                                                                <span>บทเรียนฝึกพิมพ์สัมผัส 10 นิ้ว</span>
+                                                                                                <ChevronRight size={15} className="text-gray-400 group-hover:text-[#5cb5db] transition-transform group-hover:translate-x-0.5" />
+                                                                                            </h2>
+                                                                                            <p className="text-gray-500 text-xs">
+                                                                                                แบบฝึกหัดพิมพ์ดีดกว่า 100 ด่าน เริ่มตั้งแต่ฝึกพิมพ์แป้นเหย้า <strong>ฟ ห ก ด ่ า ส ว</strong> แป้นบน แป้นล่าง สระ และวรรณยุกต์ ไปจนถึงระดับสูง
+                                                                                            </p>
+                                                                                        </div>
+                                                                                    </Link>
 
-                            <Link
-                                href="/tests"
-                                className="group bg-white/80 hover:bg-white p-4 rounded-2xl border border-gray-100 hover:border-emerald-400/50 shadow-xs transition-all flex flex-col justify-between"
-                            >
-                                <div>
-                                    <h2 className="font-bold text-gray-800 group-hover:text-emerald-700 text-sm mb-1.5 flex items-center justify-between">
-                                        <span>ทดสอบความเร็วพิมพ์ดีด (WPM)</span>
-                                        <ChevronRight size={15} className="text-gray-400 group-hover:text-emerald-500 transition-transform group-hover:translate-x-0.5" />
-                                    </h2>
-                                    <p className="text-gray-500 text-xs">
-                                        สอบวัดความเร็วการพิมพ์ดีดแบบจับเวลา 1 นาที, 3 นาที และ 5 นาที พร้อมกราฟวิเคราะห์ตัวอักษรที่พิมพ์ผิดบ่อยเพื่อแก้ไขจุดอ่อน
-                                    </p>
-                                </div>
-                            </Link>
+                                                                                    <Link
+                                                                                        href="/tests"
+                                                                                        className="group bg-white/80 hover:bg-white p-4 rounded-2xl border border-gray-100 hover:border-emerald-400/50 shadow-xs transition-all flex flex-col justify-between"
+                                                                                    >
+                                                                                        <div>
+                                                                                            <h2 className="font-bold text-gray-800 group-hover:text-emerald-700 text-sm mb-1.5 flex items-center justify-between">
+                                                                                                <span>ทดสอบความเร็วพิมพ์ดีด (WPM)</span>
+                                                                                                <ChevronRight size={15} className="text-gray-400 group-hover:text-emerald-500 transition-transform group-hover:translate-x-0.5" />
+                                                                                            </h2>
+                                                                                            <p className="text-gray-500 text-xs">
+                                                                                                สอบวัดความเร็วการพิมพ์ดีดแบบจับเวลา 1 นาที, 3 นาที และ 5 นาที พร้อมกราฟวิเคราะห์ตัวอักษรที่พิมพ์ผิดบ่อยเพื่อแก้ไขจุดอ่อน
+                                                                                            </p>
+                                                                                        </div>
+                                                                                    </Link>
 
-                            <Link
-                                href="/rankings"
-                                className="group bg-white/80 hover:bg-white p-4 rounded-2xl border border-gray-100 hover:border-amber-400/50 shadow-xs transition-all flex flex-col justify-between"
-                            >
-                                <div>
-                                    <h2 className="font-bold text-gray-800 group-hover:text-amber-600 text-sm mb-1.5 flex items-center justify-between">
-                                        <span>จัดอันดับคนพิมพ์เร็ว (Leaderboard)</span>
-                                        <ChevronRight size={15} className="text-gray-400 group-hover:text-amber-500 transition-transform group-hover:translate-x-0.5" />
-                                    </h2>
-                                    <p className="text-gray-500 text-xs">
-                                        ตารางจัดอันดับนักพิมพ์สัมผัสที่มีความเร็ว WPM และระดับแรงค์สูงสุดในไทย แข่งขันเก็บ EXP และสะสมดาวไปกับเพื่อนๆ
-                                    </p>
-                                </div>
-                            </Link>
+                                                                                    <Link
+                                                                                        href="/rankings"
+                                                                                        className="group bg-white/80 hover:bg-white p-4 rounded-2xl border border-gray-100 hover:border-amber-400/50 shadow-xs transition-all flex flex-col justify-between"
+                                                                                    >
+                                                                                        <div>
+                                                                                            <h2 className="font-bold text-gray-800 group-hover:text-amber-600 text-sm mb-1.5 flex items-center justify-between">
+                                                                                                <span>จัดอันดับคนพิมพ์เร็ว (Leaderboard)</span>
+                                                                                                <ChevronRight size={15} className="text-gray-400 group-hover:text-amber-500 transition-transform group-hover:translate-x-0.5" />
+                                                                                            </h2>
+                                                                                            <p className="text-gray-500 text-xs">
+                                                                                                ตารางจัดอันดับนักพิมพ์สัมผัสที่มีความเร็ว WPM และระดับแรงค์สูงสุดในไทย แข่งขันเก็บ EXP และสะสมดาวไปกับเพื่อนๆ
+                                                                                            </p>
+                                                                                        </div>
+                                                                                    </Link>
 
-                            <Link
-                                href="/news"
-                                className="group bg-white/80 hover:bg-white p-4 rounded-2xl border border-gray-100 hover:border-purple-400/50 shadow-xs transition-all flex flex-col justify-between"
-                            >
-                                <div>
-                                    <h2 className="font-bold text-gray-800 group-hover:text-purple-700 text-sm mb-1.5 flex items-center justify-between">
-                                        <span>เทคนิคพิมพ์เร็ว & อัปเดตระบบ</span>
-                                        <ChevronRight size={15} className="text-gray-400 group-hover:text-purple-500 transition-transform group-hover:translate-x-0.5" />
-                                    </h2>
-                                    <p className="text-gray-500 text-xs">
-                                        ติดตามฟีเจอร์ใหม่ โหมดฝึกพิมพ์บทความ และการปรับปรุงระบบฝึกพิมพ์ดีดบน PIMWAI ให้ลื่นไหลในทุกอุปกรณ์
-                                    </p>
-                                </div>
-                            </Link>
-                        </nav>
+                                                                                    <Link
+                                                                                        href="/news"
+                                                                                        className="group bg-white/80 hover:bg-white p-4 rounded-2xl border border-gray-100 hover:border-purple-400/50 shadow-xs transition-all flex flex-col justify-between"
+                                                                                    >
+                                                                                        <div>
+                                                                                            <h2 className="font-bold text-gray-800 group-hover:text-purple-700 text-sm mb-1.5 flex items-center justify-between">
+                                                                                                <span>เทคนิคพิมพ์เร็ว & อัปเดตระบบ</span>
+                                                                                                <ChevronRight size={15} className="text-gray-400 group-hover:text-purple-500 transition-transform group-hover:translate-x-0.5" />
+                                                                                            </h2>
+                                                                                            <p className="text-gray-500 text-xs">
+                                                                                                ติดตามฟีเจอร์ใหม่ โหมดฝึกพิมพ์บทความ และการปรับปรุงระบบฝึกพิมพ์ดีดบน PIMWAI ให้ลื่นไหลในทุกอุปกรณ์
+                                                                                            </p>
+                                                                                        </div>
+                                                                                    </Link>
+                                                                                </nav>
 
-                        {/* 3. คู่มือวางนิ้วแป้นเหย้า 10 นิ้ว (Home Row Guide: คีย์เวิร์ดหลักที่คนค้นหาเยอะมาก) */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="bg-white/75 p-5 rounded-2xl border border-gray-100 shadow-xs">
-                                <h2 className="font-bold text-gray-800 text-sm mb-2 flex items-center gap-1.5">
-                                    <span className="w-2 h-2 rounded-full bg-[#5cb5db]"></span>
-                                    วิธีวางนิ้วพิมพ์สัมผัส 10 นิ้ว แป้นเหย้า (ฟ ห ก ด - ่ า ส ว)
-                                </h2>
-                                <p className="text-gray-500 text-xs mb-3">
-                                    หัวใจสำคัญของการ<strong>ฝึกพิมพ์สัมผัส 10 นิ้ว</strong>ให้เร็วโดยไม่ต้องก้มมองแป้นพิมพ์ คือการวางนิ้วทั้งสองข้างไว้ที่<strong>แป้นเหย้า (Home Row)</strong> เสมอ:
-                                </p>
-                                <div className="grid grid-cols-2 gap-3 text-xs text-gray-600 bg-gray-50/80 p-3 rounded-xl border border-gray-100">
-                                    <div>
-                                        <div className="font-bold text-gray-800 mb-1">มือซ้าย (ฟ ห ก ด / A S D F)</div>
-                                        <ul className="space-y-0.5 text-[11px] text-gray-500">
-                                            <li>• นิ้วก้อยซ้าย: แป้น <strong>ฟ</strong> (A)</li>
-                                            <li>• นิ้วนางซ้าย: แป้น <strong>ห</strong> (S)</li>
-                                            <li>• นิ้วกลางซ้าย: แป้น <strong>ก</strong> (D)</li>
-                                            <li>• นิ้วชี้ซ้าย: แป้น <strong>ด</strong> (F)</li>
-                                        </ul>
-                                    </div>
-                                    <div>
-                                        <div className="font-bold text-gray-800 mb-1">มือขวา (่ า ส ว / J K L ;)</div>
-                                        <ul className="space-y-0.5 text-[11px] text-gray-500">
-                                            <li>• นิ้วชี้ขวา: แป้น <strong>ไม้เอก ่</strong> (J)</li>
-                                            <li>• นิ้วกลางขวา: แป้น <strong>า</strong> (K)</li>
-                                            <li>• นิ้วนางขวา: แป้น <strong>ส</strong> (L)</li>
-                                            <li>• นิ้วก้อยขวา: แป้น <strong>ว</strong> (;)</li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
+                                                                                {/* 3. คู่มือวางนิ้วแป้นเหย้า 10 นิ้ว (Home Row Guide: คีย์เวิร์ดหลักที่คนค้นหาเยอะมาก) */}
+                                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                                                    <div className="bg-white/75 p-5 rounded-2xl border border-gray-100 shadow-xs">
+                                                                                        <h2 className="font-bold text-gray-800 text-sm mb-2 flex items-center gap-1.5">
+                                                                                            <span className="w-2 h-2 rounded-full bg-[#5cb5db]"></span>
+                                                                                            วิธีวางนิ้วพิมพ์สัมผัส 10 นิ้ว แป้นเหย้า (ฟ ห ก ด - ่ า ส ว)
+                                                                                        </h2>
+                                                                                        <p className="text-gray-500 text-xs mb-3">
+                                                                                            หัวใจสำคัญของการ<strong>ฝึกพิมพ์สัมผัส 10 นิ้ว</strong>ให้เร็วโดยไม่ต้องก้มมองแป้นพิมพ์ คือการวางนิ้วทั้งสองข้างไว้ที่<strong>แป้นเหย้า (Home Row)</strong> เสมอ:
+                                                                                        </p>
+                                                                                        <div className="grid grid-cols-2 gap-3 text-xs text-gray-600 bg-gray-50/80 p-3 rounded-xl border border-gray-100">
+                                                                                            <div>
+                                                                                                <div className="font-bold text-gray-800 mb-1">มือซ้าย (ฟ ห ก ด / A S D F)</div>
+                                                                                                <ul className="space-y-0.5 text-[11px] text-gray-500">
+                                                                                                    <li>• นิ้วก้อยซ้าย: แป้น <strong>ฟ</strong> (A)</li>
+                                                                                                    <li>• นิ้วนางซ้าย: แป้น <strong>ห</strong> (S)</li>
+                                                                                                    <li>• นิ้วกลางซ้าย: แป้น <strong>ก</strong> (D)</li>
+                                                                                                    <li>• นิ้วชี้ซ้าย: แป้น <strong>ด</strong> (F)</li>
+                                                                                                </ul>
+                                                                                            </div>
+                                                                                            <div>
+                                                                                                <div className="font-bold text-gray-800 mb-1">มือขวา (่ า ส ว / J K L ;)</div>
+                                                                                                <ul className="space-y-0.5 text-[11px] text-gray-500">
+                                                                                                    <li>• นิ้วชี้ขวา: แป้น <strong>ไม้เอก ่</strong> (J)</li>
+                                                                                                    <li>• นิ้วกลางขวา: แป้น <strong>า</strong> (K)</li>
+                                                                                                    <li>• นิ้วนางขวา: แป้น <strong>ส</strong> (L)</li>
+                                                                                                    <li>• นิ้วก้อยขวา: แป้น <strong>ว</strong> (;)</li>
+                                                                                                </ul>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    </div>
 
-                            <div className="bg-white/75 p-5 rounded-2xl border border-gray-100 shadow-xs">
-                                <h2 className="font-bold text-gray-800 text-sm mb-2 flex items-center gap-1.5">
-                                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                                    มาตรฐานความเร็วพิมพ์ดีด (WPM) และการสอบราชการ
-                                </h2>
-                                <p className="text-gray-500 text-xs mb-3">
-                                    ค่า <strong>WPM (Words Per Minute)</strong> คือจำนวนคำที่พิมพ์ได้ถูกต้องในเวลา 1 นาที ซึ่งใช้เป็นเกณฑ์วัดทักษะการพิมพ์งานและสอบปฏิบัติคอมพิวเตอร์:
-                                </p>
-                                <ul className="space-y-1.5 text-xs text-gray-500">
-                                    <li>• <strong className="text-gray-700">20 – 30 WPM:</strong> ระดับผู้เริ่มต้น คุ้นเคยกับตำแหน่งแป้นเหย้าและสระพื้นฐาน</li>
-                                    <li>• <strong className="text-gray-700">35 – 50 WPM:</strong> ระดับมาตรฐานวัยทำงาน และผ่านเกณฑ์สอบพิมพ์ดีดหน่วยงานราชการ/เอกชนส่วนใหญ่</li>
-                                    <li>• <strong className="text-gray-700">60 – 80+ WPM:</strong> ระดับนักพิมพ์สัมผัสมืออาชีพ พิมพ์ได้คล่องแคล่วโดยไม่ต้องมองคีย์บอร์ด 100%</li>
-                                </ul>
-                            </div>
-                        </div>
+                                                                                    <div className="bg-white/75 p-5 rounded-2xl border border-gray-100 shadow-xs">
+                                                                                        <h2 className="font-bold text-gray-800 text-sm mb-2 flex items-center gap-1.5">
+                                                                                            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                                                                            มาตรฐานความเร็วพิมพ์ดีด (WPM) และการสอบราชการ
+                                                                                        </h2>
+                                                                                        <p className="text-gray-500 text-xs mb-3">
+                                                                                            ค่า <strong>WPM (Words Per Minute)</strong> คือจำนวนคำที่พิมพ์ได้ถูกต้องในเวลา 1 นาที ซึ่งใช้เป็นเกณฑ์วัดทักษะการพิมพ์งานและสอบปฏิบัติคอมพิวเตอร์:
+                                                                                        </p>
+                                                                                        <ul className="space-y-1.5 text-xs text-gray-500">
+                                                                                            <li>• <strong className="text-gray-700">20 – 30 WPM:</strong> ระดับผู้เริ่มต้น คุ้นเคยกับตำแหน่งแป้นเหย้าและสระพื้นฐาน</li>
+                                                                                            <li>• <strong className="text-gray-700">35 – 50 WPM:</strong> ระดับมาตรฐานวัยทำงาน และผ่านเกณฑ์สอบพิมพ์ดีดหน่วยงานราชการ/เอกชนส่วนใหญ่</li>
+                                                                                            <li>• <strong className="text-gray-700">60 – 80+ WPM:</strong> ระดับนักพิมพ์สัมผัสมืออาชีพ พิมพ์ได้คล่องแคล่วโดยไม่ต้องมองคีย์บอร์ด 100%</li>
+                                                                                        </ul>
+                                                                                    </div>
+                                                                                </div>
 
-                        {/* 4. คำถามที่พบบ่อย (FAQ Semantic Content สอดคล้องกับ FAQPage Schema) */}
-                        <div className="bg-white/75 p-5 rounded-2xl border border-gray-100 shadow-xs">
-                            <h2 className="font-bold text-gray-800 text-sm mb-3">
-                                คำถามที่พบบ่อยเกี่ยวกับการฝึกพิมพ์ดีด (FAQ)
-                            </h2>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-                                <div>
-                                    <h3 className="font-bold text-gray-700 mb-1">ฝึกพิมพ์ดีดอย่างไรให้พิมพ์เร็วขึ้น?</h3>
-                                    <p className="text-gray-500">
-                                        เริ่มจากการฝึกวางนิ้วที่แป้นเหย้า (ฟ ห ก ด ่ า ส ว) โดยไม่มองแป้นพิมพ์ เน้นความแม่นยำ (Accuracy 95% ขึ้นไป) ก่อนความเร็ว และฝึกต่อเนื่องวันละ 15–20 นาทีเพื่อให้กล้ามเนื้อจดจำตำแหน่งแป้น (Muscle Memory)
-                                    </p>
-                                </div>
-                                <div>
-                                    <h3 className="font-bold text-gray-700 mb-1">PIMWAI ใช้งานฟรีไหม ต้องสมัครสมาชิกหรือเปล่า?</h3>
-                                    <p className="text-gray-500">
-                                        ใช้งานฟรี 100% ไม่มีโฆษณาคั่น สามารถเริ่มฝึกพิมพ์ด่วนและทดสอบความเร็ว WPM ได้ทันทีโดยไม่ต้องล็อกอิน หรือหากเข้าสู่ระบบก็จะสามารถบันทึกสถิติ สะสม EXP และจัดอันดับแรงค์ข้ามอุปกรณ์ได้
-                                    </p>
-                                </div>
-                                <div>
-                                    <h3 className="font-bold text-gray-700 mb-1">รองรับการฝึกพิมพ์ภาษาอะไรบ้าง?</h3>
-                                    <p className="text-gray-500">
-                                        รองรับทั้งการฝึกพิมพ์ดีดภาษาไทย (แป้นเกษมณี) และภาษาอังกฤษ (QWERTY) มีทั้งโหมดสุ่มคำศัพท์ความถี่สูง 1,000 คำ โหมดบทความเรื่องสั้น โหมดจับเวลา และบทเรียนสอนวางนิ้วตั้งแต่เริ่มต้น
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
+                                                                                {/* 4. คำถามที่พบบ่อย (FAQ Semantic Content สอดคล้องกับ FAQPage Schema) */}
+                                                                                <div className="bg-white/75 p-5 rounded-2xl border border-gray-100 shadow-xs">
+                                                                                    <h2 className="font-bold text-gray-800 text-sm mb-3">
+                                                                                        คำถามที่พบบ่อยเกี่ยวกับการฝึกพิมพ์ดีด (FAQ)
+                                                                                    </h2>
+                                                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                                                                                        <div>
+                                                                                            <h3 className="font-bold text-gray-700 mb-1">ฝึกพิมพ์ดีดอย่างไรให้พิมพ์เร็วขึ้น?</h3>
+                                                                                            <p className="text-gray-500">
+                                                                                                เริ่มจากการฝึกวางนิ้วที่แป้นเหย้า (ฟ ห ก ด ่ า ส ว) โดยไม่มองแป้นพิมพ์ เน้นความแม่นยำ (Accuracy 95% ขึ้นไป) ก่อนความเร็ว และฝึกต่อเนื่องวันละ 15–20 นาทีเพื่อให้กล้ามเนื้อจดจำตำแหน่งแป้น (Muscle Memory)
+                                                                                            </p>
+                                                                                        </div>
+                                                                                        <div>
+                                                                                            <h3 className="font-bold text-gray-700 mb-1">PIMWAI ใช้งานฟรีไหม ต้องสมัครสมาชิกหรือเปล่า?</h3>
+                                                                                            <p className="text-gray-500">
+                                                                                                ใช้งานฟรี 100% ไม่มีโฆษณาคั่น สามารถเริ่มฝึกพิมพ์ด่วนและทดสอบความเร็ว WPM ได้ทันทีโดยไม่ต้องล็อกอิน หรือหากเข้าสู่ระบบก็จะสามารถบันทึกสถิติ สะสม EXP และจัดอันดับแรงค์ข้ามอุปกรณ์ได้
+                                                                                            </p>
+                                                                                        </div>
+                                                                                        <div>
+                                                                                            <h3 className="font-bold text-gray-700 mb-1">รองรับการฝึกพิมพ์ภาษาอะไรบ้าง?</h3>
+                                                                                            <p className="text-gray-500">
+                                                                                                รองรับทั้งการฝึกพิมพ์ดีดภาษาไทย (แป้นเกษมณี) และภาษาอังกฤษ (QWERTY) มีทั้งโหมดสุ่มคำศัพท์ความถี่สูง 1,000 คำ โหมดบทความเรื่องสั้น โหมดจับเวลา และบทเรียนสอนวางนิ้วตั้งแต่เริ่มต้น
+                                                                                            </p>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                        </section>
 
-            </main>
+                                                                    </main>
 
-            {/* 👑 Rank Up & Star Up Animation Overlay */}
-            {rankUpData && (
-                <RankUpOverlay
-                    prevRank={rankUpData.prevRank}
-                    currentRank={rankUpData.currentRank}
-                    currentRankName={rankUpData.currentRankName}
-                    mode="rank"
-                    onClose={() => setRankUpData(null)}
-                />
-            )}
-            {starUpData && !rankUpData && (
-                <RankUpOverlay
-                    currentRank={starUpData.rank}
-                    currentStars={starUpData.stars}
-                    mode="star"
-                    onClose={() => setStarUpData(null)}
-                />
-            )}
-        </div>
-    );
+                                                                    {/* 👑 Rank Up & Star Up Animation Overlay */}
+                                                                    {rankUpData && (
+                                                                        <RankUpOverlay
+                                                                            prevRank={rankUpData.prevRank}
+                                                                            currentRank={rankUpData.currentRank}
+                                                                            currentRankName={rankUpData.currentRankName}
+                                                                            mode="rank"
+                                                                            onClose={() => setRankUpData(null)}
+                                                                        />
+                                                                    )}
+                                                                    {starUpData && !rankUpData && (
+                                                                        <RankUpOverlay
+                                                                            currentRank={starUpData.rank}
+                                                                            currentStars={starUpData.stars}
+                                                                            mode="star"
+                                                                            onClose={() => setStarUpData(null)}
+                                                                        />
+                                                                    )}
+
+                                                                    {/* 🎵 Unified Audio & YouTube Music Settings Modal */}
+                                                                    <QuickAudioModal
+                                                                        isOpen={isAudioModalOpen}
+                                                                        onClose={() => setIsAudioModalOpen(false)}
+                                                                        onKeyboardSoundChange={(soundId) => setIsSoundOn(soundId !== 'none')}
+                                                                    />
+                                                                </div>
+                                                                );
 }

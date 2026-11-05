@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;700;800&display=swap');
 @import "tailwindcss";
+@custom-variant dark (&:where(.never-dark-mode));
 
 @font-face {
   font-family: 'NunitoLocal';
@@ -8,10 +9,22 @@
   font-display: swap;
 }
 
-:root {
+:root,
+html,
+body {
   --background: #ffffff;
   --foreground: #171717;
-  color-scheme: light;
+  color-scheme: light only !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root,
+  html,
+  body {
+    --background: #ffffff !important;
+    --foreground: #171717 !important;
+    color-scheme: light only !important;
+  }
 }
 
 @theme inline {
@@ -619,4 +632,12 @@ input::-ms-clear {
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* บังคับให้คนใช้ธีมมืดของเบราว์เซอร์/OS เห็นสีตัวอักษรและช่องกรอกข้อมูลเหมือนธีมสว่าง 100% */
+input,
+select,
+textarea {
+  color-scheme: light only;
+  color: #1f2937;
 }

@@ -43,11 +43,21 @@ export default function AntiCheatNoticeModal() {
             }
         }
 
-        // ดึงข้อมูลผู้ใช้เพื่อเช็ค notice
-        if (session?.user) {
+        // ดึงข้อมูลผู้ใช้เพื่อเช็ค notice (เช็คเพียงครั้งเดียวต่อ Session เพื่อไม่ให้หน่วงเวลาเปลี่ยนหน้า)
+        const userKey = session?.user?.email || (session?.user as any)?.id;
+        if (userKey) {
+            try {
+                if (sessionStorage.getItem(`pimwai_notice_checked_${userKey}`) === "1") {
+                    return;
+                }
+            } catch (e) {}
+
             fetch("/api/user/profile")
                 .then((res) => res.json())
                 .then((data) => {
+                    try {
+                        sessionStorage.setItem(`pimwai_notice_checked_${userKey}`, "1");
+                    } catch (e) {}
                     if (data.success && data.antiCheatNotice) {
                         try {
                             const parsed = JSON.parse(data.antiCheatNotice);
@@ -64,7 +74,7 @@ export default function AntiCheatNoticeModal() {
                 })
                 .catch((err) => console.error("Notice check error:", err));
         }
-    }, [session]);
+    }, [session?.user?.email]);
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];

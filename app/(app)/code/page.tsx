@@ -20,6 +20,7 @@ import {
 import toast, { Toaster } from 'react-hot-toast';
 import { soundManager } from '@/lib/soundEffects';
 import { toDateKey } from '@/lib/streakUtils';
+import QuickAudioModal from '@/components/QuickAudioModal/QuickAudioModal';
 
 interface CodeSnippet {
     id: string;
@@ -551,6 +552,14 @@ export default function CodeTypingPage() {
     const [correctKeystrokes, setCorrectKeystrokes] = useState(0);
     const [errorCount, setErrorCount] = useState(0);
     const [isSoundOn, setIsSoundOn] = useState(true);
+    const [isAudioModalOpen, setIsAudioModalOpen] = useState(false);
+
+    useEffect(() => {
+        const unsub = soundManager.subscribe((state) => {
+            setIsSoundOn(state.selectedKbSound !== 'none');
+        });
+        return () => unsub();
+    }, []);
 
     // ⏱️ Refs สำหรับจับเวลาและซิงค์ข้อมูลเข้าในรหัส (Account Sync) แบบลื่นไหลไม่กระตุก
     const lastTypingTimeRef = useRef<number>(0);
@@ -1370,14 +1379,14 @@ export default function CodeTypingPage() {
                             ))}
                         </div>
 
-                        {/* Sound Toggle */}
+                        {/* Audio & Music Settings Text Button */}
                         <button
                             type="button"
-                            onClick={() => setIsSoundOn(!isSoundOn)}
-                            className="p-1.5 rounded-lg text-gray-400 hover:text-[#5cb5db] transition-colors cursor-pointer"
-                            title={isSoundOn ? "ปิดเสียงแป้นพิมพ์" : "เปิดเสียงแป้นพิมพ์"}
+                            onClick={() => setIsAudioModalOpen(true)}
+                            className="text-xs sm:text-sm font-bold text-gray-500 hover:text-[#5cb5db] transition-colors cursor-pointer px-1"
+                            title="ตั้งค่าเสียงและเพลง"
                         >
-                            {isSoundOn ? <Volume2 size={18} /> : <VolumeX size={18} />}
+                            เสียง/เพลง
                         </button>
                     </div>
 
@@ -1725,6 +1734,16 @@ export default function CodeTypingPage() {
                     </div>
                 </div>
             )}
+
+            {/* 🎵 Audio & YouTube Music Settings Modal */}
+            <QuickAudioModal
+                isOpen={isAudioModalOpen}
+                onClose={() => {
+                    setIsAudioModalOpen(false);
+                    setTimeout(() => inputRef.current?.focus(), 50);
+                }}
+                onKeyboardSoundChange={(soundId) => setIsSoundOn(soundId !== 'none')}
+            />
         </div>
     );
 }

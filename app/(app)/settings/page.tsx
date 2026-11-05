@@ -7,11 +7,11 @@ import {
     Camera, Pencil, Check, X, Clock, Loader2, Calendar, ShieldCheck,
     Mail, User as UserIcon, KeyRound, Eye, EyeOff, LogOut, Volume2,
     Music, Play, Square, CheckSquare, Sparkles, VolumeX, Pause,
-    MessageSquarePlus, ShieldAlert, Send, Trash2, AlertTriangle
+    MessageSquarePlus, ShieldAlert, Send, Trash2, AlertTriangle, Plus, ChevronDown
 } from 'lucide-react';
 import { FcGoogle } from 'react-icons/fc';
 import toast, { Toaster } from 'react-hot-toast';
-import { soundManager, KEYBOARD_SOUNDS, BGM_TRACKS } from '@/lib/soundEffects';
+import { soundManager, KEYBOARD_SOUNDS, BGM_TRACKS, BgmTrack } from '@/lib/soundEffects';
 import { isAdmin } from '@/lib/adminAuth';
 
 interface UserProfile {
@@ -45,11 +45,15 @@ export default function SettingsPage() {
 
     // Audio Settings States
     const [selectedKbSound, setSelectedKbSound] = useState('kb1');
+    const [isKbDropdownOpen, setIsKbDropdownOpen] = useState(false);
     const [sfxVolume, setSfxVolume] = useState(70);
     const [bgmVolume, setBgmVolume] = useState(40);
     const [selectedBgmTracks, setSelectedBgmTracks] = useState<string[]>(['bgm1', 'bgm2', 'bgm3']);
+    const [allBgmTracks, setAllBgmTracks] = useState<BgmTrack[]>(BGM_TRACKS);
     const [isBgmPlaying, setIsBgmPlaying] = useState(false);
     const [previewingTrackId, setPreviewingTrackId] = useState<string | null>(null);
+    const [ytUrlInput, setYtUrlInput] = useState('');
+    const [isAddingYt, setIsAddingYt] = useState(false);
 
     // Feedback States
     const [feedbackCategory, setFeedbackCategory] = useState('suggestion');
@@ -132,6 +136,8 @@ export default function SettingsPage() {
             setSfxVolume(Math.round(state.sfxVolume * 100));
             setSelectedKbSound(state.selectedKbSound);
             setSelectedBgmTracks(state.selectedTracks);
+            setAllBgmTracks(state.allTracks);
+            setPreviewingTrackId(state.previewingTrackId);
         });
 
         return () => {
@@ -141,6 +147,7 @@ export default function SettingsPage() {
 
     const handleSelectKeyboardSound = (id: string) => {
         setSelectedKbSound(id);
+        setIsKbDropdownOpen(false);
         soundManager.setKeyboardSound(id);
         if (id !== 'none') {
             soundManager.playKeySound(id);
@@ -182,12 +189,38 @@ export default function SettingsPage() {
         const isPlaying = soundManager.togglePreviewTrack(trackId);
         if (isPlaying) {
             setPreviewingTrackId(trackId);
-            const track = BGM_TRACKS.find(t => t.id === trackId);
+            const track = allBgmTracks.find(t => t.id === trackId);
             toast.success(`กำลังทดลองฟัง: ${track?.title}`);
         } else {
             setPreviewingTrackId(null);
             toast.success('หยุดฟังเพลงแล้ว');
         }
+    };
+
+    const handleAddYoutubeTrack = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!ytUrlInput.trim()) {
+            toast.error('กรุณาวางลิงก์เพลงจาก YouTube');
+            return;
+        }
+        setIsAddingYt(true);
+        try {
+            const res = await soundManager.addYoutubeTrack(ytUrlInput.trim());
+            if (res.success) {
+                setYtUrlInput('');
+                toast.success(`เพิ่มและเล่นเพลง "${res.track?.title}" แล้ว!`);
+            } else {
+                toast.error(res.error || 'ลิงก์ YouTube ไม่ถูกต้อง');
+            }
+        } finally {
+            setIsAddingYt(false);
+        }
+    };
+
+    const handleRemoveCustomTrack = (trackId: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        soundManager.removeCustomTrack(trackId);
+        toast.success('ลบเพลงออกจากรายการแล้ว');
     };
 
     const handleBgmVolumeChange = (vol: number) => {
@@ -573,145 +606,223 @@ export default function SettingsPage() {
                     </div>
                 </div>
 
-                {/* --- Section 2: เสียงแป้นพิมพ์ & เพลงพื้นหลัง (Audio Preferences) --- */}
-                <div className="bg-white rounded-3xl p-6 sm:p-10 shadow-sm border border-gray-200/80 flex flex-col gap-8">
-                    <div>
-                        <h2 className="text-lg sm:text-xl font-black text-gray-800 logo-font flex items-center gap-2">
-                            <span>Audio Preferences</span>
-                        </h2>
-                        <p className="text-xs sm:text-sm text-gray-500 mt-1">เลือกเสียงแป้นพิมพ์และเลือกเพลงพื้นหลังที่คุณชื่นชอบ</p>
+                {/* --- Section 2: เสียงแป้นพิมพ์ & เพลงพื้นหลัง (Audio Preferences - ดีไซน์เดียวกับ Popup) --- */}
+                <div className="bg-white rounded-3xl p-6 sm:p-10 shadow-sm border border-gray-200/80 flex flex-col gap-6">
+                    <div className="flex items-center gap-2.5">
+                        <Volume2 size={22} className="text-[#5cb5db]" />
+                        <div>
+                            <h2 className="text-lg sm:text-xl font-black text-gray-800">
+                                ตั้งค่าเสียงและเพลง
+                            </h2>
+                            <p className="text-xs sm:text-sm text-gray-500 mt-0.5">เลือกเสียงแป้นพิมพ์และเลือกเพลงพื้นหลังที่คุณชื่นชอบ</p>
+                        </div>
                     </div>
 
-                    <div className="flex flex-col gap-8 divide-y divide-gray-100">
-                        {/* 1. Keyboard Sound Selection */}
-                        <div className="flex flex-col gap-4">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2.5 text-gray-800 font-bold text-base">
-                                    <Volume2 size={20} className="text-[#5cb5db]" />
-                                    <span>เสียงแป้นพิมพ์ (Keyboard Sound)</span>
-                                </div>
-                                <span className="text-xs font-bold text-[#5cb5db] bg-blue-50 px-3 py-1 rounded-full logo-font">
-                                    {KEYBOARD_SOUNDS.find(k => k.id === selectedKbSound)?.name}
-                                </span>
-                            </div>
+                    <div className="flex flex-col gap-6 divide-y divide-gray-100 max-w-2xl">
+                        {/* 1. เสียงแป้นพิมพ์ (Dropdown + Slider) */}
+                        <div className="flex flex-col gap-3.5">
+                            <div className="flex items-center justify-between gap-3">
+                                <span className="text-xs sm:text-sm font-bold text-gray-700">เสียงแป้นพิมพ์</span>
 
-                            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
-                                {KEYBOARD_SOUNDS.map((sound) => (
+                                <div className="relative">
                                     <button
-                                        key={sound.id}
                                         type="button"
-                                        onClick={() => handleSelectKeyboardSound(sound.id)}
-                                        className={`py-3 px-4 rounded-2xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer text-center flex flex-col items-center justify-center gap-1 ${selectedKbSound === sound.id
-                                            ? 'bg-[#5cb5db] text-white shadow-md shadow-blue-200 scale-[1.02]'
-                                            : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200/60'
-                                            }`}
+                                        onClick={() => setIsKbDropdownOpen(!isKbDropdownOpen)}
+                                        className="flex items-center justify-between gap-3 px-4 py-2 rounded-xl bg-gray-50 hover:bg-gray-100 border border-gray-200/80 text-xs sm:text-sm font-bold text-gray-700 transition cursor-pointer min-w-[160px]"
                                     >
-                                        <span className="logo-font">{sound.name}</span>
+                                        <span className="logo-font">{KEYBOARD_SOUNDS.find(k => k.id === selectedKbSound)?.name || 'Keyboard 1'}</span>
+                                        <ChevronDown size={15} className={`text-gray-400 transition-transform ${isKbDropdownOpen ? 'rotate-180' : ''}`} />
                                     </button>
-                                ))}
+
+                                    {isKbDropdownOpen && (
+                                        <div className="absolute right-0 mt-1.5 w-48 bg-white rounded-2xl shadow-xl border border-gray-100 py-1.5 z-20">
+                                            {KEYBOARD_SOUNDS.map((sound) => {
+                                                const isSelected = selectedKbSound === sound.id;
+                                                return (
+                                                    <button
+                                                        key={sound.id}
+                                                        type="button"
+                                                        onClick={() => handleSelectKeyboardSound(sound.id)}
+                                                        className={`w-full px-4 py-2 text-left text-xs sm:text-sm font-bold flex items-center justify-between transition cursor-pointer ${
+                                                            isSelected
+                                                                ? 'text-[#5cb5db] bg-blue-50/50'
+                                                                : 'text-gray-600 hover:bg-gray-50'
+                                                        }`}
+                                                    >
+                                                        <span className="logo-font">{sound.name}</span>
+                                                        {isSelected && <Check size={14} className="text-[#5cb5db]" />}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
-                            {selectedKbSound !== 'none' && (
-                                <div className="flex items-center gap-4 pt-2">
-                                    <span className="text-xs font-semibold text-gray-500 w-24 shrink-0">ระดับเสียงปุ่มกด:</span>
-                                    <input
-                                        type="range"
-                                        min="0"
-                                        max="100"
-                                        value={sfxVolume}
-                                        onChange={(e) => handleSfxVolumeChange(Number(e.target.value))}
-                                        onMouseUp={handleSfxVolumeCommit}
-                                        onTouchEnd={handleSfxVolumeCommit}
-                                        className="flex-1 accent-[#5cb5db] cursor-pointer h-2 bg-gray-200 rounded-lg appearance-none"
-                                        style={{
-                                            background: `linear-gradient(to right, #5cb5db 0%, #5cb5db ${sfxVolume}%, #e5e7eb ${sfxVolume}%, #e5e7eb 100%)`
-                                        }}
-                                    />
-                                    <span className="text-xs font-bold text-gray-700 w-10 text-right logo-font">{sfxVolume}%</span>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* 2. Background Music Playlist Selection */}
-                        <div className="flex flex-col gap-5 pt-6">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                <div>
-                                    <div className="flex items-center gap-2.5 text-gray-800 font-bold text-base">
-                                        <Music size={20} className="text-[#5cb5db]" />
-                                        <span>เพลงพื้นหลัง (Background Music Playlist)</span>
-                                    </div>
-                                    <p className="text-xs text-gray-500 mt-0.5">กดปุ่ม Play เพื่อทดลองฟังแต่ละเพลง และติ๊กเลือกเพลงที่จะให้เล่นวนลูป</p>
-                                </div>
-
+                            <div className="flex items-center gap-3">
                                 <button
                                     type="button"
-                                    onClick={() => soundManager.toggleBgm()}
-                                    className={`px-4 py-2 rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs ${isBgmPlaying
-                                        ? 'bg-amber-500 hover:bg-amber-600 text-white animate-pulse'
-                                        : 'bg-[#5cb5db] hover:bg-[#4a9ec2] text-white'
-                                        }`}
+                                    onClick={() => handleSelectKeyboardSound(selectedKbSound === 'none' ? 'kb1' : 'none')}
+                                    className="text-gray-400 hover:text-gray-600 transition cursor-pointer shrink-0"
+                                    title={selectedKbSound === 'none' ? 'เปิดเสียงคีย์บอร์ด' : 'ปิดเสียงคีย์บอร์ด'}
                                 >
-                                    {isBgmPlaying ? <Square size={14} className="fill-white" /> : <Play size={14} className="fill-white" />}
-                                    <span>{isBgmPlaying ? 'หยุดเล่น' : 'เล่นเพลง'}</span>
+                                    {selectedKbSound === 'none' ? <VolumeX size={18} /> : <Volume2 size={18} className="text-[#5cb5db]" />}
                                 </button>
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                {BGM_TRACKS.map((track) => {
-                                    const isSelected = selectedBgmTracks.includes(track.id);
-                                    const isThisPreviewing = previewingTrackId === track.id;
-
-                                    return (
-                                        <div
-                                            key={track.id}
-                                            onClick={(e) => handleToggleBgmTrack(track.id, e)}
-                                            className={`p-4 rounded-2xl border transition-all text-left flex items-center justify-between gap-3 cursor-pointer ${isSelected
-                                                ? 'bg-blue-50/60 border-[#5cb5db] text-gray-800 shadow-xs'
-                                                : 'bg-gray-50/80 border-gray-200 text-gray-400 hover:bg-gray-100/70'
-                                                }`}
-                                        >
-                                            <div className="flex items-center gap-2.5 overflow-hidden flex-1">
-                                                <button
-                                                    type="button"
-                                                    title={isThisPreviewing ? "หยุดฟัง" : "ทดลองฟังเพลงนี้"}
-                                                    onClick={(e) => handlePreviewTrack(track.id, e)}
-                                                    className={`p-2 rounded-xl shrink-0 transition-all cursor-pointer shadow-xs ${isThisPreviewing
-                                                        ? 'bg-amber-500 text-white animate-pulse'
-                                                        : 'bg-[#5cb5db] hover:bg-[#4a9ec2] text-white'
-                                                        }`}
-                                                >
-                                                    {isThisPreviewing ? <Pause size={15} /> : <Play size={15} className="fill-white" />}
-                                                </button>
-
-                                                <span className="text-xs sm:text-sm font-bold truncate logo-font">{track.title}</span>
-                                            </div>
-
-                                            <div className="shrink-0">
-                                                {isSelected ? (
-                                                    <CheckSquare size={20} className="text-[#5cb5db]" />
-                                                ) : (
-                                                    <div className="w-5 h-5 rounded-md border-2 border-gray-300"></div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-
-                            <div className="flex items-center gap-4 pt-2">
-                                <span className="text-xs font-semibold text-gray-500 w-24 shrink-0">ระดับเสียงเพลง:</span>
                                 <input
                                     type="range"
                                     min="0"
                                     max="100"
-                                    value={bgmVolume}
-                                    onChange={(e) => handleBgmVolumeChange(Number(e.target.value))}
-                                    className="flex-1 accent-[#5cb5db] cursor-pointer h-2 bg-gray-200 rounded-lg appearance-none"
+                                    disabled={selectedKbSound === 'none'}
+                                    value={selectedKbSound === 'none' ? 0 : sfxVolume}
+                                    onChange={(e) => handleSfxVolumeChange(Number(e.target.value))}
+                                    onMouseUp={handleSfxVolumeCommit}
+                                    onTouchEnd={handleSfxVolumeCommit}
+                                    className="flex-1 accent-[#5cb5db] cursor-pointer h-1.5 bg-gray-200 rounded-lg appearance-none disabled:opacity-40"
                                     style={{
-                                        background: `linear-gradient(to right, #5cb5db 0%, #5cb5db ${bgmVolume}%, #e5e7eb ${bgmVolume}%, #e5e7eb 100%)`
+                                        background: `linear-gradient(to right, #5cb5db 0%, #5cb5db ${selectedKbSound === 'none' ? 0 : sfxVolume}%, #e5e7eb ${selectedKbSound === 'none' ? 0 : sfxVolume}%, #e5e7eb 100%)`
                                     }}
                                 />
-                                <span className="text-xs font-bold text-gray-700 w-10 text-right logo-font">{bgmVolume}%</span>
+                                <span className="text-xs font-bold text-gray-500 w-10 text-right logo-font">
+                                    {selectedKbSound === 'none' ? 'ปิด' : `${sfxVolume}%`}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* 2. เพลงพื้นหลัง & YouTube */}
+                        <div className="flex flex-col gap-4 pt-6">
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs sm:text-sm font-bold text-gray-700">เพลงพื้นหลัง</span>
+
+                                <div className="flex items-center gap-2.5 w-52 sm:w-64">
+                                    <button
+                                        type="button"
+                                        onClick={() => soundManager.toggleBgm()}
+                                        title={isBgmPlaying ? 'หยุดเพลง' : 'เล่นเพลง'}
+                                        className="cursor-pointer shrink-0"
+                                    >
+                                        <Music size={16} className={isBgmPlaying ? 'text-[#5cb5db]' : 'text-gray-400 hover:text-gray-600'} />
+                                    </button>
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max="100"
+                                        value={bgmVolume}
+                                        onChange={(e) => handleBgmVolumeChange(Number(e.target.value))}
+                                        className="flex-1 accent-[#5cb5db] cursor-pointer h-1.5 bg-gray-200 rounded-lg appearance-none"
+                                        style={{
+                                            background: `linear-gradient(to right, #5cb5db 0%, #5cb5db ${bgmVolume}%, #e5e7eb ${bgmVolume}%, #e5e7eb 100%)`
+                                        }}
+                                    />
+                                    <span className="text-xs font-bold text-gray-500 w-10 text-right logo-font">{bgmVolume}%</span>
+                                </div>
+                            </div>
+
+                            {/* ช่องวางลิงก์ YouTube */}
+                            <form
+                                onSubmit={handleAddYoutubeTrack}
+                                className="flex items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-gray-50 border border-gray-200/80 focus-within:border-[#5cb5db] focus-within:bg-white transition-all"
+                            >
+                                <img
+                                    src="/youtube.png"
+                                    alt="YouTube"
+                                    className="w-5 h-5 object-contain shrink-0"
+                                />
+                                <input
+                                    type="text"
+                                    value={ytUrlInput}
+                                    onChange={(e) => setYtUrlInput(e.target.value)}
+                                    placeholder="วางลิงก์ YouTube เพื่อเพิ่มเพลง..."
+                                    className="flex-1 text-xs sm:text-sm text-gray-800 placeholder:text-gray-400 bg-transparent outline-none min-w-0 py-1"
+                                />
+                                <button
+                                    type="submit"
+                                    disabled={isAddingYt || !ytUrlInput.trim()}
+                                    className="p-1.5 rounded-xl text-[#5cb5db] hover:bg-blue-50 disabled:opacity-30 transition cursor-pointer shrink-0"
+                                    title="เพิ่มและเล่นเพลง"
+                                >
+                                    {isAddingYt ? <Loader2 size={18} className="animate-spin" /> : <Plus size={20} />}
+                                </button>
+                            </form>
+
+                            {/* รายการเพลงแบบคลีน (List แถวยาว เหมือนหน้าต่าง Popup เป๊ะ) */}
+                            <div
+                                className="flex flex-col divide-y divide-gray-100 rounded-2xl border border-gray-100 bg-gray-50/50 max-h-64 overflow-y-auto overscroll-contain transform-gpu [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+                                style={{ WebkitOverflowScrolling: 'touch', willChange: 'scroll-position' }}
+                            >
+                                {allBgmTracks.map((track) => {
+                                    const isSelected = selectedBgmTracks.includes(track.id);
+                                    const isPlayingThis = isBgmPlaying && previewingTrackId === track.id;
+
+                                    return (
+                                        <div
+                                            key={track.id}
+                                            onClick={(e) => {
+                                                if (isPlayingThis) {
+                                                    soundManager.stopBgm();
+                                                } else {
+                                                    if (!selectedBgmTracks.includes(track.id)) {
+                                                        soundManager.setSelectedTracks([...selectedBgmTracks, track.id]);
+                                                    }
+                                                    handlePreviewTrack(track.id, e);
+                                                }
+                                            }}
+                                            className={`px-4 py-3 flex items-center justify-between gap-3 cursor-pointer ${
+                                                isPlayingThis
+                                                    ? 'bg-blue-50/60 text-[#5cb5db]'
+                                                    : 'hover:bg-gray-100/70 text-gray-700'
+                                            }`}
+                                        >
+                                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                <Music
+                                                    size={16}
+                                                    className={`shrink-0 ${isPlayingThis ? 'text-[#5cb5db]' : 'text-gray-400'}`}
+                                                />
+
+                                                {track.youtubeId && (
+                                                    <img
+                                                        src="/youtube.png"
+                                                        alt="YouTube"
+                                                        className="w-4 h-4 object-contain shrink-0"
+                                                    />
+                                                )}
+
+                                                <span className={`text-xs sm:text-sm truncate logo-font ${isPlayingThis ? 'font-bold text-[#5cb5db]' : 'font-medium text-gray-700'}`}>
+                                                    {track.title}
+                                                </span>
+                                            </div>
+
+                                            <div className="flex items-center gap-2.5 shrink-0">
+                                                {isPlayingThis && (
+                                                    <span className="text-[11px] font-bold text-[#5cb5db]">กำลังเล่น</span>
+                                                )}
+
+                                                {track.isCustom && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => handleRemoveCustomTrack(track.id, e)}
+                                                        title="ลบเพลงนี้"
+                                                        className="p-1 text-gray-400 hover:text-red-500 transition cursor-pointer"
+                                                    >
+                                                        <Trash2 size={15} />
+                                                    </button>
+                                                )}
+
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => handleToggleBgmTrack(track.id, e)}
+                                                    title={isSelected ? 'นำออกจากรายการเล่น' : 'เลือกเข้าในรายการเล่น'}
+                                                    className={`w-4 h-4 rounded-md flex items-center justify-center transition-all cursor-pointer ${
+                                                        isSelected
+                                                            ? 'bg-[#5cb5db] text-white border border-[#5cb5db]'
+                                                            : 'bg-white border border-gray-300 hover:border-[#5cb5db]'
+                                                    }`}
+                                                >
+                                                    {isSelected && <Check size={11} strokeWidth={3} />}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>

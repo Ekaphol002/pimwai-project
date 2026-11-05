@@ -10,19 +10,21 @@ import { redirect } from 'next/navigation'; // ✅ 3. เพิ่ม
 export const dynamic = 'force-dynamic';
 
 export default async function TestMenuPage() {
-  // 1. ตรวจสอบ Session (ใครล็อกอินอยู่?)
+  // 1. ตรวจสอบ Session (ใช้ userId จาก JWT ทันทีถ้ามี เพื่อลดรอบการคิวรีฐานข้อมูล)
   const session = await getServerSession(authOptions);
-  let user = null;
+  let userId: string | null = (session?.user as any)?.id || null;
 
-  if (session?.user?.email) {
-    user = await prisma.user.findUnique({
-      where: { email: session.user.email }
+  if (!userId && session?.user?.email) {
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true }
     });
+    userId = user?.id || null;
   }
 
   // 2. ดึงผลสอบ Speed Test (ถ้าล็อกอิน) หรือส่ง array ว่างสำหรับ Guest
-  const allResults = user ? await prisma.speedTestResult.findMany({
-    where: { userId: user.id },
+  const allResults = userId ? await prisma.speedTestResult.findMany({
+    where: { userId },
     orderBy: { createdAt: 'desc' }
   }) : [];
 

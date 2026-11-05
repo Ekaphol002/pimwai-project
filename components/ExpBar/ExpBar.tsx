@@ -13,7 +13,7 @@ export default function ExpBar({ currentExp, maxExp, showText = true, barColor =
   return (
     <div className="w-full select-none">
       {/* ตัวหลอด EXP (หลอดสีเทาชัดเจน ไม่มีเงา ไม่มีขอบ) */}
-      <div className="w-full bg-gray-300 dark:bg-zinc-700 rounded-full h-3 overflow-hidden">
+      <div className="w-full bg-gray-300 rounded-full h-3 overflow-hidden">
         <div
           className={`${barColor} h-full rounded-full transition-all duration-300`}
           style={{ width: `${percentage}%` }}

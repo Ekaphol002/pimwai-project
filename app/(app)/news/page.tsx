@@ -15,6 +15,7 @@ interface BlogPost {
     id: string;
     title: string;
     subtitle: string;
+    coverImage: string;
     category: 'major' | 'feature' | 'curriculum' | 'guide';
     categoryLabel: string;
     categoryColor: string;
@@ -37,9 +38,68 @@ interface BlogPost {
 
 const BLOG_POSTS: BlogPost[] = [
     {
+        id: 'youtube-bgm-and-pimwai-domain',
+        title: 'อัปเดตใหญ่: เปิดตัวระบบใส่ลิงก์เพลงจาก YouTube, ก้าวสู่โดเมน pimwai.com อย่างเป็นทางการ และอัปเกรดความเร็วทั้งเว็บ',
+        subtitle: 'เปิดเพลงโปรดจาก YouTube คลอระหว่างฝึกพิมพ์ได้ไม่จำกัด พร้อมตั้งค่าเสียงคีย์บอร์ดและเพลงในปุ่มเดียว',
+        coverImage: '/youtube-playlist-added.jpg',
+        category: 'major',
+        categoryLabel: 'อัปเดตใหญ่',
+        categoryColor: 'bg-indigo-50 text-indigo-600 border-indigo-200',
+        date: '5 พฤศจิกายน 2026',
+        readTime: '3 นาที',
+        author: 'ทีมงาน PIMWAI',
+        summary: 'เปิดตัวระบบวางลิงก์เพลงจาก YouTube เพื่อเปิดเป็นเพลงพื้นหลังระหว่างฝึกพิมพ์ รวมปุ่มตั้งค่าเสียงคีย์บอร์ดและเพลงไว้ในปุ่มเดียว ก้าวสู่โดเมนหลัก pimwai.com อย่างเป็นทางการ พร้อมปรับปรุงความเร็วการโหลดทุกหน้าและตารางอันดับ Streak',
+        content: {
+            intro: 'อัปเดตใหม่ล่าสุดจากทีมงาน PIMWAI (พิมพ์ไว) ที่รวมทุกฟีเจอร์ตามคำเรียกร้องของผู้เล่น ทั้งการนำลิงก์เพลงที่ชอบจาก YouTube มาเปิดฟังเป็นเพลงพื้นหลังในเว็บได้โดยตรง การปรับโฉมหน้าต่างตั้งค่าเสียงใหม่ให้คลีนและใช้งานง่ายในปุ่มเดียว ตลอดจนการย้ายเข้าสู่โดเมนเนมหลัก pimwai.com อย่างเป็นทางการ!',
+            sections: [
+                {
+                    title: '1. ก้าวสู่โดเมนหลัก https://pimwai.com อย่างเป็นทางการ',
+                    description: 'PIMWAI (พิมพ์ไว) ได้เปิดใช้งานโดเมนเนมหลัก pimwai.com เต็มรูปแบบแล้ว เพื่อยกระดับความน่าเชื่อถือและประสิทธิภาพ SEO บน Google ให้ค้นหาเจอง่ายขึ้น โดยข้อมูลบัญชีผู้ใช้ ค่า EXP ระดับแรงค์ และสถิติการฝึกพิมพ์ทั้งหมดซิงค์ต่อเนื่องปลอดภัย 100%',
+                    image: '/pimwai-domain-com.jpg',
+                    imageCaption: 'เข้าใช้งานผ่านโดเมนหลัก https://pimwai.com ได้อย่างรวดเร็วและปลอดภัย'
+                },
+                {
+                    title: '2. คัดลอกลิงก์เพลงที่ชอบจาก YouTube มาใส่ได้ทันที',
+                    description: 'อยากฟังเพลงไหนระหว่างฝึกพิมพ์ก็ทำได้ง่ายๆ เพียงเปิดเพลงหรือคลิปที่ชื่นชอบบน YouTube แล้วคัดลอกลิงก์ URL จากแถบที่อยู่ด้านบนของเบราว์เซอร์ (รองรับทั้งลิงก์ youtube.com/watch?v=... และ youtu.be/...)',
+                    image: '/youtube-copy-link.jpg',
+                    imageCaption: 'คัดลอกลิงก์เพลงจากแถบ URL ของ YouTube เพื่อนำมาใส่ในเว็บ'
+                },
+                {
+                    title: '3. วางลิงก์ในหน้าต่าง "ตั้งค่าเสียงและเพลง" โฉมใหม่',
+                    description: 'ในหน้าพิมพ์ด่วน (Farm Mode), หน้าพิมพ์โค้ด และหน้าบทเรียน สามารถกดปุ่มตั้งค่าเสียงเพื่อเปิดหน้าต่างป๊อปอัปโฉมใหม่ แล้ววางลิงก์ YouTube ลงในช่องพร้อมกดปุ่ม + ระบบจะดึงชื่อเพลงจาก YouTube มาแสดงและเริ่มเล่นเป็นเพลงพื้นหลังให้ทันที',
+                    image: '/youtube-paste-link.jpg',
+                    imageCaption: 'วางลิงก์ YouTube ลงในช่องแล้วกดปุ่ม + เพื่อเพิ่มเข้าสู่รายการเพลง'
+                },
+                {
+                    title: '4. จัดการรายการเพลงโปรด ติ๊กเลือกเพลง และสุ่มเพลงใหม่เมื่อรีเฟรช',
+                    description: 'เพลงจาก YouTube ที่เพิ่มเข้ามาจะถูกบันทึกไว้ในเครื่องพร้อมติ๊กเข้าในรายการเล่นให้อัตโนมัติโดยไม่ล้างเพลงเดิม สามารถเพิ่มกี่เพลงก็ได้ เลื่อนดูรายการเพลงได้ลื่นไหล และทุกครั้งที่กดรีเฟรชหน้าเว็บ ระบบจะสุ่มเพลงใหม่จากรายการที่คุณติ๊กเลือกไว้ให้ทันทีโดยไม่สะดุด',
+                    image: '/youtube-playlist-added.jpg',
+                    imageCaption: 'รายการเพลง YouTube ที่เพิ่มเข้ามาพร้อมกล่องติ๊กเลือกเพลงที่จะให้เล่นวนลูป'
+                },
+                {
+                    title: '5. เลือกเสียงแป้นพิมพ์ (Keyboard Sound) และปรับระดับเสียงในที่เดียว',
+                    description: 'ปรับเปลี่ยนเสียงคีย์บอร์ด (Keyboard 1–4 หรือปิดเสียง) ได้สะดวกรวดเร็วผ่านเมนู Dropdown ดีไซน์ใหม่ที่สะอาดตา พร้อมแถบปรับระดับความดังเสียงปุ่มกดและเสียงเพลงพื้นหลังแยกกันอย่างอิสระ',
+                    image: '/audio-keyboard-dropdown.jpg',
+                    imageCaption: 'เมนู Dropdown เลือกเสียงแป้นพิมพ์และปรับความดังได้ครบจบในหน้าต่างเดียว'
+                },
+                {
+                    title: '6. อัปเกรดความเร็วการเปลี่ยนหน้า แก้ไขตารางอันดับ Streak และรองรับธีมมืดของเบราว์เซอร์',
+                    description: 'ปรับปรุงประสิทธิภาพการดึงข้อมูลและการเปลี่ยนหน้าเมนูให้รวดเร็วทันใจ พร้อมปรับปรุงส่วนสำคัญทั่วทั้งเว็บไซต์:',
+                    points: [
+                        'แก้ไขตารางอันดับ (Leaderboard) หมวด Streak ให้แสดงจำนวนวันที่เข้าเล่นทั้งหมดอย่างถูกต้องและโหลดไวในพริบตา',
+                        'ปรับปรุง Skeleton Loading ตอนโหลดหน้าบทเรียน หน้าทดสอบ และหน้าความคืบหน้า ให้ตรงกับเลย์เอาต์จริง 100%',
+                        'แก้ไขปัญหาสีตัวอักษรเพี้ยนสำหรับผู้ใช้ที่เปิดโหมดมืด (Dark Mode) ของเบราว์เซอร์ ให้มองเห็นตัวอักษรชัดเจนเหมือนโหมดสว่างทุกประการ'
+                    ]
+                }
+            ],
+            conclusion: 'ลองกดปุ่มตั้งค่าเสียงในหน้าพิมพ์ด่วนแล้วนำลิงก์เพลงโปรดจาก YouTube มาเปิดฟังระหว่างซ้อมพิมพ์กันได้เลยครับ!'
+        }
+    },
+    {
         id: 'article-mode-and-delete-account',
         title: 'อัปเดตใหม่: เปิดตัว "โหมดบทความ" ในหน้าฟาร์ม และฟังก์ชัน "ลบบัญชีถาวร" ตามคำขอ',
         subtitle: 'ยกระดับการฝึกพิมพ์ด้วยคลังวรรณกรรมและข้อคิดกว่า 100 เรื่อง พร้อมระบบจัดการข้อมูลส่วนตัวที่ปลอดภัยยิ่งขึ้น',
+        coverImage: '/farm-article-mode.jpg',
         category: 'major',
         categoryLabel: 'อัปเดตใหญ่',
         categoryColor: 'bg-indigo-50 text-indigo-600 border-indigo-200',
@@ -97,6 +157,7 @@ const BLOG_POSTS: BlogPost[] = [
         id: 'pimwai-remaster',
         title: 'อัปเดตใหญ่: รีมาสเตอร์ 210 ด่านคำศัพท์จริง และเปิดตัวระบบแรงค์ระดับตำนาน Rank 4-7',
         subtitle: 'การอัปเกรดเนื้อหาครั้งใหญ่ของ PIMWAI พร้อมบทเรียนใหม่ 21 บทเรียน และตราสัญลักษณ์แรงค์ใหม่',
+        coverImage: '/lesson.png',
         category: 'major',
         categoryLabel: 'อัปเดตใหญ่',
         categoryColor: 'bg-indigo-50 text-indigo-600 border-indigo-200',
@@ -138,6 +199,7 @@ const BLOG_POSTS: BlogPost[] = [
         id: 'farm-mode-english-5k',
         title: 'เปิดตัวโหมดพิมพ์ด่วน (Farm Mode) & คลังคำภาษาอังกฤษ 5,000 คำ',
         subtitle: 'ฝึกพิมพ์ไร้ขีดจำกัด สะสม EXP คำนวณ WPM แท้จริง พร้อมปฏิทินบันทึกสถิติย้อนหลังรายวัน',
+        coverImage: '/progress.png',
         category: 'feature',
         categoryLabel: 'โหมดใหม่',
         categoryColor: 'bg-emerald-50 text-emerald-600 border-emerald-200',
@@ -172,6 +234,7 @@ const BLOG_POSTS: BlogPost[] = [
         id: 'community-feedback-widget',
         title: 'เปิดตัวระบบรับฟังไอเดีย: เสนอสิ่งที่อยากให้ทำหรือพัฒนาเพิ่ม',
         subtitle: 'อยากให้ PIMWAI มีอะไรเพิ่ม หรือพัฒนาตรงไหน บอกเราได้เลยทุกเรื่อง!',
+        coverImage: '/Bannerlink.png',
         category: 'feature',
         categoryLabel: 'ฟังก์ชันใหม่',
         categoryColor: 'bg-sky-50 text-sky-600 border-sky-200',
@@ -202,6 +265,7 @@ const BLOG_POSTS: BlogPost[] = [
         id: 'typing-technique-guide',
         title: 'คู่มือเทคนิค: วิธีจัดสรีระและตำแหน่งแป้นเหย้าเพื่อก้าวสู่ 60+ WPM',
         subtitle: 'พื้นฐานสำคัญที่จะช่วยให้คุณพิมพ์ได้เร็วขึ้นโดยไม่เมื่อยนิ้วและไม่จำเป็นต้องมองแป้น',
+        coverImage: '/presen.png',
         category: 'guide',
         categoryLabel: 'เทคนิค & ทริค',
         categoryColor: 'bg-amber-50 text-amber-700 border-amber-200',
@@ -238,10 +302,22 @@ export default function NewsBlogPage() {
     // ทำเครื่องหมายว่าอ่านข่าวสารล่าสุดแล้ว (ลบจุดแดงแจ้งเตือนบน Navbar ทันทีเมื่อเข้าหน้านี้)
     React.useEffect(() => {
         try {
-            localStorage.setItem('pimwai_last_read_news_id', 'article-mode-and-delete-account');
+            localStorage.setItem('pimwai_last_read_news_id', 'youtube-bgm-and-pimwai-domain');
             window.dispatchEvent(new Event('pimwai-news-read'));
         } catch (e) {}
     }, []);
+
+    // ล็อกไม่ให้หน้าเว็บด้านหลังเลื่อนตามเมื่อเปิดอ่านข่าวสารใน Popup
+    React.useEffect(() => {
+        if (activePost) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [activePost]);
 
     // กรองบทความตามหมวดหมู่และคำค้นหา
     const filteredPosts = BLOG_POSTS.filter((post) => {
@@ -288,12 +364,12 @@ export default function NewsBlogPage() {
                         </div>
                     </div>
 
-                    {/* Category Filter Pills (แคปซูลสีขาวเป๊ะตามแบบหน้าอันดับ) */}
-                    <div className="bg-white p-1 rounded-lg flex items-center shadow-sm w-fit max-w-full overflow-x-auto no-scrollbar">
+                    {/* Category Filter Pills (แคปซูลขอบกลมสีขาวเป๊ะตามแบบหน้าอันดับ) */}
+                    <div className="bg-white p-1.5 rounded-full flex items-center shadow-sm w-fit max-w-full overflow-x-auto no-scrollbar">
                         <button
                             type="button"
                             onClick={() => setSelectedCategory('all')}
-                            className={`px-4 sm:px-5 py-1.5 sm:py-2 rounded-lg font-bold text-xs sm:text-sm transition-all duration-300 cursor-pointer whitespace-nowrap ${selectedCategory === 'all'
+                            className={`px-4 sm:px-5 py-1.5 sm:py-2 rounded-full font-bold text-xs sm:text-sm transition-all duration-300 cursor-pointer whitespace-nowrap ${selectedCategory === 'all'
                                 ? 'bg-[#5cb5db] text-white shadow-xs'
                                 : 'text-[#5cb5db] hover:bg-gray-50'
                                 }`}
@@ -303,7 +379,7 @@ export default function NewsBlogPage() {
                         <button
                             type="button"
                             onClick={() => setSelectedCategory('major')}
-                            className={`px-4 sm:px-5 py-1.5 sm:py-2 rounded-lg font-bold text-xs sm:text-sm transition-all duration-300 cursor-pointer whitespace-nowrap ${selectedCategory === 'major'
+                            className={`px-4 sm:px-5 py-1.5 sm:py-2 rounded-full font-bold text-xs sm:text-sm transition-all duration-300 cursor-pointer whitespace-nowrap ${selectedCategory === 'major'
                                 ? 'bg-[#5cb5db] text-white shadow-xs'
                                 : 'text-[#5cb5db] hover:bg-gray-50'
                                 }`}
@@ -313,7 +389,7 @@ export default function NewsBlogPage() {
                         <button
                             type="button"
                             onClick={() => setSelectedCategory('feature')}
-                            className={`px-4 sm:px-5 py-1.5 sm:py-2 rounded-lg font-bold text-xs sm:text-sm transition-all duration-300 cursor-pointer whitespace-nowrap ${selectedCategory === 'feature'
+                            className={`px-4 sm:px-5 py-1.5 sm:py-2 rounded-full font-bold text-xs sm:text-sm transition-all duration-300 cursor-pointer whitespace-nowrap ${selectedCategory === 'feature'
                                 ? 'bg-[#5cb5db] text-white shadow-xs'
                                 : 'text-[#5cb5db] hover:bg-gray-50'
                                 }`}
@@ -323,7 +399,7 @@ export default function NewsBlogPage() {
                         <button
                             type="button"
                             onClick={() => setSelectedCategory('guide')}
-                            className={`px-4 sm:px-5 py-1.5 sm:py-2 rounded-lg font-bold text-xs sm:text-sm transition-all duration-300 cursor-pointer whitespace-nowrap ${selectedCategory === 'guide'
+                            className={`px-4 sm:px-5 py-1.5 sm:py-2 rounded-full font-bold text-xs sm:text-sm transition-all duration-300 cursor-pointer whitespace-nowrap ${selectedCategory === 'guide'
                                 ? 'bg-[#5cb5db] text-white shadow-xs'
                                 : 'text-[#5cb5db] hover:bg-gray-50'
                                 }`}
@@ -336,9 +412,20 @@ export default function NewsBlogPage() {
                     {selectedCategory === 'all' && !searchQuery && featuredPost && (
                         <div
                             onClick={() => setActivePost(featuredPost)}
-                            className="bg-white rounded-3xl p-6 sm:p-8 shadow-md hover:shadow-xl transition-all duration-200 cursor-pointer group text-gray-800"
+                            className="bg-white rounded-3xl overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-200 cursor-pointer group text-gray-800"
                         >
-                            <div className="space-y-3">
+                            {featuredPost.coverImage && (
+                                <div className="w-full h-52 sm:h-64 bg-slate-100 overflow-hidden border-b border-gray-100">
+                                    <img
+                                        src={featuredPost.coverImage}
+                                        alt={featuredPost.title}
+                                        loading="eager"
+                                        decoding="async"
+                                        className="w-full h-full object-cover object-top group-hover:scale-[1.02] transition-transform duration-300"
+                                    />
+                                </div>
+                            )}
+                            <div className="p-6 sm:p-8 space-y-3">
                                 <div className="flex items-center gap-2.5 flex-wrap">
                                     <span className="px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-200 text-xs font-bold">
                                         {featuredPost.categoryLabel}
@@ -370,35 +457,48 @@ export default function NewsBlogPage() {
                         </div>
                     )}
 
-                    {/* Posts Grid (กล่องบทความสีขาวบนพื้นสีฟ้า) */}
+                    {/* Posts Grid (กล่องบทความสีขาวพร้อมรูปปกด้านบนการ์ดแต่ละอัน) */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {filteredPosts.map((post) => (
                             <div
                                 key={post.id}
                                 onClick={() => setActivePost(post)}
-                                className="bg-white rounded-3xl p-6 shadow-sm hover:shadow-md transition-all duration-150 flex flex-col justify-between cursor-pointer group text-gray-800"
+                                className="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-150 flex flex-col justify-between cursor-pointer group text-gray-800"
                             >
-                                <div className="space-y-3">
-                                    <div className="flex items-center justify-between gap-2 text-xs">
-                                        <span className={`px-2.5 py-0.5 rounded-lg font-bold border ${post.categoryColor}`}>
-                                            {post.categoryLabel}
-                                        </span>
-                                        <span className="text-gray-400 flex items-center gap-1 text-[11px]">
-                                            <Calendar size={12} />
-                                            <span>{post.date}</span>
-                                        </span>
+                                <div>
+                                    {post.coverImage && (
+                                        <div className="w-full h-44 bg-slate-100 overflow-hidden border-b border-gray-100">
+                                            <img
+                                                src={post.coverImage}
+                                                alt={post.title}
+                                                loading="lazy"
+                                                decoding="async"
+                                                className="w-full h-full object-cover object-top group-hover:scale-[1.02] transition-transform duration-300"
+                                            />
+                                        </div>
+                                    )}
+                                    <div className="p-6 pb-0 space-y-3">
+                                        <div className="flex items-center justify-between gap-2 text-xs">
+                                            <span className={`px-2.5 py-0.5 rounded-lg font-bold border ${post.categoryColor}`}>
+                                                {post.categoryLabel}
+                                            </span>
+                                            <span className="text-gray-400 flex items-center gap-1 text-[11px]">
+                                                <Calendar size={12} />
+                                                <span>{post.date}</span>
+                                            </span>
+                                        </div>
+
+                                        <h3 className="text-base sm:text-lg font-bold text-gray-800 group-hover:text-[#5cb5db] transition-colors leading-snug">
+                                            {post.title}
+                                        </h3>
+
+                                        <p className="text-xs text-gray-500 leading-relaxed line-clamp-3">
+                                            {post.summary}
+                                        </p>
                                     </div>
-
-                                    <h3 className="text-base sm:text-lg font-bold text-gray-800 group-hover:text-[#5cb5db] transition-colors leading-snug">
-                                        {post.title}
-                                    </h3>
-
-                                    <p className="text-xs text-gray-500 leading-relaxed line-clamp-3">
-                                        {post.summary}
-                                    </p>
                                 </div>
 
-                                <div className="pt-4 mt-4 border-t border-gray-100 flex items-center justify-between text-xs">
+                                <div className="px-6 pb-6 pt-4 mt-4 border-t border-gray-100 flex items-center justify-between text-xs">
                                     <span className="text-gray-400 text-[11px]">
                                         อ่าน {post.readTime}
                                     </span>
@@ -421,15 +521,18 @@ export default function NewsBlogPage() {
                 </div>
             </main>
 
-            {/* Modal: Full Article Reader */}
+            {/* Modal: Full Article Reader (ตัด backdrop-blur และเปิด GPU Scroll เพื่อความลื่น 60fps ไม่หน่วง) */}
             {activePost && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 md:p-8 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
+                <div
+                    onClick={() => setActivePost(null)}
+                    className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 md:p-8 bg-black/50 overscroll-none"
+                >
                     <div
-                        className="bg-white rounded-3xl max-w-4xl lg:max-w-5xl w-full shadow-2xl border border-gray-100 relative animate-in zoom-in-95 duration-150 max-h-[92vh] flex flex-col overflow-hidden text-gray-800"
+                        className="bg-white rounded-3xl max-w-4xl lg:max-w-5xl w-full shadow-2xl border border-gray-100 relative max-h-[92vh] flex flex-col overflow-hidden text-gray-800 overscroll-contain transform-gpu"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Modal Header */}
-                        <div className="p-5 sm:p-7 pb-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-slate-50 to-white">
+                        <div className="p-5 sm:p-7 pb-4 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
                             <div className="space-y-1">
                                 <div className="flex items-center gap-2">
                                     <span className={`px-2.5 py-0.5 rounded-lg text-xs font-bold border ${activePost.categoryColor}`}>
@@ -452,8 +555,11 @@ export default function NewsBlogPage() {
                             </button>
                         </div>
 
-                        {/* Modal Body (Scrollable Article) */}
-                        <div className="flex-1 overflow-y-auto p-6 sm:p-10 space-y-7 text-xs sm:text-sm leading-relaxed text-gray-700 no-scrollbar">
+                        {/* Modal Body (Scrollable Article - ลื่นไหลด้วย transform-gpu) */}
+                        <div
+                            className="flex-1 overflow-y-auto overscroll-contain transform-gpu p-6 sm:p-10 space-y-7 text-xs sm:text-sm leading-relaxed text-gray-700"
+                            style={{ WebkitOverflowScrolling: 'touch', willChange: 'scroll-position' }}
+                        >
                             <div>
                                 <h2 className="text-xl sm:text-3xl font-black text-gray-900 tracking-tight leading-snug">
                                     {activePost.title}
@@ -479,13 +585,12 @@ export default function NewsBlogPage() {
                                             {sec.description}
                                         </p>
                                         {sec.image && (
-                                            <div className="rounded-2xl overflow-hidden border border-gray-200/90 shadow-sm my-4 bg-gray-50 max-w-3xl mx-auto">
-                                                <Image
+                                            <div className="rounded-2xl overflow-hidden border border-gray-200/90 my-4 bg-gray-50 max-w-3xl mx-auto">
+                                                <img
                                                     src={sec.image}
                                                     alt={sec.title}
-                                                    width={1000}
-                                                    height={550}
-                                                    className="w-full h-auto object-contain rounded-2xl"
+                                                    decoding="async"
+                                                    className="w-full h-auto object-contain block"
                                                 />
                                                 {sec.imageCaption && (
                                                     <div className="p-2 text-center text-[11px] text-gray-500 font-medium bg-gray-50 border-t border-gray-100">

@@ -28,7 +28,7 @@ export default function Navbar() {
   const pathname = usePathname();
 
   // 🔴 จุดแดงแจ้งเตือนข่าวสารใหม่ (Red Dot Notification)
-  const LATEST_NEWS_ID = 'article-mode-and-delete-account';
+  const LATEST_NEWS_ID = 'youtube-bgm-and-pimwai-domain';
   const [hasUnreadNews, setHasUnreadNews] = useState(false);
 
   useEffect(() => {
@@ -56,18 +56,42 @@ export default function Navbar() {
     setHasUnreadNews(false);
   };
 
+  const userKey = session?.user?.email || (session?.user as any)?.id || null;
+
   useEffect(() => {
-    if (session?.user) {
-      fetch('/api/progress')
+    if (!userKey) return;
+
+    const loadStreak = (forceRefresh = false) => {
+      try {
+        const cachedRaw = sessionStorage.getItem(`pimwai_streak_${userKey}`);
+        if (!forceRefresh && cachedRaw) {
+          const parsed = JSON.parse(cachedRaw);
+          if (Date.now() - parsed.ts < 60 * 1000 && typeof parsed.streak === 'number') {
+            setStreak(parsed.streak);
+            return;
+          }
+        }
+      } catch (e) {}
+
+      fetch('/api/progress?summary=1')
         .then(res => res.json())
         .then(data => {
           if (data.success && data.activityDates) {
-            setStreak(calculateCurrentStreak(data.activityDates));
+            const current = calculateCurrentStreak(data.activityDates);
+            setStreak(current);
+            try {
+              sessionStorage.setItem(
+                `pimwai_streak_${userKey}`,
+                JSON.stringify({ streak: current, ts: Date.now() })
+              );
+            } catch (e) {}
           }
         })
         .catch(err => console.error("Failed to load streak:", err));
-    }
-  }, [session]);
+    };
+
+    loadStreak(false);
+  }, [userKey]);
 
   const isFarm = pathname === '/' || pathname === '/farm' || pathname?.startsWith('/farm') || pathname === '/code' || pathname?.startsWith('/code');
   const [isFarmNavOpen, setIsFarmNavOpen] = useState(false);
@@ -288,7 +312,7 @@ export default function Navbar() {
           {/* Mobile Right Controls: Streak & Hamburger Menu Button */}
           <div className="flex lg:hidden items-center gap-3">
             {session && (
-              <div className="flex items-center bg-[#182834]/30 text-whs bite font-bold text-xg-white/20 px-2.5 py-2 rounded-full">
+              <div className="flex items-center bg-[#182834]/30 text-white font-bold text-xs px-2.5 py-2 rounded-full">
                 <Flame className="w-3.5 h-3.5 text-orange-300 mr-1" fill="currentColor" />
                 <span>{streak} วัน</span>
               </div>

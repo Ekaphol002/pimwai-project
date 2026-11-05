@@ -7,8 +7,11 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { toDateKey } from '@/lib/streakUtils';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const isSummaryOnly = searchParams.get('summary') === '1';
+
     // 1. ตรวจสอบ Session
     const session = await getServerSession(authOptions);
 
@@ -32,34 +35,52 @@ export async function GET() {
 
     const userId = user.id;
 
+    // โหมดดึงเฉพาะวันที่ทำกิจกรรมอย่างรวดเร็วสำหรับ Navbar Streak
+    if (isSummaryOnly) {
+      const [lpDates, stDates, fsDates] = await Promise.all([
+        prisma.lessonProgress.findMany({ where: { userId }, select: { updatedAt: true } }),
+        prisma.speedTestResult.findMany({ where: { userId }, select: { createdAt: true } }),
+        prisma.farmSession.findMany({ where: { userId }, select: { createdAt: true } }),
+      ]);
+
+      const dateSet = new Set<string>();
+      for (const l of lpDates) dateSet.add(toDateKey(l.updatedAt));
+      for (const s of stDates) dateSet.add(toDateKey(s.createdAt));
+      for (const f of fsDates) dateSet.add(toDateKey(f.createdAt));
+      if (user.lastPlayedAt) dateSet.add(toDateKey(user.lastPlayedAt));
+
+      return NextResponse.json({
+        success: true,
+        activityDates: Array.from(dateSet),
+      });
+    }
+
     // =========================================================
-    // 1. ดึงข้อมูลจาก Database
+    // 1. ดึงข้อมูลจาก Database แบบขนาน (Parallel) เพื่อความเร็วสูงสุด
     // =========================================================
-
-    // A. ดึงประวัติการเล่นบทเรียน (Lesson Progress)
-    const lessonProgress = await prisma.lessonProgress.findMany({
-      where: { userId },
-      orderBy: { updatedAt: 'desc' },
-      include: { subLesson: { include: { lesson: true } } }
-    });
-
-    // B. ดึงประวัติการทดสอบความเร็ว (Speed Test)
-    const speedTestResults = await prisma.speedTestResult.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' }
-    });
-
-    // C. ดึงประวัติการฟาร์ม (Farm Sessions) สำหรับคำนวณ Streak (ไฟ) และเวลาฟาร์ม
-    const farmSessions = await prisma.farmSession.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' }
-    });
-
-    // D. ดึงโครงสร้างบทเรียนทั้งหมด
-    const allLessons = await prisma.lesson.findMany({
-      include: { subLessons: true },
-      orderBy: { order: 'asc' }
-    });
+    const [lessonProgress, speedTestResults, farmSessions, allLessons] = await Promise.all([
+      // A. ดึงประวัติการเล่นบทเรียน (Lesson Progress)
+      prisma.lessonProgress.findMany({
+        where: { userId },
+        orderBy: { updatedAt: 'desc' },
+        include: { subLesson: { include: { lesson: true } } }
+      }),
+      // B. ดึงประวัติการทดสอบความเร็ว (Speed Test)
+      prisma.speedTestResult.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' }
+      }),
+      // C. ดึงประวัติการฟาร์ม (Farm Sessions) สำหรับคำนวณ Streak (ไฟ) และเวลาฟาร์ม
+      prisma.farmSession.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' }
+      }),
+      // D. ดึงโครงสร้างบทเรียนทั้งหมด
+      prisma.lesson.findMany({
+        include: { subLessons: true },
+        orderBy: { order: 'asc' }
+      })
+    ]);
 
     // =========================================================
     // 2. คำนวณ Global Stats (✅ แก้ตรงนี้: เอาเฉพาะ Lesson)
@@ -123,8 +144,12 @@ export async function GET() {
 
     allActivities.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    // วันที่ที่มีกิจกรรม (สำหรับ Activity Graph และระบบ Streak / ไฟ 🔥)
-    const activityDates = Array.from(new Set(allActivities.map(item => toDateKey(item.date))));
+    // วันที่ที่มีกิจกรรม (สำหรับ Activity Graph และระบบ Streak / ไฟ 🔥) รวม lastPlayedAt เสมอ
+    const activityDateSet = new Set(allActivities.map(item => toDateKey(item.date)));
+    if (user.lastPlayedAt) {
+      activityDateSet.add(toDateKey(user.lastPlayedAt));
+    }
+    const activityDates = Array.from(activityDateSet);
 
     // คำนวณสถิติรายวัน (WPM, Acc, Time) สำหรับปฏิทินเมื่อผู้ใช้กดดูวันที่ใน Activity Graph
     const dailyStatsMap: Record<string, { duration: number; weightedWpm: number; weightedAcc: number; count: number }> = {};

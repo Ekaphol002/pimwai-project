@@ -138,7 +138,7 @@ export default function TodayStats({
             <span className="text-xs mb-1 font-black px-3.5 py-0.5 bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-500 text-white rounded-full uppercase tracking-wider shadow-xs">
               TOP 10 LEADERBOARD
             </span>
-            <div className="text-2xl mb-3 sm:text-3xl font-black text-purple-600 dark:text-purple-400 logo-font mt-1">
+            <div className="text-2xl mb-3 sm:text-3xl font-black text-purple-600 logo-font mt-1">
               {effectiveExp.toLocaleString()} EXP
             </div>
           </div>
@@ -179,16 +179,16 @@ export default function TodayStats({
         <div className="w-full z-20 px-4">
           {calculatedRank === 7 ? (
             <div className="w-full flex flex-col items-center select-none">
-              <div className="w-full bg-gray-300 dark:bg-zinc-700 rounded-full h-3 overflow-hidden">
+              <div className="w-full bg-gray-300 rounded-full h-3 overflow-hidden">
                 <div className="bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-500 h-full rounded-full w-full" />
               </div>
-              <div className="text-center text-base sm:text-lg font-black text-purple-600 dark:text-purple-400 mt-2 logo-font">
+              <div className="text-center text-base sm:text-lg font-black text-purple-600 mt-2 logo-font">
                 อันดับที่ {serverRank || 1} ของเซิร์ฟเวอร์
               </div>
             </div>
           ) : isTop10Eligible ? (
             <div className="w-full flex flex-col items-center select-none">
-              <div className="w-full bg-gray-300 dark:bg-zinc-700 rounded-full h-3 overflow-hidden">
+              <div className="w-full bg-gray-300 rounded-full h-3 overflow-hidden">
                 <div className={`bg-gradient-to-r ${badgeBg} h-full rounded-full w-full`} />
               </div>
               <div className="text-center mt-2 flex flex-col items-center gap-0.5">

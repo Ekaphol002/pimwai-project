@@ -17,57 +17,120 @@ interface PageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
+// แคชโครงสร้างบทเรียน (Static Catalog) ไว้ในหน่วยความจำของเซิร์ฟเวอร์ เพื่อไม่ต้องดึง SubLesson กว่า 231 ด่านซ้ำทุกครั้งที่กดเมนู
+const globalLessonCache = globalThis as unknown as {
+  lessonsCatalog?: { data: any[]; totalSubLessons: number; fetchedAt: number };
+};
+
+async function getCachedLessonsCatalog() {
+  const now = Date.now();
+  if (
+    globalLessonCache.lessonsCatalog &&
+    now - globalLessonCache.lessonsCatalog.fetchedAt < 10 * 60 * 1000
+  ) {
+    return globalLessonCache.lessonsCatalog;
+  }
+
+  const allLessons = await prisma.lesson.findMany({
+    orderBy: { order: 'asc' },
+    include: {
+      subLessons: {
+        orderBy: { order: 'asc' },
+        select: { id: true, title: true, order: true, lessonId: true }
+      }
+    }
+  });
+
+  const totalSubLessons = allLessons.reduce((acc, l) => acc + (l.subLessons?.length || 0), 0);
+  globalLessonCache.lessonsCatalog = {
+    data: allLessons,
+    totalSubLessons,
+    fetchedAt: now
+  };
+  return globalLessonCache.lessonsCatalog;
+}
+
 export default async function LessonsPage({ searchParams }: PageProps) {
-  // 1. ดึง Session และ User อย่างปลอดภัย
+  const [session, resolvedSearchParams, catalog] = await Promise.all([
+    getServerSession(authOptions).catch(() => null),
+    searchParams,
+    getCachedLessonsCatalog().catch(() => ({ data: [], totalSubLessons: 0 }))
+  ]);
+
+  // 1. ดึง User อย่างรวดเร็ว
   let user: any = null;
-  let userId: string | null = null;
+  let userId: string | null = (session?.user as any)?.id || null;
+
   try {
-    const session = await getServerSession(authOptions);
     const sessionEmail = session?.user?.email;
-    const sessionId = (session?.user as any)?.id;
     const sessionName = session?.user?.name;
 
-    const searchConditions = [];
-    if (sessionId) searchConditions.push({ id: sessionId });
-    if (sessionEmail) searchConditions.push({ email: sessionEmail });
-    if (sessionName) searchConditions.push({ username: sessionName }, { name: sessionName });
-
-    if (searchConditions.length > 0) {
-      user = await prisma.user.findFirst({
-        where: { OR: searchConditions }
-      });
+    if (userId) {
+      user = await prisma.user.findUnique({ where: { id: userId } });
     }
-    userId = user?.id || sessionId || null;
+    if (!user && (sessionEmail || sessionName)) {
+      const searchConditions = [];
+      if (sessionEmail) searchConditions.push({ email: sessionEmail });
+      if (sessionName) searchConditions.push({ username: sessionName }, { name: sessionName });
+      if (searchConditions.length > 0) {
+        user = await prisma.user.findFirst({ where: { OR: searchConditions } });
+      }
+    }
+    userId = user?.id || userId || null;
   } catch (err) {
     console.error("Session lookup error in LessonsPage:", err);
   }
 
-  // 2. ตรวจสอบระดับที่ผู้ใช้เล่นค้างไว้อัตโนมัติ (Auto-detect level)
-  const resolvedSearchParams = await searchParams;
-  let selectedLevel = (resolvedSearchParams?.level as string) || null;
+  // 2. ดึงความคืบหน้าและสถิติทั้งหมดของผู้ใช้ในครั้งเดียว (1 Parallel Batch แทนที่จะรอ 4 รอบ)
+  let allUserProgress: any[] = [];
+  let todaysSpeedTests: any[] = [];
+  let todaysFarmSessions: any[] = [];
+  let higherExpUsersCount = 0;
+  const today = getStartOfTodayBangkok();
 
-  if (!selectedLevel) {
-    if (userId) {
-      try {
-        // หาด่านล่าสุดที่เล่นค้างไว้หรือเพิ่งเล่น
-        const latestProgress = await prisma.lessonProgress.findFirst({
+  if (userId) {
+    try {
+      const [userProgList, tests, farm, higherCount] = await Promise.all([
+        prisma.lessonProgress.findMany({
           where: { userId },
-          orderBy: { updatedAt: 'desc' },
-          include: {
-            subLesson: {
-              include: {
-                lesson: true
-              }
-            }
-          }
-        });
+          orderBy: { updatedAt: 'desc' }
+        }).catch(() => []),
+        prisma.speedTestResult.findMany({
+          where: { userId, createdAt: { gte: today } }
+        }).catch(() => []),
+        prisma.farmSession.findMany({
+          where: { userId, createdAt: { gte: today } }
+        }).catch(() => []),
+        user?.currentExp !== undefined
+          ? prisma.user.count({ where: { currentExp: { gt: user.currentExp || 0 } } }).catch(() => 0)
+          : Promise.resolve(0)
+      ]);
 
-        const userLevel = latestProgress?.subLesson?.lesson?.level;
-        if (userLevel && ['beginner', 'intermediate', 'advanced'].includes(userLevel)) {
-          selectedLevel = userLevel;
-        }
-      } catch (e) {
-        console.error("Auto level lookup error:", e);
+      allUserProgress = userProgList || [];
+      todaysSpeedTests = tests || [];
+      todaysFarmSessions = farm || [];
+      higherExpUsersCount = higherCount || 0;
+    } catch (err) {
+      console.error("Stats lookup error in LessonsPage:", err);
+    }
+  }
+
+  // สร้าง Map ของความคืบหน้าแต่ละด่านย่อย และหาด่านล่าสุดที่เล่น
+  const progressBySubLessonId = new Map<string, any>();
+  for (const p of allUserProgress) {
+    progressBySubLessonId.set(p.subLessonId, p);
+  }
+
+  // ตรวจสอบระดับที่ผู้ใช้เล่นค้างไว้อัตโนมัติ (Auto-detect level) โดยไม่ต้องยิง Query ซ้ำ
+  let selectedLevel = (resolvedSearchParams?.level as string) || null;
+  if (!selectedLevel) {
+    if (allUserProgress.length > 0 && catalog.data.length > 0) {
+      const latestSubId = allUserProgress[0].subLessonId;
+      const matchedLesson = catalog.data.find((l: any) =>
+        l.subLessons?.some((s: any) => s.id === latestSubId)
+      );
+      if (matchedLesson?.level && ['beginner', 'intermediate', 'advanced'].includes(matchedLesson.level)) {
+        selectedLevel = matchedLesson.level;
       }
     }
     if (!selectedLevel) {
@@ -75,80 +138,26 @@ export default async function LessonsPage({ searchParams }: PageProps) {
     }
   }
 
-  // 3. ดึงข้อมูลบทเรียนหลัก (ดึงเฉพาะ userProgress ของผู้ใช้คนนี้เท่านั้น ไม่โหลดของคนอื่นทั้งเซิร์ฟเวอร์)
-  let rawLessons: any[] = [];
-  try {
-    rawLessons = await prisma.lesson.findMany({
-      where: { level: selectedLevel },
-      orderBy: { order: 'asc' },
-      include: {
-        subLessons: {
-          orderBy: { order: 'asc' },
-          ...(userId ? {
-            include: {
-              userProgress: {
-                where: { userId }
-              }
-            }
-          } : {})
-        }
-      }
-    });
-  } catch (err) {
-    console.error("Lessons query error with userProgress:", err);
-    try {
-      // Fallback ดึงบทเรียนเปล่าๆ เพื่อไม่ให้หน้าบทเรียนว่างเปล่าเด็ดขาด
-      rawLessons = await prisma.lesson.findMany({
-        where: { level: selectedLevel },
-        orderBy: { order: 'asc' },
-        include: {
-          subLessons: {
-            orderBy: { order: 'asc' }
-          }
-        }
-      });
-    } catch (fallbackErr) {
-      console.error("Lessons fallback query error:", fallbackErr);
-    }
-  }
+  // 3. ประกอบข้อมูลบทเรียนของระดับที่เลือกจาก Cache + Progress Map
+  const rawLessons = catalog.data
+    .filter((l: any) => l.level === selectedLevel)
+    .map((l: any) => ({
+      ...l,
+      subLessons: (l.subLessons || []).map((s: any) => {
+        const prog = progressBySubLessonId.get(s.id);
+        return {
+          ...s,
+          userProgress: prog ? [prog] : []
+        };
+      })
+    }));
 
-  // 3. ดึงสถิติรายวันและการปลดล็อกเควส
-  let todaysProgress: any[] = [];
-  let todaysSpeedTests: any[] = [];
-  let todaysFarmSessions: any[] = [];
-  let totalSubLessonsCount = 0;
-  let userCompletedLessonsCount = 0;
-  let higherExpUsersCount = 0;
-
-  if (userId) {
-    try {
-      const today = getStartOfTodayBangkok();
-
-      const [prog, tests, farm, subCount, userProgCount, higherCount] = await Promise.all([
-        prisma.lessonProgress.findMany({
-          where: { userId: userId, updatedAt: { gte: today } }
-        }).catch(() => []),
-        prisma.speedTestResult.findMany({
-          where: { userId: userId, createdAt: { gte: today } }
-        }).catch(() => []),
-        prisma.farmSession.findMany({
-          where: { userId: userId, createdAt: { gte: today } }
-        }).catch(() => []),
-        prisma.subLesson.count().catch(() => 0),
-        prisma.lessonProgress.count({ where: { userId } }).catch(() => 0),
-        user?.currentExp !== undefined ? prisma.user.count({ where: { currentExp: { gt: user.currentExp || 0 } } }).catch(() => 0) : Promise.resolve(0)
-      ]);
-
-      todaysProgress = prog || [];
-      todaysSpeedTests = tests || [];
-      todaysFarmSessions = farm || [];
-      totalSubLessonsCount = subCount || 0;
-      userCompletedLessonsCount = userProgCount || 0;
-      higherExpUsersCount = higherCount || 0;
-    } catch (err) {
-      console.error("Stats lookup error in LessonsPage:", err);
-    }
-  }
+  // 4. กรองสถิติรายวันจากข้อมูลที่ดึงมาแล้ว
+  const todaysProgress = allUserProgress.filter(
+    (p: any) => new Date(p.updatedAt).getTime() >= today.getTime()
+  );
+  const totalSubLessonsCount = catalog.totalSubLessons;
+  const userCompletedLessonsCount = allUserProgress.length;
 
   // คำนวณค่าสถิติจากข้อมูลที่ดึงมา (รวมบทเรียน + โหมดฟาร์ม โดยไม่รบกวนประวัติทดสอบ)
   let totalDuration = 0;

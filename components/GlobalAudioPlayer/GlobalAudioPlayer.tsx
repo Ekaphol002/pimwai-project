@@ -1,36 +1,33 @@
 "use client";
 
 import { useEffect, useRef } from 'react';
-import { useSession } from 'next-auth/react';
 import { soundManager } from '@/lib/soundEffects';
 
 export default function GlobalAudioPlayer() {
-    const { status } = useSession();
-    const hasTriggeredRef = useRef(false);
+    const hasAttachedRef = useRef(false);
 
     useEffect(() => {
-        const tryPlayBgm = () => {
-            if (status === "authenticated") {
-                const isAutoPlayEnabled = localStorage.getItem('pimwai_bgm_autoplay') !== 'false';
-                if (isAutoPlayEnabled && !soundManager.getIsBgmPlaying()) {
-                    soundManager.startBgm();
-                }
-            }
-        };
+        if (hasAttachedRef.current) return;
+        hasAttachedRef.current = true;
 
-        tryPlayBgm();
+        // พยายามเล่นต่อจากจุดเดิมทันทีที่โหลดหน้าเว็บ (ถ้าเคยเปิดเพลงไว้ก่อนรีเฟรช)
+        soundManager.restoreBgmOnLoad();
 
+        // กรณีเบราว์เซอร์บล็อก Autoplay ตอนเพิ่งเปิดแท็บใหม่ ให้เริ่มเล่นต่อเมื่อผู้ใช้คลิกหรือกดปุ่มครั้งแรกเท่านั้น (โดยไม่รีเซ็ตเพลงที่กำลังเล่นอยู่แล้ว)
         const handleUserGesture = () => {
-            if (!hasTriggeredRef.current && status === "authenticated") {
-                soundManager.startBgm();
-                hasTriggeredRef.current = true;
+            const unlocked = soundManager.unlockBgmOnGesture();
+            if (unlocked) {
+                window.removeEventListener('click', handleUserGesture);
+                window.removeEventListener('keydown', handleUserGesture);
+                window.removeEventListener('touchstart', handleUserGesture);
+                window.removeEventListener('pointerdown', handleUserGesture);
             }
         };
 
-        window.addEventListener('click', handleUserGesture);
-        window.addEventListener('keydown', handleUserGesture);
-        window.addEventListener('touchstart', handleUserGesture);
-        window.addEventListener('pointerdown', handleUserGesture);
+        window.addEventListener('click', handleUserGesture, { passive: true });
+        window.addEventListener('keydown', handleUserGesture, { passive: true });
+        window.addEventListener('touchstart', handleUserGesture, { passive: true });
+        window.addEventListener('pointerdown', handleUserGesture, { passive: true });
 
         return () => {
             window.removeEventListener('click', handleUserGesture);
@@ -38,7 +35,7 @@ export default function GlobalAudioPlayer() {
             window.removeEventListener('touchstart', handleUserGesture);
             window.removeEventListener('pointerdown', handleUserGesture);
         };
-    }, [status]);
+    }, []);
 
     return null;
 }
