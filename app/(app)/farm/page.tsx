@@ -2469,8 +2469,8 @@ export default function FarmPage() {
                                                                     <span className={`text-xs sm:text-sm font-bold ${lessonPerks.beginner ? 'text-white' : 'text-gray-800'}`}>1. ระดับต้น (Beginner)</span>
                                                                 </div>
                                                                 <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 ${lessonPerks.beginner
-                                                                    ? 'bg-emerald-800 text-white'
-                                                                    : 'bg-gray-600 text-white'
+                                                                    ? 'bg-white/20 text-white'
+                                                                    : 'bg-gray-200/70 text-gray-400'
                                                                     }`}>
                                                                     {lessonPerks.beginner ? <><Check size={11} strokeWidth={3} /> ปลดล็อกแล้ว</> : <><Lock size={11} /> ล็อกอยู่</>}
                                                                 </span>
@@ -2491,8 +2491,8 @@ export default function FarmPage() {
                                                                     <span className={`text-xs sm:text-sm font-bold ${lessonPerks.intermediate ? 'text-white' : 'text-gray-800'}`}>2. ระดับกลาง (Intermediate)</span>
                                                                 </div>
                                                                 <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 ${lessonPerks.intermediate
-                                                                    ? 'bg-amber-700 text-white'
-                                                                    : 'bg-gray-600 text-white'
+                                                                    ? 'bg-white/20 text-white'
+                                                                    : 'bg-gray-200/70 text-gray-400'
                                                                     }`}>
                                                                     {lessonPerks.intermediate ? <><Check size={11} strokeWidth={3} /> ปลดล็อกแล้ว</> : <><Lock size={11} /> ล็อกอยู่</>}
                                                                 </span>
@@ -2513,8 +2513,8 @@ export default function FarmPage() {
                                                                     <span className={`text-xs sm:text-sm font-bold ${lessonPerks.advanced ? 'text-white' : 'text-gray-800'}`}>3. ระดับสูง (Advanced)</span>
                                                                 </div>
                                                                 <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 ${lessonPerks.advanced
-                                                                    ? 'bg-purple-800 text-white'
-                                                                    : 'bg-gray-600 text-white'
+                                                                    ? 'bg-white/20 text-white'
+                                                                    : 'bg-gray-200/70 text-gray-400'
                                                                     }`}>
                                                                     {lessonPerks.advanced ? <><Check size={11} strokeWidth={3} /> ปลดล็อกแล้ว</> : <><Lock size={11} /> ล็อกอยู่</>}
                                                                 </span>
@@ -2555,8 +2555,8 @@ export default function FarmPage() {
                                                                                 }`}
                                                                         >
                                                                             {/* แถบหัวข้อแบบพับเก็บได้ (มี H1 อยู่ใน DOM ตลอดเวลาเพื่อ SEO แต่ดูคลีนตาและกดซ่อน/เปิดได้) */}
-                                                                            <div className="bg-white/80 px-5 py-3 rounded-2xl border border-gray-100 shadow-xs flex flex-wrap items-center justify-between gap-3">
-                                                                                <h1 className="text-xs sm:text-sm font-bold text-gray-600">
+                                                                            <div className="bg-white rounded-3xl p-4 sm:px-6 sm:py-3.5 shadow-lg shadow-blue-500/5 flex flex-wrap items-center justify-between gap-3">
+                                                                                <h1 className="text-xs font-bold text-gray-700">
                                                                                     ฝึกพิมพ์ดีดออนไลน์ฟรี ฝึกพิมพ์สัมผัส 10 นิ้ว & ทดสอบความเร็ว WPM | PIMWAI (พิมพ์ไว)
                                                                                 </h1>
 
@@ -2576,13 +2576,13 @@ export default function FarmPage() {
 
                                                                             {/* เนื้อหา SEO ทั้งหมดคงอยู่ใน HTML DOM เสมอเพื่อให้ Googlebot เก็บข้อมูลได้ 100% แต่พับซ่อนด้วย CSS ได้ */}
                                                                             <div
-                                                                                className={`space-y-6 transition-all duration-300 ease-in-out overflow-hidden ${isSeoExpanded
-                                                                                    ? 'max-h-[2500px] opacity-100 mt-4'
-                                                                                    : 'max-h-0 opacity-0 pointer-events-none mt-0'
+                                                                                className={`space-y-4 transition-all duration-300 ease-in-out ${isSeoExpanded
+                                                                                    ? 'max-h-[2500px] opacity-100 mt-4 pb-4'
+                                                                                    : 'max-h-0 opacity-0 pointer-events-none mt-0 overflow-hidden'
                                                                                     }`}
                                                                             >
                                                                                 {/* 1. คำอธิบายหลัก */}
-                                                                                <div className="bg-white/80 p-5 rounded-2xl border border-gray-100 shadow-xs">
+                                                                                <div className="bg-white p-5 sm:p-6 rounded-3xl shadow-lg shadow-blue-500/5">
                                                                                     <p className="text-gray-500 text-xs sm:text-sm leading-relaxed">
                                                                                         <strong>PIMWAI (พิมพ์ไว)</strong> คือแพลตฟอร์ม<strong>ฝึกพิมพ์ดีดออนไลน์ฟรี</strong>และโปรแกรม<strong>ฝึกพิมพ์สัมผัส 10 นิ้ว</strong>สำหรับคนไทย ออกแบบมาเพื่อช่วยให้คุณฝึกวางนิ้วบนแป้นพิมพ์ภาษาไทย (แป้นเหย้า <strong>ฟ ห ก ด ่ า ส ว</strong>) และภาษาอังกฤษ (<strong>A S D F - J K L ;</strong>) ได้อย่างถูกต้องตามหลักสรีรศาสตร์ พร้อมระบบ<strong>ทดสอบความเร็วพิมพ์ดีด (Typing Test)</strong> วัดค่าความเร็วคำต่อนาที (WPM) และความแม่นยำ (Accuracy) แบบเรียลไทม์ เล่นได้ทันทีบนเว็บเบราว์เซอร์โดยไม่ต้องดาวน์โหลดโปรแกรมและไม่ต้องสมัครสมาชิก
                                                                                     </p>
@@ -2592,7 +2592,7 @@ export default function FarmPage() {
                                                                                 <nav aria-label="หมวดหมู่การฝึกพิมพ์ดีดหลักบน PIMWAI" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                                                                     <Link
                                                                                         href="/lessons"
-                                                                                        className="group bg-white/80 hover:bg-white p-4 rounded-2xl border border-gray-100 hover:border-[#5cb5db]/50 shadow-xs transition-all flex flex-col justify-between"
+                                                                                        className="group bg-white p-4 sm:p-5 rounded-3xl shadow-lg shadow-blue-500/5 hover:shadow-xl hover:shadow-blue-500/10 transition-all flex flex-col justify-between"
                                                                                     >
                                                                                         <div>
                                                                                             <h2 className="font-bold text-gray-800 group-hover:text-[#0c648b] text-sm mb-1.5 flex items-center justify-between">
@@ -2607,7 +2607,7 @@ export default function FarmPage() {
 
                                                                                     <Link
                                                                                         href="/tests"
-                                                                                        className="group bg-white/80 hover:bg-white p-4 rounded-2xl border border-gray-100 hover:border-emerald-400/50 shadow-xs transition-all flex flex-col justify-between"
+                                                                                        className="group bg-white p-4 sm:p-5 rounded-3xl shadow-lg shadow-blue-500/5 hover:shadow-xl hover:shadow-blue-500/10 transition-all flex flex-col justify-between"
                                                                                     >
                                                                                         <div>
                                                                                             <h2 className="font-bold text-gray-800 group-hover:text-emerald-700 text-sm mb-1.5 flex items-center justify-between">
@@ -2622,7 +2622,7 @@ export default function FarmPage() {
 
                                                                                     <Link
                                                                                         href="/rankings"
-                                                                                        className="group bg-white/80 hover:bg-white p-4 rounded-2xl border border-gray-100 hover:border-amber-400/50 shadow-xs transition-all flex flex-col justify-between"
+                                                                                        className="group bg-white p-4 sm:p-5 rounded-3xl shadow-lg shadow-blue-500/5 hover:shadow-xl hover:shadow-blue-500/10 transition-all flex flex-col justify-between"
                                                                                     >
                                                                                         <div>
                                                                                             <h2 className="font-bold text-gray-800 group-hover:text-amber-600 text-sm mb-1.5 flex items-center justify-between">
@@ -2637,7 +2637,7 @@ export default function FarmPage() {
 
                                                                                     <Link
                                                                                         href="/news"
-                                                                                        className="group bg-white/80 hover:bg-white p-4 rounded-2xl border border-gray-100 hover:border-purple-400/50 shadow-xs transition-all flex flex-col justify-between"
+                                                                                        className="group bg-white p-4 sm:p-5 rounded-3xl shadow-lg shadow-blue-500/5 hover:shadow-xl hover:shadow-blue-500/10 transition-all flex flex-col justify-between"
                                                                                     >
                                                                                         <div>
                                                                                             <h2 className="font-bold text-gray-800 group-hover:text-purple-700 text-sm mb-1.5 flex items-center justify-between">
@@ -2652,8 +2652,8 @@ export default function FarmPage() {
                                                                                 </nav>
 
                                                                                 {/* 3. คู่มือวางนิ้วแป้นเหย้า 10 นิ้ว (Home Row Guide: คีย์เวิร์ดหลักที่คนค้นหาเยอะมาก) */}
-                                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                                                    <div className="bg-white/75 p-5 rounded-2xl border border-gray-100 shadow-xs">
+                                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                                    <div className="bg-white p-5 sm:p-6 rounded-3xl shadow-lg shadow-blue-500/5">
                                                                                         <h2 className="font-bold text-gray-800 text-sm mb-2 flex items-center gap-1.5">
                                                                                             <span className="w-2 h-2 rounded-full bg-[#5cb5db]"></span>
                                                                                             วิธีวางนิ้วพิมพ์สัมผัส 10 นิ้ว แป้นเหย้า (ฟ ห ก ด - ่ า ส ว)
@@ -2683,7 +2683,7 @@ export default function FarmPage() {
                                                                                         </div>
                                                                                     </div>
 
-                                                                                    <div className="bg-white/75 p-5 rounded-2xl border border-gray-100 shadow-xs">
+                                                                                    <div className="bg-white p-5 sm:p-6 rounded-3xl shadow-lg shadow-blue-500/5">
                                                                                         <h2 className="font-bold text-gray-800 text-sm mb-2 flex items-center gap-1.5">
                                                                                             <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                                                                                             มาตรฐานความเร็วพิมพ์ดีด (WPM) และการสอบราชการ
@@ -2700,7 +2700,7 @@ export default function FarmPage() {
                                                                                 </div>
 
                                                                                 {/* 4. คำถามที่พบบ่อย (FAQ Semantic Content สอดคล้องกับ FAQPage Schema) */}
-                                                                                <div className="bg-white/75 p-5 rounded-2xl border border-gray-100 shadow-xs">
+                                                                                <div className="bg-white p-5 sm:p-6 rounded-3xl shadow-lg shadow-blue-500/5">
                                                                                     <h2 className="font-bold text-gray-800 text-sm mb-3">
                                                                                         คำถามที่พบบ่อยเกี่ยวกับการฝึกพิมพ์ดีด (FAQ)
                                                                                     </h2>
