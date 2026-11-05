@@ -11,25 +11,25 @@ export default function HomePage() {
             "@type": "ListItem",
             "position": 1,
             "name": "ฝึกพิมพ์ดีดออนไลน์ฟรี (หน้าแรก)",
-            "item": "https://pimwai.vercel.app"
+            "item": "https://pimwai.com"
           },
           {
             "@type": "ListItem",
             "position": 2,
             "name": "บทเรียนฝึกพิมพ์สัมผัส 10 นิ้ว",
-            "item": "https://pimwai.vercel.app/lessons"
+            "item": "https://pimwai.com/lessons"
           },
           {
             "@type": "ListItem",
             "position": 3,
             "name": "ทดสอบความเร็วพิมพ์ดีด (WPM)",
-            "item": "https://pimwai.vercel.app/tests"
+            "item": "https://pimwai.com/tests"
           },
           {
             "@type": "ListItem",
             "position": 4,
             "name": "ตารางจัดอันดับคนพิมพ์เร็ว",
-            "item": "https://pimwai.vercel.app/rankings"
+            "item": "https://pimwai.com/rankings"
           }
         ]
       },

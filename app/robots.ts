@@ -31,7 +31,7 @@ export default function robots(): MetadataRoute.Robots {
                 ],
             }
         ],
-        sitemap: 'https://pimwai.vercel.app/sitemap.xml',
-        host: 'https://pimwai.vercel.app',
+        sitemap: 'https://pimwai.com/sitemap.xml',
+        host: 'https://pimwai.com',
     }
 }

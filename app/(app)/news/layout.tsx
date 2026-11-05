@@ -12,19 +12,19 @@ export const metadata: Metadata = {
         'Pimwai Changelog'
     ],
     alternates: {
-        canonical: 'https://pimwai.vercel.app/news',
+        canonical: 'https://pimwai.com/news',
     },
     openGraph: {
-        title: 'ข่าวสารอัปเดต & เทคนิคการฝึกพิมพ์สัมผัสให้เร็วขึ้น | PIMWAI',
+        title: 'ข่าวสารอัปเดต & เทคนิคการฝึกพิมพ์สัมผัสให้เร็วขึ้น | PIMWAI (พิมพ์ไว)',
         description: 'ติดตามข่าวสารการอัปเดตฟีเจอร์ใหม่ บทเรียนพิมพ์สัมผัส และเทคนิคการฝึกพิมพ์ดีดล่าสุดจาก PIMWAI',
-        url: 'https://pimwai.vercel.app/news',
+        url: 'https://pimwai.com/news',
         siteName: 'PIMWAI (พิมพ์ไว)',
         images: [
             {
                 url: '/Bannerlink.png',
                 width: 1200,
                 height: 630,
-                alt: 'PIMWAI ข่าวสาร & บันทึกการอัปเดต',
+                alt: 'PIMWAI (พิมพ์ไว) ข่าวสาร & บันทึกการอัปเดต',
             }
         ],
         type: 'website',

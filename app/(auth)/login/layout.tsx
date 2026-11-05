@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: {
-    absolute: 'เข้าสู่ระบบ | PIMWAI',
+    absolute: 'เข้าสู่ระบบ | PIMWAI (พิมพ์ไว)',
   },
   description: 'เข้าสู่ระบบ PIMWAI เพื่อบันทึกสถิติความเร็วพิมพ์ดีด (WPM) สะสม EXP เลื่อนแรงค์ และติดตามพัฒนาการฝึกพิมพ์สัมผัสของคุณ',
   robots: {

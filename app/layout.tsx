@@ -19,11 +19,11 @@ const nunito = Nunito({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://pimwai.vercel.app'),
+  metadataBase: new URL('https://pimwai.com'),
   applicationName: 'PIMWAI (พิมพ์ไว)',
   title: {
-    default: "ฝึกพิมพ์ดีดออนไลน์ฟรี ฝึกพิมพ์สัมผัส 10 นิ้ว & ทดสอบ WPM | PIMWAI",
-    template: "%s | PIMWAI"
+    default: "PIMWAI (พิมพ์ไว) - ฝึกพิมพ์ดีดออนไลน์ฟรี ฝึกพิมพ์สัมผัส 10 นิ้ว & ทดสอบ WPM",
+    template: "%s | PIMWAI (พิมพ์ไว)"
   },
   description: "เว็บฝึกพิมพ์ดีดออนไลน์ฟรี ฝึกพิมพ์สัมผัส 10 นิ้วภาษาไทย (แป้นเหย้า ฟ ห ก ด ่ า ส ว) และอังกฤษ ทดสอบความเร็วพิมพ์ดีด WPM เช็คความแม่นยำ เล่นได้ทันทีไม่ต้องสมัครสมาชิก",
   keywords: [
@@ -48,23 +48,23 @@ export const metadata: Metadata = {
     "พิมพ์ไว",
     "พิมไว"
   ],
-  authors: [{ name: "PIMWAI Team", url: "https://pimwai.vercel.app" }],
-  creator: "PIMWAI",
-  publisher: "PIMWAI",
+  authors: [{ name: "PIMWAI Team", url: "https://pimwai.com" }],
+  creator: "PIMWAI (พิมพ์ไว)",
+  publisher: "PIMWAI (พิมพ์ไว)",
   alternates: {
-    canonical: 'https://pimwai.vercel.app',
+    canonical: 'https://pimwai.com',
   },
   openGraph: {
-    title: "ฝึกพิมพ์ดีดออนไลน์ฟรี ฝึกพิมพ์สัมผัส 10 นิ้ว & ทดสอบ WPM | PIMWAI",
+    title: "PIMWAI (พิมพ์ไว) - ฝึกพิมพ์ดีดออนไลน์ฟรี ฝึกพิมพ์สัมผัส 10 นิ้ว & ทดสอบ WPM",
     description: "ฝึกพิมพ์ดีดภาษาไทยและอังกฤษออนไลน์ฟรี บทเรียนวางนิ้วสัมผัส 10 นิ้ว แป้นเหย้า ฟ ห ก ด ่ า ส ว พร้อมโหมดทดสอบความเร็ว WPM และจัดอันดับ",
-    url: 'https://pimwai.vercel.app',
+    url: 'https://pimwai.com',
     siteName: 'PIMWAI (พิมพ์ไว)',
     images: [
       {
         url: '/Bannerlink.png',
         width: 1200,
         height: 630,
-        alt: 'PIMWAI ฝึกพิมพ์ดีดออนไลน์ฟรี ฝึกพิมพ์สัมผัส 10 นิ้ว และทดสอบความเร็ว WPM',
+        alt: 'PIMWAI (พิมพ์ไว) ฝึกพิมพ์ดีดออนไลน์ฟรี ฝึกพิมพ์สัมผัส 10 นิ้ว และทดสอบความเร็ว WPM',
       }
     ],
     type: 'website',
@@ -72,7 +72,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: "ฝึกพิมพ์ดีดออนไลน์ฟรี ฝึกพิมพ์สัมผัส 10 นิ้ว & ทดสอบ WPM | PIMWAI",
+    title: "PIMWAI (พิมพ์ไว) - ฝึกพิมพ์ดีดออนไลน์ฟรี ฝึกพิมพ์สัมผัส 10 นิ้ว & ทดสอบ WPM",
     description: "ฝึกพิมพ์ดีดและพิมพ์สัมผัส 10 นิ้วออนไลน์ฟรี วัดความเร็วการพิมพ์ WPM พร้อมบทเรียนแป้นเหย้าครบวงจร",
     creator: '@PIMWAI',
     images: ['/Bannerlink.png'],
@@ -104,18 +104,18 @@ export default function RootLayout({
     "@graph": [
       {
         "@type": "WebSite",
-        "@id": "https://pimwai.vercel.app/#website",
+        "@id": "https://pimwai.com/#website",
         "name": "PIMWAI (พิมพ์ไว)",
         "alternateName": ["PIMWAI", "พิมพ์ไว", "พิมไว", "ฝึกพิมพ์ดีด PIMWAI"],
-        "url": "https://pimwai.vercel.app",
+        "url": "https://pimwai.com",
         "inLanguage": "th-TH"
       },
       {
         "@type": "WebApplication",
-        "@id": "https://pimwai.vercel.app/#webapp",
-        "name": "PIMWAI - โปรแกรมฝึกพิมพ์ดีดออนไลน์และทดสอบพิมพ์สัมผัส 10 นิ้ว",
+        "@id": "https://pimwai.com/#webapp",
+        "name": "PIMWAI (พิมพ์ไว) - โปรแกรมฝึกพิมพ์ดีดออนไลน์และทดสอบพิมพ์สัมผัส 10 นิ้ว",
         "alternateName": ["ฝึกพิมพ์ดีด PIMWAI", "พิมพ์ไว", "Pimwai Typing Test"],
-        "url": "https://pimwai.vercel.app",
+        "url": "https://pimwai.com",
         "applicationCategory": "EducationalApplication",
         "genre": "Typing Tutor & Speed Test",
         "operatingSystem": "All",
@@ -130,35 +130,35 @@ export default function RootLayout({
       },
       {
         "@type": "ItemList",
-        "name": "เมนูหลักเว็บไซต์ฝึกพิมพ์ดีด PIMWAI",
+        "name": "เมนูหลักเว็บไซต์ฝึกพิมพ์ดีด PIMWAI (พิมพ์ไว)",
         "itemListElement": [
           {
             "@type": "SiteNavigationElement",
             "position": 1,
             "name": "ฝึกพิมพ์ดีดด่วน & ทดสอบความเร็ว",
             "description": "ฝึกพิมพ์ดีดออนไลน์ฟรี จับเวลาเช็คความเร็ว WPM ภาษาไทยและอังกฤษ เล่นได้ทันทีไม่ต้องล็อกอิน",
-            "url": "https://pimwai.vercel.app/"
+            "url": "https://pimwai.com/"
           },
           {
             "@type": "SiteNavigationElement",
             "position": 2,
             "name": "บทเรียนฝึกพิมพ์สัมผัส 10 นิ้ว",
             "description": "แบบฝึกหัดพิมพ์ดีดตั้งแต่พื้นฐาน แป้นเหย้า ฟ ห ก ด ่ า ส ว ไปจนถึงระดับสูงกว่า 100 ด่าน",
-            "url": "https://pimwai.vercel.app/lessons"
+            "url": "https://pimwai.com/lessons"
           },
           {
             "@type": "SiteNavigationElement",
             "position": 3,
             "name": "ทดสอบความเร็วพิมพ์ดีด (WPM Test)",
             "description": "สอบวัดความเร็วการพิมพ์ 1, 3 และ 5 นาที พร้อมกราฟวิเคราะห์ตัวอักษรที่พิมพ์ผิดบ่อย",
-            "url": "https://pimwai.vercel.app/tests"
+            "url": "https://pimwai.com/tests"
           },
           {
             "@type": "SiteNavigationElement",
             "position": 4,
             "name": "ตารางจัดอันดับคนพิมพ์เร็ว (Leaderboard)",
             "description": "อันดับผู้เล่นที่มีความเร็วพิมพ์ดีด WPM และระดับแรงค์สูงสุดในประเทศไทย",
-            "url": "https://pimwai.vercel.app/rankings"
+            "url": "https://pimwai.com/rankings"
           }
         ]
       }

@@ -15,12 +15,12 @@ export const metadata: Metadata = {
     'Typing Speed Test Thai'
   ],
   alternates: {
-    canonical: 'https://pimwai.vercel.app/tests',
+    canonical: 'https://pimwai.com/tests',
   },
   openGraph: {
-    title: 'ทดสอบพิมพ์ดีดออนไลน์ เช็คความเร็ว WPM & วิเคราะห์คำผิด | PIMWAI',
+    title: 'ทดสอบพิมพ์ดีดออนไลน์ เช็คความเร็ว WPM & วิเคราะห์คำผิด | PIMWAI (พิมพ์ไว)',
     description: 'สอบวัดความเร็วการพิมพ์ดีด 1, 3 และ 5 นาที เช็คค่า WPM พร้อมกราฟวิเคราะห์จุดอ่อนตัวอักษรที่พิมพ์ผิดบ่อย',
-    url: 'https://pimwai.vercel.app/tests',
+    url: 'https://pimwai.com/tests',
     siteName: 'PIMWAI (พิมพ์ไว)',
     type: 'website',
     locale: 'th_TH',

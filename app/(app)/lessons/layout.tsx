@@ -15,12 +15,12 @@ export const metadata: Metadata = {
     'ฝึกพิมพ์ดีดไทย'
   ],
   alternates: {
-    canonical: 'https://pimwai.vercel.app/lessons',
+    canonical: 'https://pimwai.com/lessons',
   },
   openGraph: {
-    title: 'บทเรียนฝึกพิมพ์ดีด 10 นิ้ว แป้นเหย้า ฟ ห ก ด ่ า ส ว ฟรี | PIMWAI',
+    title: 'บทเรียนฝึกพิมพ์ดีด 10 นิ้ว แป้นเหย้า ฟ ห ก ด ่ า ส ว ฟรี | PIMWAI (พิมพ์ไว)',
     description: 'เรียนพิมพ์สัมผัส 10 นิ้วออนไลน์ฟรี ตั้งแต่แป้นเหย้าพื้นฐานไปจนถึงพิมพ์ประโยคระดับมืออาชีพ',
-    url: 'https://pimwai.vercel.app/lessons',
+    url: 'https://pimwai.com/lessons',
     siteName: 'PIMWAI (พิมพ์ไว)',
     type: 'website',
     locale: 'th_TH',

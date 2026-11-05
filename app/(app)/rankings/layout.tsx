@@ -12,12 +12,12 @@ export const metadata: Metadata = {
     'แข่งพิมพ์ดีดออนไลน์'
   ],
   alternates: {
-    canonical: 'https://pimwai.vercel.app/rankings',
+    canonical: 'https://pimwai.com/rankings',
   },
   openGraph: {
-    title: 'ตารางจัดอันดับคนพิมพ์เร็ว (Leaderboard) สถิติ WPM สูงสุด | PIMWAI',
+    title: 'ตารางจัดอันดับคนพิมพ์เร็ว (Leaderboard) สถิติ WPM สูงสุด | PIMWAI (พิมพ์ไว)',
     description: 'เช็คอันดับนักพิมพ์สัมผัสที่มีความเร็ว WPM และ EXP สูงสุดบน PIMWAI',
-    url: 'https://pimwai.vercel.app/rankings',
+    url: 'https://pimwai.com/rankings',
     siteName: 'PIMWAI (พิมพ์ไว)',
     type: 'website',
     locale: 'th_TH',
