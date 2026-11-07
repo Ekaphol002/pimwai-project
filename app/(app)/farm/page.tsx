@@ -411,20 +411,22 @@ export default function FarmPage() {
 
     // คำนวณตำแหน่งเคอร์เซอร์ระดับคอนเทนเนอร์ ให้เลื่อนสมูททั้งตอนพิมพ์ กด space ข้ามคำ และขึ้น/ลงบรรทัดใหม่
     const updateCaretPosition = useCallback(() => {
-        const currentWordEl = wordElementsRef.current[activeWordIdx];
-        if (!currentWordEl) return;
+        requestAnimationFrame(() => {
+            const currentWordEl = wordElementsRef.current[activeWordIdx];
+            if (!currentWordEl) return;
 
-        let typedWidth = 0;
-        if (typedPartRef.current) {
-            typedWidth = typedPartRef.current.offsetWidth;
-        }
+            let typedWidth = 0;
+            if (typedPartRef.current) {
+                typedWidth = typedPartRef.current.offsetWidth;
+            }
 
-        const isGolden = wordList[activeWordIdx]?.isGolden;
-        const left = currentWordEl.offsetLeft + typedWidth + (isGolden ? 6 : 0);
-        const top = currentWordEl.offsetTop + 4;
-        const height = Math.max(26, currentWordEl.offsetHeight - 8);
+            const isGolden = wordList[activeWordIdx]?.isGolden;
+            const left = currentWordEl.offsetLeft + typedWidth + (isGolden ? 6 : 0);
+            const top = currentWordEl.offsetTop + 4;
+            const height = Math.max(26, currentWordEl.offsetHeight - 8);
 
-        setCaretCoords({ left, top, height });
+            setCaretCoords({ left, top, height });
+        });
     }, [activeWordIdx, wordList]);
 
     useEffect(() => {
@@ -1408,14 +1410,21 @@ export default function FarmPage() {
     const finalAcc = totalKeystrokes > 0 ? Math.round((correctKeystrokes / totalKeystrokes) * 100) : 0;
     const incorrectCount = Math.max(0, totalKeystrokes - correctKeystrokes);
     const isFocusMode = isTyping && !isFinished;
+    const isFocusModeRef = useRef(isFocusMode);
 
-    // 🌟 ซิงค์สถานะการพิมพ์ไปยัง Widget เสนอสิ่งที่อยากให้ทำเพิ่ม เพื่อให้ซ่อนตัวอัตโนมัติขณะกำลังพิมพ์
+    // 🌟 ซิงค์สถานะการพิมพ์ไปยัง Widget เสนอสิ่งที่อยากให้ทำเพิ่ม เมื่อค่าเปลี่ยนจริงเท่านั้น (ป้องกัน dispatch ซ้ำทุกตัวอักษร)
     useEffect(() => {
-        window.dispatchEvent(new CustomEvent('pimwai-typing-state', { detail: { isTyping: isFocusMode } }));
+        if (isFocusModeRef.current !== isFocusMode) {
+            isFocusModeRef.current = isFocusMode;
+            window.dispatchEvent(new CustomEvent('pimwai-typing-state', { detail: { isTyping: isFocusMode } }));
+        }
+    }, [isFocusMode]);
+
+    useEffect(() => {
         return () => {
             window.dispatchEvent(new CustomEvent('pimwai-typing-state', { detail: { isTyping: false } }));
         };
-    }, [isFocusMode]);
+    }, []);
 
     // 🎈 เรนเดอร์ข้อความลอยกลางบนหัวคำ (Top-Center Floating Text เพียวๆ ไม่มีเงา เลื่อนสมูท)
     const renderWordFloaters = (wordIdx: number) => {
@@ -1427,14 +1436,14 @@ export default function FarmPage() {
                 {floaters.map(floater => (
                     <span
                         key={floater.id}
-                        className={`absolute left-1/2 bottom-full -mb-1 z-40 text-xs sm:text-sm font-black tracking-tight whitespace-nowrap pointer-events-none select-none ${floater.type === 'golden_bounty'
+                        className={`absolute left-1/2 bottom-[108%] z-40 text-xs sm:text-sm font-black tracking-tight whitespace-nowrap pointer-events-none select-none ${floater.type === 'golden_bounty'
                             ? 'text-amber-500'
                             : floater.type === 'bounty'
                                 ? 'text-emerald-500'
                                 : 'text-blue-500'
                             }`}
                         style={{
-                            animation: 'wordFloatUp 1.35s forwards',
+                            animation: 'wordFloatUp 1.1s cubic-bezier(0.22, 1, 0.36, 1) forwards',
                             willChange: 'transform, opacity'
                         }}
                     >
@@ -1656,22 +1665,22 @@ export default function FarmPage() {
                             @keyframes wordFloatUp {
                                 0% {
                                     opacity: 0;
-                                    transform: translate3d(-50%, 2px, 0);
+                                    transform: translate3d(-50%, 0, 0);
                                     animation-timing-function: ease-out;
                                 }
-                                12% {
+                                15% {
                                     opacity: 1;
-                                    transform: translate3d(-50%, 0, 0);
+                                    transform: translate3d(-50%, -4px, 0);
                                     animation-timing-function: linear;
                                 }
-                                45% {
+                                40% {
                                     opacity: 1;
-                                    transform: translate3d(-50%, 0, 0);
+                                    transform: translate3d(-50%, -6px, 0);
                                     animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
                                 }
                                 100% {
                                     opacity: 0;
-                                    transform: translate3d(-50%, -24px, 0);
+                                    transform: translate3d(-50%, -14px, 0);
                                 }
                             }
                         `
@@ -1994,7 +2003,7 @@ export default function FarmPage() {
                             {/* Words Stream Box with Smooth Scrolling (3 Full Visible Lines) */}
                             <div
                                 ref={typingContainerRef}
-                                className="flex-1 overflow-hidden max-w-full overflow-x-hidden h-[188px] max-h-[188px] sm:h-[192px] sm:max-h-[192px] relative flex flex-wrap items-baseline gap-x-3 sm:gap-x-4 gap-y-3 sm:gap-y-3.5 text-2xl sm:text-3xl font-medium leading-normal select-none my-1 pt-2 pb-2 antialiased"
+                                className="flex-1 overflow-hidden max-w-full overflow-x-hidden h-[188px] max-h-[188px] sm:h-[192px] sm:max-h-[192px] relative flex flex-wrap items-baseline gap-x-3 sm:gap-x-4 gap-y-3 sm:gap-y-3.5 text-2xl sm:text-3xl font-medium leading-normal select-none my-1 pt-6 pb-2 antialiased"
                             >
                                 {/* 🎯 Container-Level Ultra-Smooth Floating Caret (เลื่อนช้า สมูท นุ่มนวล ไม่มีเงา) */}
                                 {!isFinished && caretCoords.height > 0 && (
