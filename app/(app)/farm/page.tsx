@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
@@ -337,6 +337,7 @@ export default function FarmPage() {
     };
 
     const typingContainerRef = useRef<HTMLDivElement>(null);
+    const caretElementRef = useRef<HTMLDivElement>(null);
     const wordElementsRef = useRef<(HTMLSpanElement | null)[]>([]);
     const typedPartRef = useRef<HTMLSpanElement>(null);
     const pendingSyncExpRef = useRef<number>(0);
@@ -409,29 +410,29 @@ export default function FarmPage() {
         return () => window.removeEventListener('mousemove', handleMouseMove);
     }, []);
 
-    // คำนวณตำแหน่งเคอร์เซอร์ระดับคอนเทนเนอร์ ให้เลื่อนสมูททั้งตอนพิมพ์ กด space ข้ามคำ และขึ้น/ลงบรรทัดใหม่
+    // คำนวณตำแหน่งเคอร์เซอร์ระดับคอนเทนเนอร์ ให้เลื่อนสมูทระดับ 60fps ทันทีในเฟรมเดียวกัน (Zero Re-render Lag)
     const updateCaretPosition = useCallback(() => {
-        requestAnimationFrame(() => {
-            const currentWordEl = wordElementsRef.current[activeWordIdx];
-            if (!currentWordEl) return;
+        const currentWordEl = wordElementsRef.current[activeWordIdx];
+        if (!currentWordEl) return;
 
-            let typedWidth = 0;
-            if (typedPartRef.current) {
-                typedWidth = typedPartRef.current.offsetWidth;
-            }
+        let typedWidth = 0;
+        if (typedPartRef.current) {
+            typedWidth = typedPartRef.current.getBoundingClientRect().width;
+        }
 
-            const isGolden = wordList[activeWordIdx]?.isGolden;
-            const left = currentWordEl.offsetLeft + typedWidth + (isGolden ? 6 : 0);
-            const top = currentWordEl.offsetTop + 4;
-            const height = Math.max(26, currentWordEl.offsetHeight - 8);
+        const left = currentWordEl.offsetLeft + typedWidth;
+        const top = currentWordEl.offsetTop + 4;
+        const height = Math.max(26, currentWordEl.offsetHeight - 8);
 
-            setCaretCoords({ left, top, height });
-        });
-    }, [activeWordIdx, wordList]);
+        if (caretElementRef.current) {
+            caretElementRef.current.style.height = `${height}px`;
+            caretElementRef.current.style.transform = `translate3d(${left}px, ${top}px, 0)`;
+        }
+    }, [activeWordIdx]);
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         updateCaretPosition();
-    }, [inputBuffer, activeWordIdx, updateCaretPosition]);
+    }, [inputBuffer, activeWordIdx, wordList, updateCaretPosition]);
 
     useEffect(() => {
         const handleResize = () => updateCaretPosition();
@@ -1120,7 +1121,7 @@ export default function FarmPage() {
                         if (totalWordExp > 0) {
                             triggerWordFloater(
                                 activeWordIdx,
-                                isGoldenBounty ? 'golden_bounty' : 'bounty',
+                                targetWordObj.isGolden ? 'golden_bounty' : 'bounty',
                                 `+${totalWordExp} EXP`,
                                 totalWordExp
                             );
@@ -1426,7 +1427,7 @@ export default function FarmPage() {
         };
     }, []);
 
-    // 🎈 เรนเดอร์ข้อความลอยกลางบนหัวคำ (Top-Center Floating Text เพียวๆ ไม่มีเงา เลื่อนสมูท)
+    // 🎈 เรนเดอร์ข้อความลอยบนหัวคำ (Top-Center Floating Text ลอยขึ้นบนหัวคำตรงๆ ตามเดิม)
     const renderWordFloaters = (wordIdx: number) => {
         const floaters = wordFloatingBadges.filter(b => b.wordIdx === wordIdx);
         if (floaters.length === 0) return null;
@@ -1436,14 +1437,14 @@ export default function FarmPage() {
                 {floaters.map(floater => (
                     <span
                         key={floater.id}
-                        className={`absolute left-1/2 bottom-[108%] z-40 text-xs sm:text-sm font-black tracking-tight whitespace-nowrap pointer-events-none select-none ${floater.type === 'golden_bounty'
+                        className={`absolute left-1/2 bottom-full -mb-1 z-40 text-xs sm:text-sm font-black tracking-tight whitespace-nowrap pointer-events-none select-none ${floater.type === 'golden_bounty'
                             ? 'text-amber-500'
                             : floater.type === 'bounty'
                                 ? 'text-emerald-500'
                                 : 'text-blue-500'
                             }`}
                         style={{
-                            animation: 'wordFloatUp 1.1s cubic-bezier(0.22, 1, 0.36, 1) forwards',
+                            animation: 'wordFloatUp 1.35s forwards',
                             willChange: 'transform, opacity'
                         }}
                     >
@@ -1665,22 +1666,22 @@ export default function FarmPage() {
                             @keyframes wordFloatUp {
                                 0% {
                                     opacity: 0;
-                                    transform: translate3d(-50%, 0, 0);
+                                    transform: translate3d(-50%, 2px, 0);
                                     animation-timing-function: ease-out;
                                 }
-                                15% {
+                                12% {
                                     opacity: 1;
-                                    transform: translate3d(-50%, -4px, 0);
+                                    transform: translate3d(-50%, 0, 0);
                                     animation-timing-function: linear;
                                 }
-                                40% {
+                                45% {
                                     opacity: 1;
-                                    transform: translate3d(-50%, -6px, 0);
+                                    transform: translate3d(-50%, 0, 0);
                                     animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
                                 }
                                 100% {
                                     opacity: 0;
-                                    transform: translate3d(-50%, -14px, 0);
+                                    transform: translate3d(-50%, -24px, 0);
                                 }
                             }
                         `
@@ -2003,17 +2004,18 @@ export default function FarmPage() {
                             {/* Words Stream Box with Smooth Scrolling (3 Full Visible Lines) */}
                             <div
                                 ref={typingContainerRef}
-                                className="flex-1 overflow-hidden max-w-full overflow-x-hidden h-[188px] max-h-[188px] sm:h-[192px] sm:max-h-[192px] relative flex flex-wrap items-baseline gap-x-3 sm:gap-x-4 gap-y-3 sm:gap-y-3.5 text-2xl sm:text-3xl font-medium leading-normal select-none my-1 pt-6 pb-2 antialiased"
+                                className="flex-1 overflow-hidden max-w-full overflow-x-hidden h-[216px] max-h-[216px] sm:h-[220px] sm:max-h-[220px] relative flex flex-wrap items-baseline gap-x-3 sm:gap-x-4 gap-y-3 sm:gap-y-3.5 text-2xl sm:text-3xl font-medium leading-normal select-none my-1 pt-8 pb-2 antialiased"
                             >
-                                {/* 🎯 Container-Level Ultra-Smooth Floating Caret (เลื่อนช้า สมูท นุ่มนวล ไม่มีเงา) */}
-                                {!isFinished && caretCoords.height > 0 && (
+                                {/* 🎯 Container-Level Ultra-Smooth Floating Caret (อัปเดตผ่าน DOM Ref ทันทีในเฟรมเดียว ลื่น 60/120fps) */}
+                                {!isFinished && (
                                     <div
-                                        className={`absolute left-0 top-0 w-[2.5px] bg-[#5cb5db] rounded-full pointer-events-none z-30 ${isTyping ? 'opacity-100' : 'animate-pulse'
+                                        ref={caretElementRef}
+                                        className={`absolute left-0 top-0 w-[2.5px] bg-[#5cb5db] rounded-full pointer-events-none z-30 transform-gpu ${isTyping ? 'opacity-100' : 'animate-pulse'
                                             }`}
                                         style={{
-                                            height: `${caretCoords.height}px`,
-                                            transform: `translate3d(${caretCoords.left}px, ${caretCoords.top}px, 0)`,
-                                            transition: 'transform 160ms cubic-bezier(0.22, 1, 0.36, 1), height 120ms ease-out',
+                                            height: '32px',
+                                            transform: 'translate3d(0px, 32px, 0)',
+                                            transition: 'transform 95ms cubic-bezier(0.2, 0.9, 0.3, 1), height 95ms ease-out',
                                             willChange: 'transform',
                                         }}
                                     />
@@ -2212,7 +2214,7 @@ export default function FarmPage() {
                                                 <span
                                                     key={idx}
                                                     ref={el => { wordElementsRef.current[idx] = el; }}
-                                                    className={`relative inline-block align-baseline whitespace-nowrap ${wObj.isGolden ? 'text-amber-500 bg-amber-50/80 px-1.5 py-0.5 rounded-lg border border-dashed border-amber-300' : 'text-gray-800'}`}
+                                                    className={`relative inline-block align-baseline whitespace-nowrap ${wObj.isGolden ? 'text-amber-500' : 'text-gray-800'}`}
                                                 >
                                                     {toStandardDisplayOrder(targetWord)}
                                                     {renderWordFloaters(idx)}
@@ -2229,7 +2231,7 @@ export default function FarmPage() {
                                             <span
                                                 key={idx}
                                                 ref={el => { wordElementsRef.current[idx] = el; }}
-                                                className={`relative inline-block align-baseline whitespace-nowrap underline decoration-red-500 underline-offset-4 decoration-2 ${wObj.isGolden ? 'bg-amber-50/80 px-1.5 py-0.5 rounded-lg border border-dashed border-amber-300' : ''}`}
+                                                className="relative inline-block align-baseline whitespace-nowrap underline decoration-red-500 underline-offset-4 decoration-2"
                                             >
                                                 <span className="inline">
                                                     {renderThaiWordWithColors(targetWord, typedLen, false, typedWord, wObj.isGolden)}
@@ -2255,7 +2257,7 @@ export default function FarmPage() {
                                             <span
                                                 key={idx}
                                                 ref={el => { wordElementsRef.current[idx] = el; }}
-                                                className={`relative inline-block align-baseline whitespace-nowrap ${wObj.isGolden ? 'bg-amber-50/80 px-1.5 py-0.5 rounded-lg border border-dashed border-amber-300' : ''}`}
+                                                className="relative inline-block align-baseline whitespace-nowrap"
                                             >
                                                 <span className="inline">
                                                     {renderThaiWordWithColors(targetWord, typedLen, true, inputBuffer, wObj.isGolden)}
@@ -2288,7 +2290,7 @@ export default function FarmPage() {
                                             key={idx}
                                             ref={el => { wordElementsRef.current[idx] = el; }}
                                             className={`relative inline-block align-baseline whitespace-nowrap ${wObj.isGolden
-                                                ? "text-amber-300 bg-amber-50/80 px-1.5 py-0.5 rounded-lg border border-dashed border-amber-300"
+                                                ? "text-amber-400"
                                                 : "text-gray-300"
                                                 }`}
                                         >
