@@ -8,6 +8,7 @@ import TodayStats from '@/components/TodayStats/TodayStats';
 import WelcomeModal from '@/components/WelcomeModal/WelcomeModal';
 import { prisma } from '@/lib/prisma';
 import { getStartOfTodayBangkok } from '@/lib/streakUtils';
+import { computeDailyStatsFromRecords, buildDailyQuests } from '@/lib/questUtils';
 import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
@@ -159,108 +160,28 @@ export default async function LessonsPage({ searchParams }: PageProps) {
   const totalSubLessonsCount = catalog.totalSubLessons;
   const userCompletedLessonsCount = allUserProgress.length;
 
-  // คำนวณค่าสถิติจากข้อมูลที่ดึงมา (รวมบทเรียน + โหมดฟาร์ม โดยไม่รบกวนประวัติทดสอบ)
-  let totalDuration = 0;
-  let weightedWpmSum = 0;
-  let weightedAccSum = 0;
-  let activeActivitiesCount = todaysProgress.length + todaysSpeedTests.length;
-
-  for (const p of todaysProgress) {
-    const dur = p.duration || 1;
-    totalDuration += dur;
-    weightedWpmSum += (p.wpm || 0) * dur;
-    weightedAccSum += (p.accuracy !== undefined ? p.accuracy : 100) * dur;
-  }
-
-  for (const t of todaysSpeedTests) {
-    const dur = t.duration || 1;
-    totalDuration += dur;
-    weightedWpmSum += (t.wpm || 0) * dur;
-    weightedAccSum += (t.accuracy !== undefined ? t.accuracy : 100) * dur;
-  }
-
-  for (const f of todaysFarmSessions) {
-    const dur = f.duration || 1;
-    totalDuration += dur;
-    weightedWpmSum += (f.wpm || 0) * dur;
-    weightedAccSum += (f.accuracy !== undefined ? f.accuracy : 100) * dur;
-  }
-
-  if (todaysFarmSessions.length > 0) {
-    activeActivitiesCount += 1;
-  }
-
-  const dailyAvgWpm = totalDuration > 0 ? Math.round(weightedWpmSum / totalDuration) : 0;
-  const dailyAvgAcc = totalDuration > 0 ? Math.round(weightedAccSum / totalDuration) : 0;
-  const dailyTotalTime = totalDuration;
-  const dailyTotalLessons = activeActivitiesCount;
-
-  // แปลงเวลาเป็น นาที:วินาที
-  const m = Math.floor(dailyTotalTime / 60);
-  const s = dailyTotalTime % 60;
-  const dailyTimeString = `${m}:${s.toString().padStart(2, '0')}`;
-
   const isAllLessonsCompleted = userId ? (userCompletedLessonsCount >= totalSubLessonsCount && totalSubLessonsCount > 0) : false;
   const serverRank = userId && user ? higherExpUsersCount + 1 : null;
 
-  // 🌟 เควสรายวัน: ปลดล็อกเควส Tier 2 เมื่อเล่นบทเรียนครบทุกด่าน ทุกระดับ (Beginner, Intermediate, Advanced) แล้ว
-  const quests = isAllLessonsCompleted ? [
-    {
-      id: 101,
-      tier: 2,
-      text: 'พิมพ์สะสมครบ 10 นาที',
-      current: m,
-      target: 10,
-      unit: 'นาที',
-      isCompleted: m >= 10
-    },
-    {
-      id: 102,
-      tier: 2,
-      text: 'ผ่าน 5 บทเรียน / รอบฝึก',
-      current: dailyTotalLessons,
-      target: 5,
-      unit: 'รอบ',
-      isCompleted: dailyTotalLessons >= 5
-    },
-    {
-      id: 103,
-      tier: 2,
-      text: 'ทำความเร็วให้ได้ 25+ WPM',
-      current: dailyAvgWpm,
-      target: 25,
-      unit: 'WPM',
-      isCompleted: dailyAvgWpm >= 25
-    }
-  ] : [
-    {
-      id: 1,
-      tier: 1,
-      text: 'พิมพ์ให้ครบ 5 นาที',
-      current: m,
-      target: 5,
-      unit: 'นาที',
-      isCompleted: m >= 5
-    },
-    {
-      id: 2,
-      tier: 1,
-      text: 'ผ่าน 3 บทเรียน / รอบฝึก',
-      current: dailyTotalLessons,
-      target: 3,
-      unit: 'บทเรียน',
-      isCompleted: dailyTotalLessons >= 3
-    },
-    {
-      id: 3,
-      tier: 1,
-      text: 'ทำความแม่นยำให้ได้ 95%',
-      current: dailyAvgAcc,
-      target: 95,
-      unit: '%',
-      isCompleted: dailyTotalLessons > 0 && dailyAvgAcc >= 95
-    },
-  ];
+  // คำนวณค่าสถิติและเควสรายวันจากข้อมูลที่ดึงมา (รวมบทเรียน + โหมดฟาร์ม + โหมดทดสอบ)
+  const dailyStats = computeDailyStatsFromRecords(
+    todaysProgress,
+    todaysSpeedTests,
+    todaysFarmSessions,
+    isAllLessonsCompleted
+  );
+
+  const dailyAvgWpm = dailyStats.dailyAvgWpm;
+  const dailyAvgAcc = dailyStats.dailyAvgAcc;
+  const dailyTotalTime = dailyStats.totalDurationSeconds;
+
+  // แปลงเวลาเป็น นาที:วินาที
+  const m = dailyStats.minutes;
+  const s = dailyTotalTime % 60;
+  const dailyTimeString = `${m}:${s.toString().padStart(2, '0')}`;
+
+  // 🌟 เควสรายวัน (รองรับทั้งผู้เล่นทั่วไปและผู้เล่นที่เคลียร์ครบทุกด่านแล้ว)
+  const quests = buildDailyQuests(dailyStats);
 
   // แปลงข้อมูล (Transform Data)
   const lessons = rawLessons.map((lesson: any) => {

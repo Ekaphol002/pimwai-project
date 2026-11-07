@@ -193,10 +193,14 @@ export default function LessonList({ title, lessons }: LessonListProps) {
       {/* 🏆 Victory Celebration Banner */}
       {lessons.length > 0 && lessons.every(l => l.status === 'completed') && (() => {
         const isBeginner = title.includes('เริ่มต้น') || title.includes('Beginner');
-        const isIntermediate = title.includes('ปานกลาง') || title.includes('Intermediate');
-        const nextHref = isBeginner ? '/lessons?level=intermediate' : isIntermediate ? '/lessons?level=advanced' : '/lessons';
-        const nextLabel = 'ระดับต่อไป';
-        const buffName = isBeginner ? 'เกราะป้องกัน Double Shield' : isIntermediate ? 'คำทองคำ Golden Words +15%' : 'สถานะปรมาจารย์พิมพ์ไว';
+        const isIntermediate = title.includes('ระดับกลาง') || title.includes('ปานกลาง') || title.includes('Intermediate');
+        const nextHref = isBeginner ? '/lessons?level=intermediate' : isIntermediate ? '/lessons?level=advanced' : '/';
+        const nextLabel = isBeginner || isIntermediate ? 'ระดับต่อไป' : 'ลุยพิมพ์ด่วน';
+        const buffName = isBeginner
+          ? 'เกราะป้องกัน Double Shield'
+          : isIntermediate
+            ? 'คำทองคำ Golden Words +15%'
+            : 'สถานะปรมาจารย์พิมพ์ไว (Fever Mode)';
 
         const badgeColor = isBeginner
           ? 'bg-emerald-500 text-white border-emerald-400'

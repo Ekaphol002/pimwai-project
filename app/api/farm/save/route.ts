@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getRankFromExp, calculateRankInfo } from '@/lib/rankUtils';
 import { getStartOfTodayBangkok } from '@/lib/streakUtils';
+import { evaluateNewlyCompletedQuests } from '@/lib/questUtils';
 
 // 🛡️ In-memory rate limiting map (userId -> timestamp of last request)
 const lastRequestTimeMap = new Map<string, number>();
@@ -68,7 +69,36 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: false, error: "User not found" }, { status: 404 });
         }
 
-        const newTotalExp = (user.currentExp || 0) + safeExp;
+        const addedDuration = Math.max(0, Math.min(300, Math.round(Number(timeSpentSeconds) || 0)));
+        const newTotalFarmTime = (user.farmTimeSeconds || 0) + addedDuration;
+
+        // บันทึก FarmSession เพื่อเก็บประวัติเวลา และให้ระบบ Streak (ไฟ) นับวันการเล่น
+        let createdFarmSessionId: string | undefined = undefined;
+        if (addedDuration > 0 || safeExp > 0) {
+            const newFarmSession = await prisma.farmSession.create({
+                data: {
+                    userId: user.id,
+                    duration: addedDuration,
+                    expEarned: safeExp,
+                    wpm: numWpm,
+                    accuracy: numAccuracy,
+                    wordsCount: Number(wordsCount) || 0
+                }
+            });
+            createdFarmSessionId = newFarmSession.id;
+        }
+
+        // ตรวจสอบว่ามีเควสรายวันไหนที่เพิ่งสำเร็จในรอบการซิงค์นี้หรือไม่
+        const { newlyCompletedQuests, totalQuestBonusXp } = await evaluateNewlyCompletedQuests({
+            tx: prisma,
+            userId: user.id,
+            currentActivity: {
+                type: 'farm',
+                recordId: createdFarmSessionId
+            }
+        });
+
+        const newTotalExp = (user.currentExp || 0) + safeExp + totalQuestBonusXp;
         
         let isTop10 = false;
         if (newTotalExp >= 234000) {
@@ -81,23 +111,6 @@ export async function POST(request: Request) {
         }
 
         const rankInfo = calculateRankInfo(newTotalExp, isTop10);
-
-        const addedDuration = Math.max(0, Math.min(300, Math.round(Number(timeSpentSeconds) || 0)));
-        const newTotalFarmTime = (user.farmTimeSeconds || 0) + addedDuration;
-
-        // บันทึก FarmSession เพื่อเก็บประวัติเวลา และให้ระบบ Streak (ไฟ) นับวันการเล่น
-        if (addedDuration > 0 || safeExp > 0) {
-            await prisma.farmSession.create({
-                data: {
-                    userId: user.id,
-                    duration: addedDuration,
-                    expEarned: safeExp,
-                    wpm: numWpm,
-                    accuracy: numAccuracy,
-                    wordsCount: Number(wordsCount) || 0
-                }
-            });
-        }
 
         const updatedUser = await prisma.user.update({
             where: { id: user.id },
@@ -132,6 +145,8 @@ export async function POST(request: Request) {
 
         return NextResponse.json({
             success: true,
+            completedQuests: newlyCompletedQuests,
+            questBonusXp: totalQuestBonusXp,
             updatedUser: {
                 ...updatedUser,
                 todayFarmTimeSeconds

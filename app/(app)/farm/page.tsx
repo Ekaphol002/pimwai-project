@@ -274,7 +274,7 @@ export default function FarmPage() {
     const [wordFloatingBadges, setWordFloatingBadges] = useState<{
         id: number;
         wordIdx: number;
-        type: 'bounty' | 'golden_bounty' | 'shield';
+        type: 'bounty' | 'golden_bounty' | 'fever_bounty' | 'shield';
         text: string;
         amount?: number;
     }[]>([]);
@@ -347,6 +347,7 @@ export default function FarmPage() {
     const lastTimerTickTimeRef = useRef<number>(0); // บันทึก timestamp ของรอบตรวจจับเวลาก่อนหน้า
     const activeTypingAccumulatedMsRef = useRef<number>(0); // สะสมมิลลิวินาทีที่พิมพ์จริง เพื่อตัดเป็น 1 วินาทีเป๊ะๆ
     const unsyncedPlayTimeSecondsRef = useRef<number>(0); // สะสมเวลาที่พิมพ์จริงเพื่อส่งไปบันทึก
+    const unsyncedWordsCountRef = useRef<number>(0); // สะสมจำนวนคำที่พิมพ์จบเพื่อส่งไปบันทึก
     const sessionPlayTimeSecondsRef = useRef<number>(0); // บันทึกเวลาเล่นในเซสชันปัจจุบันเพื่อคำนวณ WPM แม่นยำ
     const startTimeRef = useRef<number | null>(null); // บันทึกเวลาเริ่มพิมพ์จริง
     const recentCorrectKeyTimesRef = useRef<number[]>([]); // บันทึกเวลาที่พิมพ์ถูกของแต่ละตัวอักษรเพื่อคำนวณ WPM แบบสด
@@ -392,8 +393,8 @@ export default function FarmPage() {
         }, 1800);
     }, []);
 
-    // 🎈 ทริกเกอร์ให้ป๊อปอัปเด้งลอยขึ้นบนหัวคำนั้นโดยตรง (โบนัสเคาะถูก / โบนัสคำทอง / เกราะป้องกัน)
-    const triggerWordFloater = useCallback((wordIdx: number, type: 'bounty' | 'golden_bounty' | 'shield', text: string, amount?: number) => {
+    // 🎈 ทริกเกอร์ให้ป๊อปอัปเด้งลอยขึ้นบนหัวคำนั้นโดยตรง (โบนัสเคาะถูก / โบนัสคำทอง / โบนัสฟีเวอร์ / เกราะป้องกัน)
+    const triggerWordFloater = useCallback((wordIdx: number, type: 'bounty' | 'golden_bounty' | 'fever_bounty' | 'shield', text: string, amount?: number) => {
         const id = Date.now() + Math.random();
         setWordFloatingBadges(prev => [...prev.slice(-5), { id, wordIdx, type, text, amount }]);
         setTimeout(() => {
@@ -883,6 +884,8 @@ export default function FarmPage() {
         isSyncingRef.current = true;
         const activeSecondsToSync = unsyncedPlayTimeSecondsRef.current;
         unsyncedPlayTimeSecondsRef.current = 0;
+        const wordsToSync = unsyncedWordsCountRef.current;
+        unsyncedWordsCountRef.current = 0;
         lastSyncTimeRef.current = Date.now();
 
         // คำนวณ WPM ที่เหมาะสมในการส่งไปบันทึก
@@ -898,7 +901,7 @@ export default function FarmPage() {
                     expEarned: expToSync,
                     wpm: wpmToSync,
                     accuracy: accuracy,
-                    wordsCount: activeWordIdx,
+                    wordsCount: wordsToSync,
                     timeSpentSeconds: activeSecondsToSync
                 })
             });
@@ -908,6 +911,7 @@ export default function FarmPage() {
                 // 🔄 Re-queue: หากติด Rate Limit หรือเซิร์ฟเวอร์ตอบกลับไม่สำเร็จ ให้นำ EXP และเวลา ก้อนนี้ทบกลับเข้าคิว
                 pendingSyncExpRef.current += expToSync;
                 unsyncedPlayTimeSecondsRef.current += activeSecondsToSync;
+                unsyncedWordsCountRef.current += wordsToSync;
                 console.warn("Farm EXP save deferred, returned to queue:", data);
             } else {
                 if (data?.updatedUser?.rank === 7) {
@@ -920,11 +924,32 @@ export default function FarmPage() {
                 if (typeof data?.updatedUser?.todayFarmTimeSeconds === 'number') {
                     setTodayFarmTimeSeconds(prev => Math.max(prev, data.updatedUser.todayFarmTimeSeconds));
                 }
+                // แจ้งเตือนเมื่อมีภารกิจรายวันสำเร็จระหว่างพิมพ์ด่วน พร้อมบวก EXP รางวัลเควส
+                if (Array.isArray(data?.completedQuests) && data.completedQuests.length > 0) {
+                    const questBonus = Number(data.questBonusXp) || 0;
+                    if (questBonus > 0) {
+                        setRoundExpEarned(prev => prev + questBonus);
+                        setSessionExpEarned(prev => prev + questBonus);
+                        setUserTotalExp(prev => {
+                            const nextTotal = Math.max(prev + questBonus, Number(data?.updatedUser?.currentExp) || 0);
+                            userTotalExpRef.current = nextTotal;
+                            return nextTotal;
+                        });
+                    }
+                    for (const q of data.completedQuests) {
+                        toast(`ภารกิจสำเร็จ: ${q.text} (+${q.xp} EXP)`, {
+                            id: `quest-toast-${q.id}`,
+                            icon: <CheckCircle2 size={18} className="text-emerald-500 shrink-0" />,
+                            duration: 4000
+                        });
+                    }
+                }
             }
         } catch (e) {
             // 🔄 Re-queue: เครือข่ายหลุดหรือ error ให้นำกลับเข้าคิวส่งรอบถัดไป
             pendingSyncExpRef.current += expToSync;
             unsyncedPlayTimeSecondsRef.current += activeSecondsToSync;
+            unsyncedWordsCountRef.current += wordsToSync;
             console.error("Sync farm exp error (re-queued):", e);
         } finally {
             isSyncingRef.current = false;
@@ -1052,6 +1077,7 @@ export default function FarmPage() {
                 if (isWordFullyCorrect) {
                     totalCorrectKeystrokesCountRef.current += 1;
                     recentCorrectKeyTimesRef.current.push(Date.now());
+                    unsyncedWordsCountRef.current += 1;
                 }
                 updateRealtimeWpm();
 
@@ -1119,9 +1145,14 @@ export default function FarmPage() {
                         // 🎈 แสดง EXP รวมทั้งหมดที่ได้จากคำนี้ (ทั้งจากตัวอักษร + โบนัสจบคำ) ลอยขึ้นบนหัวคำทุกคำที่พิมพ์ถูก!
                         const totalWordExp = wordExpEarnedRef.current + bountyExp;
                         if (totalWordExp > 0) {
+                            const floaterType = isFeverActiveRef.current
+                                ? 'fever_bounty'
+                                : targetWordObj.isGolden
+                                    ? 'golden_bounty'
+                                    : 'bounty';
                             triggerWordFloater(
                                 activeWordIdx,
-                                targetWordObj.isGolden ? 'golden_bounty' : 'bounty',
+                                floaterType,
                                 `+${totalWordExp} EXP`,
                                 totalWordExp
                             );
@@ -1130,9 +1161,14 @@ export default function FarmPage() {
                         // กรณีคำนี้เคยได้โบนัสไปแล้ว หรือมีกดแก้แต่พิมพ์ถูกครบ: ก็ยังแสดง EXP รวมที่ได้จากคำนี้ขึ้นมาให้เห็นชัดเจน
                         const totalWordExp = wordExpEarnedRef.current;
                         if (totalWordExp > 0) {
+                            const floaterType = isFeverActiveRef.current
+                                ? 'fever_bounty'
+                                : targetWordObj.isGolden
+                                    ? 'golden_bounty'
+                                    : 'bounty';
                             triggerWordFloater(
                                 activeWordIdx,
-                                targetWordObj.isGolden ? 'golden_bounty' : 'bounty',
+                                floaterType,
                                 `+${totalWordExp} EXP`,
                                 totalWordExp
                             );
@@ -1245,11 +1281,11 @@ export default function FarmPage() {
                     setCombo(newCombo);
                     setMaxCombo(prev => Math.max(prev, newCombo));
 
-                    // 🔥 Advanced Perk: Fever Mode ทริกเกอร์ทุกๆ 50 คอมโบ (50, 100, 150...)
+                    // 🔥 Advanced Perk: Fever Mode ทริกเกอร์ทุกๆ 50 คอมโบ (50, 100, 150...) นาน 7 วินาที
                     if (lessonPerksRef.current.advanced && newCombo > 0 && newCombo % 50 === 0) {
                         setIsFeverActive(true);
-                        setFeverTimeLeft(5);
-                        toast('เข้าสู่โหมด Fever Mode! (5 วินาที)', {
+                        setFeverTimeLeft(7);
+                        toast('เข้าสู่โหมด Fever Mode! (7 วินาที)', {
                             id: 'fever-mode-toast',
                             icon: <Zap size={18} className="fill-purple-600 text-purple-600 shrink-0" />,
                             duration: 3000
@@ -1270,9 +1306,9 @@ export default function FarmPage() {
                         maxExpCharIdxRef.current = nextCharIdx + 1;
                         let charExpGain = Math.max(1, Math.round(1 * newMul));
 
-                        // ถ้าอยู่ใน Fever Mode: ให้บัฟบวกคงที่ +2 EXP ต่อตัวอักษร แทนการคูณเบิ้ลทั้งก้อน (*= 2)
+                        // ถ้าอยู่ใน Fever Mode: คูณ 2 ทีละตัวอักษร (EXP x2 ต่อตัวอักษรที่พิมพ์ถูก)
                         if (isFeverActiveRef.current) {
-                            charExpGain += 2;
+                            charExpGain *= 2;
                         }
 
                         setRoundExpEarned(prev => prev + charExpGain);
@@ -1437,11 +1473,13 @@ export default function FarmPage() {
                 {floaters.map(floater => (
                     <span
                         key={floater.id}
-                        className={`absolute left-1/2 bottom-full -mb-1 z-40 text-xs sm:text-sm font-black tracking-tight whitespace-nowrap pointer-events-none select-none ${floater.type === 'golden_bounty'
-                            ? 'text-amber-500'
-                            : floater.type === 'bounty'
-                                ? 'text-emerald-500'
-                                : 'text-blue-500'
+                        className={`absolute left-1/2 bottom-full -mb-1 z-40 text-xs sm:text-sm font-black tracking-tight whitespace-nowrap pointer-events-none select-none ${floater.type === 'fever_bounty'
+                            ? 'text-purple-600'
+                            : floater.type === 'golden_bounty'
+                                ? 'text-amber-500'
+                                : floater.type === 'bounty'
+                                    ? 'text-emerald-500'
+                                    : 'text-blue-500'
                             }`}
                         style={{
                             animation: 'wordFloatUp 1.35s forwards',
@@ -1910,8 +1948,8 @@ export default function FarmPage() {
                                     {/* 2. Middle: Combo + EXP Multiplier (with Fever State) + Shield + Speed */}
                                     <div className="flex items-center gap-1.5 sm:gap-2 flex-nowrap shrink-0 justify-center">
                                         {/* Combo Badge */}
-                                        <div className={`text-white px-2.5 sm:px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-sm transition-all shrink-0 ${isFeverActive
-                                            ? 'bg-gradient-to-r from-rose-600 via-orange-500 to-amber-500 shadow-rose-500/30 animate-pulse ring-2 ring-amber-300'
+                                        <div className={`text-white px-2.5 sm:px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xs transition-all shrink-0 ${isFeverActive
+                                            ? 'bg-purple-600 border border-purple-500'
                                             : 'bg-gradient-to-r from-orange-500 to-amber-500 shadow-orange-500/20'
                                             }`}>
                                             <Flame size={15} className="fill-white" />
@@ -1920,7 +1958,7 @@ export default function FarmPage() {
 
                                         {/* EXP Multiplier Badge */}
                                         {isFeverActive ? (
-                                            <div className="bg-gradient-to-r from-rose-500 via-orange-500 to-amber-500 border border-amber-300 text-white px-2.5 py-1.5 rounded-xl flex items-center gap-1 shadow-md shadow-rose-500/30 animate-pulse ring-1 ring-yellow-300 shrink-0">
+                                            <div className="bg-purple-600 border border-purple-500 text-white px-2.5 py-1.5 rounded-xl flex items-center gap-1 shadow-xs shrink-0">
                                                 <Flame size={14} className="fill-white text-white" />
                                                 <span className="font-black text-xs logo-font">FEVER x{multiplier.toFixed(2)} ({feverTimeLeft}s)</span>
                                             </div>

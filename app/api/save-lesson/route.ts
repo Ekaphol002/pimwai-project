@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getRankFromExp } from '@/lib/rankUtils';
+import { getStartOfTodayBangkok } from '@/lib/streakUtils';
+import { evaluateNewlyCompletedQuests } from '@/lib/questUtils';
 
 // Config ค่า EXP และโบนัสต่างๆ ให้สะใจ (150 - 300 XP ต่อด่าน)
 // Rank 1: 0 - 3,000 XP (ผ่านช่วงต้นของ Beginner 1-2 บทเรียนก็ขึ้น Rank 2)
@@ -83,9 +85,17 @@ export async function POST(request: Request) {
         }
 
         const result = await prisma.$transaction(async (tx) => {
+            const today = getStartOfTodayBangkok();
             const existingProgress = await tx.lessonProgress.findUnique({
                 where: { userId_subLessonId: { userId, subLessonId } },
             });
+
+            const prevLessonProgress = existingProgress ? {
+                duration: existingProgress.duration || 0,
+                wpm: existingProgress.wpm || 0,
+                accuracy: existingProgress.accuracy || 0,
+                updatedToday: new Date(existingProgress.updatedAt).getTime() >= today.getTime()
+            } : null;
 
             // --- 2. คำนวณ Base XP ---
             let baseLessonExp = 0;
@@ -117,77 +127,46 @@ export async function POST(request: Request) {
                 if (isBetterScore) {
                     baseLessonExp = EXP_CONFIG.REPLAY_SCORE;
                     isNewHighScore = true;
-                    await tx.lessonProgress.update({
-                        where: { userId_subLessonId: { userId, subLessonId } },
-                        data: {
-                            wpm: Math.max(wpm, existingProgress.wpm),
-                            accuracy: Math.max(accuracy, existingProgress.accuracy),
-                            stars: Math.max(stars, existingProgress.stars),
-                            status: "completed",
-                            updatedAt: new Date()
-                        },
-                    });
                 }
+                // อัปเดต updatedAt และสะสม duration ของวันนี้เพื่อให้เควสรายวันทำงานแม้เล่นด่านซ้ำ
+                const nextDuration = prevLessonProgress?.updatedToday
+                    ? (existingProgress.duration || 0) + duration
+                    : duration;
+                await tx.lessonProgress.update({
+                    where: { userId_subLessonId: { userId, subLessonId } },
+                    data: {
+                        wpm: Math.max(wpm, existingProgress.wpm),
+                        accuracy: Math.max(accuracy, existingProgress.accuracy),
+                        stars: Math.max(stars, existingProgress.stars),
+                        duration: nextDuration,
+                        status: "completed",
+                        updatedAt: new Date()
+                    },
+                });
             }
 
             // --- 3. คำนวณโบนัสต่างๆ (Quest, WPM, Grinder, First Win) ---
-
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-
-            // ดึงสถิติวันนี้
             const dailyStats = await tx.lessonProgress.aggregate({
                 where: { userId: userId, updatedAt: { gte: today } },
-                _count: { subLessonId: true },
-                _sum: { duration: true }
+                _count: { subLessonId: true }
             });
-
             const dailyTotalLessons = dailyStats._count.subLessonId;
-            const dailyTotalTime = dailyStats._sum.duration || 0;
 
-            let questBonus = 0;
-            let completedQuestInfo: { text: string; xp: number } | null = null;
-            let completedQuestsCount = 0;
-
-            // ✅ 1. เปลี่ยนจาก string เป็น array เพื่อเก็บชื่อหลายเควส
-            let completedQuestNames = [];
-
-            // Quest 1: เวลาเล่นรวม
-            const prevTotalTime = dailyTotalTime - duration;
-            if (dailyTotalTime >= 300 && prevTotalTime < 300) {
-                questBonus += EXP_CONFIG.QUEST_REWARD;
-                completedQuestsCount++;
-                completedQuestNames.push("เควสพิมพ์ครบ 5 นาที"); // ✅ เก็บชื่อเข้า Array
-            }
-
-            // Quest 2: ผ่าน 3 บทเรียน
-            if (dailyTotalLessons === 3) {
-                questBonus += EXP_CONFIG.QUEST_REWARD;
-                completedQuestsCount++;
-                completedQuestNames.push("เควสผ่าน 3 บทเรียน"); // ✅ เก็บชื่อเข้า Array
-            }
-
-            // Quest 3: แม่นยำ 95%
-            const highAccCount = await tx.lessonProgress.count({
-                where: { userId: userId, updatedAt: { gte: today }, accuracy: { gte: 95 } }
+            const { newlyCompletedQuests, totalQuestBonusXp } = await evaluateNewlyCompletedQuests({
+                tx,
+                userId,
+                currentActivity: {
+                    type: 'lesson',
+                    subLessonId,
+                    prevLessonProgress
+                }
             });
 
-            // เช็คว่า accuracy ผ่านเกณฑ์ และเป็นครั้งแรกของวัน (highAccCount === 1)
-            if (accuracy >= 95 && highAccCount === 1) {
-                questBonus += EXP_CONFIG.QUEST_REWARD;
-                completedQuestsCount++;
-                completedQuestNames.push("เควสแม่นยำ 95%!"); // ✅ เก็บชื่อเข้า Array
-
-                // ⚠️ สั่งบันทึกลง DB (อันนี้อาจจะทำงานอยู่แล้ว หรือหน้าบ้านเช็คจาก lessonProgress เอง)
-            }
-
-            // ✅ 2. รวมชื่อเควสทั้งหมดมาแสดง (เช่น "แม่นยำ 95%! + ผ่าน 3 บทเรียน")
-            if (completedQuestsCount > 0) {
-                completedQuestInfo = {
-                    text: completedQuestNames.join(" + "), // เอาชื่อมาต่อกัน
-                    xp: questBonus
-                };
-            }
+            const questBonus = totalQuestBonusXp;
+            const completedQuestInfo = newlyCompletedQuests.length > 0 ? {
+                text: newlyCompletedQuests.map(q => q.text).join(" + "),
+                xp: questBonus
+            } : null;
 
             // --- 🌟 NEW BONUSES ---
 
@@ -253,6 +232,7 @@ export async function POST(request: Request) {
                 baseLessonExp,
                 questBonus,
                 completedQuestInfo,
+                newlyCompletedQuests,
                 wpmBonus,      // 🌟 ส่งกลับ
                 grinderBonus,  // 🌟 ส่งกลับ
                 firstWinBonus, // 🌟 ส่งกลับ
@@ -275,6 +255,7 @@ export async function POST(request: Request) {
             },
 
             completedQuest: result.completedQuestInfo,
+            completedQuests: result.newlyCompletedQuests,
             isNewHighScore: result.isNewHighScore,
             totalXP: result.updatedUser.currentExp,
             rank: result.updatedUser.rank

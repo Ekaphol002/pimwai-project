@@ -14,6 +14,8 @@ import {
   rightHandKeys
 } from '@/lib/keyMaps';
 import { soundManager } from '@/lib/soundEffects';
+import { CheckCircle2 } from 'lucide-react';
+import toast, { Toaster } from 'react-hot-toast';
 
 const CHARS_PER_LINE = 8;
 
@@ -128,6 +130,15 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
           setQuestText(data.completedQuest.text);
         } else {
           setQuestText(null);
+        }
+        if (Array.isArray(data.completedQuests) && data.completedQuests.length > 0) {
+          for (const q of data.completedQuests) {
+            toast(`ภารกิจสำเร็จ: ${q.text} (+${q.xp} EXP)`, {
+              id: `quest-toast-${q.id}`,
+              icon: <CheckCircle2 size={18} className="text-emerald-500 shrink-0" />,
+              duration: 4000
+            });
+          }
         }
       }
 
@@ -314,6 +325,7 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
 
   return (
     <div className="pt-4 pb-10 flex flex-col items-center gap-8">
+      <Toaster position="top-center" reverseOrder={false} />
       {isFinished ? (
         <PracticeResultModal
           wpm={finalWPM}

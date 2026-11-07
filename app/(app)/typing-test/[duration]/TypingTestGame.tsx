@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
+import { Loader2, CheckCircle2 } from 'lucide-react';
+import toast, { Toaster } from 'react-hot-toast';
 import ConveyorBox from '@/components/ConveyorBox/ConveyorBox';
 import PracticeResultModal from '@/components/PracticeResultModal/PracticeResultModal';
 import PracticeNavbar from '@/components/PracticeNavbar/PracticeNavbar';
@@ -194,7 +195,16 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
       const data = await res.json();
       if (data.success) {
         setEarnedXP(data.earnedXP);
-        setXpBreakdown(data.xpBreakdown)
+        setXpBreakdown(data.xpBreakdown);
+        if (Array.isArray(data.completedQuests) && data.completedQuests.length > 0) {
+          for (const q of data.completedQuests) {
+            toast(`ภารกิจสำเร็จ: ${q.text} (+${q.xp} EXP)`, {
+              id: `quest-toast-${q.id}`,
+              icon: <CheckCircle2 size={18} className="text-emerald-500 shrink-0" />,
+              duration: 4000
+            });
+          }
+        }
       }
     } catch (error) {
       console.error("Save failed:", error);
@@ -321,6 +331,7 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
+      <Toaster position="top-center" reverseOrder={false} />
       <PracticeNavbar
         title={`ทดสอบ ${timeLimitMinutes} นาที`}
         timer={`${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, '0')}`}

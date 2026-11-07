@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getRankFromExp } from '@/lib/rankUtils';
+import { evaluateNewlyCompletedQuests } from '@/lib/questUtils';
 
 export async function POST(request: Request) {
   try {
@@ -69,10 +70,21 @@ export async function POST(request: Request) {
         }
       });
 
+      const { newlyCompletedQuests, totalQuestBonusXp } = await evaluateNewlyCompletedQuests({
+        tx,
+        userId: user.id,
+        currentActivity: {
+          type: 'test',
+          recordId: newTestResult.id
+        }
+      });
+
+      const finalEarnedXP = earnedXP + totalQuestBonusXp;
+
       // 3.2 อัปเดต User
       let updatedUser = user;
-      if (earnedXP > 0) {
-        const currentTotalExp = (user.currentExp || 0) + earnedXP;
+      if (finalEarnedXP > 0) {
+        const currentTotalExp = (user.currentExp || 0) + finalEarnedXP;
         let isTop10 = false;
         if (currentTotalExp >= 234000) {
           const higherCount = await tx.user.count({
@@ -94,23 +106,24 @@ export async function POST(request: Request) {
           }
         });
       }
-      return { newTestResult, updatedUser };
+      return { newTestResult, updatedUser, newlyCompletedQuests, totalQuestBonusXp, finalEarnedXP };
     });
 
     // 📤 4. ส่ง Breakdown กลับไปโชว์
     // Map ให้เข้ากับ UI เดิมที่เราทำไว้ (PracticeResultModal)
     // wpm -> โบนัสความเร็ว
     // grinder -> โบนัสความแม่น (ยืมช่องมาใช้)
-    // quest -> โบนัสความอึด (ยืมช่องมาใช้)
+    // quest -> โบนัสความอึด + รางวัลเควสรายวัน
     return NextResponse.json({
       success: true,
-      earnedXP,
+      earnedXP: result.finalEarnedXP,
       totalXP: result.updatedUser.currentExp,
+      completedQuests: result.newlyCompletedQuests,
       xpBreakdown: {
         base: 0, 
         wpm: Math.round(speedXp * multiplier),       // ช่อง "โบนัสความเร็ว"
         grinder: Math.round(accuracyBonus * multiplier), // ช่อง "โบนัสความแม่นยำ" (ใช้ช่อง Grinder เดิม)
-        quest: enduranceBonus,                       // ช่อง "โบนัสความอึด" (ใช้ช่อง Quest เดิม)
+        quest: enduranceBonus + result.totalQuestBonusXp, // ช่อง "โบนัสความอึด / เควส"
         firstWin: 0
       }
     });
