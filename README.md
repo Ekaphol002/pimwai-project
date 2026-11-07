@@ -1,36 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+<div align="center">
+  <a href="https://pimwai.com">
+    <img src="public/Bannerlink.png" alt="PIMWAI (พิมพ์ไว) - ฝึกพิมพ์ดีดออนไลน์ฟรี ฝึกพิมพ์สัมผัส 10 นิ้ว & ทดสอบความเร็ว WPM" width="100%" />
+  </a>
 
-## Getting Started
+  # ⌨️ PIMWAI (พิมพ์ไว) — ฝึกพิมพ์ดีดออนไลน์ฟรี ฝึกพิมพ์สัมผัส 10 นิ้ว & ทดสอบ WPM
 
-First, run the development server:
+  **แพลตฟอร์มฝึกพิมพ์ดีดออนไลน์ฟรี และโปรแกรมฝึกพิมพ์สัมผัส 10 นิ้วสำหรับคนไทย (แป้นเหย้า ฟ ห ก ด ่ า ส ว และ A S D F J K L ;)**  
+  เล่นได้ทันทีบนเว็บเบราว์เซอร์ ไม่ต้องดาวน์โหลดโปรแกรม และไม่ต้องสมัครสมาชิก!
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+  🌐 **เข้าใช้งานเว็บไซต์อย่างเป็นทางการ:** [**https://pimwai.com**](https://pimwai.com)
+</div>
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## ✨ จุดเด่นและฟีเจอร์หลักของ [PIMWAI (พิมพ์ไว)](https://pimwai.com)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- 🚀 **[โหมดพิมพ์ด่วน & ฟาร์มเลเวล (Farm Mode)](https://pimwai.com)**: ฝึกพิมพ์คำศัพท์พื้นฐานและโหมดบทความเรื่องสั้นทั้งภาษาไทยและภาษาอังกฤษกว่า 5,000 คำ พร้อมระบบเก็บค่าประสบการณ์ (EXP), คำทองคำ (Golden Words), โหมด Fever คูณสอง และบัฟถาวรจากบทเรียน
+- 📚 **[บทเรียนฝึกพิมพ์สัมผัส 10 นิ้ว (Typing Lessons)](https://pimwai.com/lessons)**: แบบฝึกหัดพิมพ์ดีดมาตรฐานกว่า 210 ด่าน ครอบคลุมตั้งแต่การวางนิ้วบนแป้นเหย้า **ฟ ห ก ด - ่ า ส ว**, แป้นแถวบน, แป้นแถวล่าง, สระ, วรรณยุกต์ ไปจนถึงประโยคใช้งานจริงในชีวิตประจำวัน
+- ⏱️ **[ทดสอบความเร็วพิมพ์ดีด (Typing Speed Test - WPM)](https://pimwai.com/tests)**: วัดความเร็วการพิมพ์ดีดเป็นคำต่อนาที (Words Per Minute - WPM) และความแม่นยำ (Accuracy %) แบบจับเวลา 1 นาที, 3 นาที และ 5 นาที สำหรับเตรียมสอบราชการและงานเอกสาร
+- 🏆 **[ตารางจัดอันดับคนพิมพ์เร็ว (Leaderboard)](https://pimwai.com/rankings)**: จัดอันดับนักพิมพ์ดีดความเร็วสูงสุด ระบบยศแรงค์ระดับตำนาน (Rank 1–7) และสถิติจำนวนวันที่ฝึกพิมพ์สะสม
+- 💻 **[โหมดฝึกพิมพ์โค้ด (Code Typing Practice)](https://pimwai.com/code)**: ฝึกพิมพ์โค้ดโปรแกรมมิ่งหลากหลายภาษาสำหรับนักพัฒนาและนักเรียนสายไอที
+- 🎵 **ระบบเสียงคีย์บอร์ด Mechanical & เพลงพื้นหลังจาก YouTube**: เลือกเสียงปุ่มกดคีย์บอร์ดและวางลิงก์เพลงจาก YouTube เพื่อสร้างเพลย์ลิสต์ฟังระหว่างฝึกพิมพ์ได้ไม่จำกัด
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## 🔗 ลิงก์สำคัญ (Quick Links)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| หมวดหมู่ | ลิงก์เข้าใช้งาน | รายละเอียด |
+| :--- | :--- | :--- |
+| 🏠 **หน้าแรก (ฝึกพิมพ์ด่วน)** | [https://pimwai.com](https://pimwai.com) | กระดานฝึกพิมพ์ดีดออนไลน์ฟรี ทั้งโหมดคำศัพท์และบทความ |
+| 📖 **บทเรียนพิมพ์สัมผัส 10 นิ้ว** | [https://pimwai.com/lessons](https://pimwai.com/lessons) | บทเรียนสอนวางนิ้วแป้นเหย้า ฟ ห ก ด ่ า ส ว ครบ 210 ด่าน |
+| ⚡ **ทดสอบความเร็ว WPM** | [https://pimwai.com/tests](https://pimwai.com/tests) | ทดสอบความเร็วพิมพ์ดีดจับเวลาและวิเคราะห์คำผิด |
+| 🥇 **ตารางจัดอันดับ (Rankings)** | [https://pimwai.com/rankings](https://pimwai.com/rankings) | อันดับผู้เล่นที่มีความเร็ว WPM และ EXP สูงสุด |
+| 📰 **ข่าวสารและเทคนิคพิมพ์ไว** | [https://pimwai.com/news](https://pimwai.com/news) | อัปเดตฟีเจอร์ใหม่และคู่มือเทคนิคการฝึกพิมพ์สัมผัส 60+ WPM |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## 🛠️ เทคโนโลยีที่ใช้พัฒนา (Tech Stack)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **Framework:** [Next.js](https://nextjs.org/) (App Router & TypeScript)
+- **Styling:** [Tailwind CSS](https://tailwindcss.com/)
+- **Database & ORM:** PostgreSQL & [Prisma](https://www.prisma.io/)
+- **Authentication:** NextAuth.js (Google OAuth & Credentials)
+- **Deployment:** Vercel ([pimwai.com](https://pimwai.com))
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## ⌨️ คู่มือวางนิ้วพิมพ์สัมผัส 10 นิ้ว แป้นเหย้า (Home Row)
+
+การฝึกพิมพ์สัมผัสให้เร็วและแม่นยำโดยไม่ต้องก้มมองคีย์บอร์ด เริ่มต้นจากการวางนิ้วทั้งสองข้างไว้ที่ **แป้นเหย้า (Home Row)** เสมอ:
+
+- **มือซ้าย (ฟ ห ก ด / A S D F):** นิ้วก้อย (`ฟ`), นิ้วนาง (`ห`), นิ้วกลาง (`ก`), นิ้วชี้ (`ด`)
+- **มือขวา (่ า ส ว / J K L ;):** นิ้วชี้ (`ไม้เอก ่`), นิ้วกลาง (`า`), นิ้วนาง (`ส`), นิ้วก้อย (`ว`)
+- **นิ้วหัวแม่มือ:** วางที่แป้นเว้นวรรค (`Spacebar`)
+
+เริ่มฝึกพิมพ์ดีดออนไลน์ฟรีได้ทันทีที่ 👉 **[https://pimwai.com](https://pimwai.com)**
