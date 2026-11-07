@@ -1060,7 +1060,7 @@ export default function FarmPage() {
                 // 1. จะกดเว้นวรรคไม่ได้ ถ้ายังไม่ได้พิมพ์ตัวแรกของคำนั้น (กันสแปม Spacebar)
                 if (inputBuffer.length === 0) return;
 
-                if (isSoundOn) soundManager.playKeySound();
+                if (isSoundOn) soundManager.playKeySound(undefined, e);
 
                 const isWordFullyCorrect = inputBuffer === targetWord;
 
@@ -1226,7 +1226,7 @@ export default function FarmPage() {
             // B. กด BACKSPACE (ลบตัวอักษร / ลบย้อนกลับไปคำก่อนหน้าได้)
             if (e.key === 'Backspace') {
                 e.preventDefault();
-                if (isSoundOn) soundManager.playKeySound();
+                if (isSoundOn) soundManager.playKeySound(undefined, e);
 
                 // 🔒 เมื่อกด Backspace จะถือว่าคำนี้ไม่ใช่ Flawless ทันที (ป้องกันการลบมาแก้คำ)
                 wordHasBackspaceRef.current = true;

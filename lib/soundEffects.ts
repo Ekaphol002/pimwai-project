@@ -8,10 +8,11 @@ export interface KeyboardSoundOption {
 
 export const KEYBOARD_SOUNDS: KeyboardSoundOption[] = [
     { id: 'none', name: 'ปิดเสียง', file: '' },
-    { id: 'kb1', name: 'Keyboard 1', file: '/sounds/keyboard/Keyboard.mp3' },
-    { id: 'kb2', name: 'Keyboard 2', file: '/sounds/keyboard/Keyboard1.mp3' },
-    { id: 'kb3', name: 'Keyboard 3', file: '/sounds/keyboard/Keyboard2.mp3' },
-    { id: 'kb4', name: 'Keyboard 4', file: '/sounds/keyboard/Keyboard3.mp3' },
+    { id: 'kb1', name: 'Keyboard 1 (Tactile)', file: '/sounds/keyboard/Keyboard.mp3' },
+    { id: 'kb2', name: 'Keyboard 2 (Creamy)', file: '/sounds/keyboard/Keyboard1.mp3' },
+    { id: 'kb3', name: 'Keyboard 3 (Clicky)', file: '/sounds/keyboard/Keyboard2.mp3' },
+    { id: 'kb4', name: 'Keyboard 4 (Soft)', file: '/sounds/keyboard/Keyboard3.mp3' },
+    { id: 'thock', name: 'Custom Thock (Deep)', file: '__synth_thock__' },
 ];
 
 export interface BgmTrack {
@@ -76,6 +77,9 @@ type SoundEventListener = (state: SoundState) => void;
 
 class SoundManager {
     private keyAudioPool: Map<string, HTMLAudioElement[]> = new Map();
+    private audioCtx: AudioContext | null = null;
+    private keyBuffers: Map<string, AudioBuffer> = new Map();
+    private loadingBuffers: Map<string, Promise<AudioBuffer | null>> = new Map();
     private bgmAudio: HTMLAudioElement | null = null;
     private ytPlayer: any = null;
     private ytReady = false;
@@ -96,7 +100,149 @@ class SoundManager {
     constructor() {
         if (typeof window !== 'undefined') {
             this.loadSettings();
+            setTimeout(() => this.preloadKeyboardBuffers(), 300);
         }
+    }
+
+    private getAudioContext(): AudioContext | null {
+        if (typeof window === 'undefined') return null;
+        if (!this.audioCtx) {
+            const Ctx = window.AudioContext || (window as any).webkitAudioContext;
+            if (Ctx) {
+                this.audioCtx = new Ctx({ latencyHint: 'interactive' });
+            }
+        }
+        if (this.audioCtx && this.audioCtx.state === 'suspended') {
+            this.audioCtx.resume().catch(() => {});
+        }
+        return this.audioCtx;
+    }
+
+    private loadKeyBuffer(id: string, fileUrl: string): Promise<AudioBuffer | null> {
+        if (!fileUrl || fileUrl.startsWith('__synth')) return Promise.resolve(null);
+        const cached = this.keyBuffers.get(id);
+        if (cached) return Promise.resolve(cached);
+
+        const existingPromise = this.loadingBuffers.get(id);
+        if (existingPromise) return existingPromise;
+
+        const promise = (async () => {
+            try {
+                const ctx = this.getAudioContext();
+                if (!ctx) return null;
+                const res = await fetch(fileUrl);
+                if (!res.ok) return null;
+                const arrayBuffer = await res.arrayBuffer();
+                const decoded = await ctx.decodeAudioData(arrayBuffer);
+                this.keyBuffers.set(id, decoded);
+                return decoded;
+            } catch (e) {
+                return null;
+            } finally {
+                this.loadingBuffers.delete(id);
+            }
+        })();
+
+        this.loadingBuffers.set(id, promise);
+        return promise;
+    }
+
+    private preloadKeyboardBuffers() {
+        if (typeof window === 'undefined') return;
+        for (const sound of KEYBOARD_SOUNDS) {
+            if (sound.file && !sound.file.startsWith('__synth')) {
+                this.loadKeyBuffer(sound.id, sound.file);
+            }
+        }
+    }
+
+    /**
+     * คำนวณโทนเสียง (Pitch) และน้ำหนักการกด (Gain) ตามแถวบนแป้นพิมพ์และน้ำหนักนิ้วธรรมชาติ
+     * โดยให้ Spacebar, Backspace, Enter ใช้โทนเสียงเดียวกับปุ่มปกติ ไม่กดทุ้มลง
+     */
+    private getRealisticKeyAcousticProfile(event?: KeyboardEvent): {
+        pitch: number;
+        gainMultiplier: number;
+        lowpassFreq: number;
+        hasSubThock: boolean;
+    } {
+        // สุ่มความหนัก-เบาของนิ้วมนุษย์เล็กน้อยในทุกครั้งที่กด (Humanization)
+        const pitchJitter = (Math.random() - 0.5) * 0.05; // ±2.5%
+        const gainJitter = 0.94 + Math.random() * 0.12;   // 94% - 106%
+
+        const code = event?.code || '';
+
+        // แยกโทนเสียงตามแถวของคีย์แคปเล็กน้อยอย่างเป็นธรรมชาติ
+        let rowPitchOffset = 0;
+        if (/^Digit|^Minus|^Equal|^Backquote/.test(code)) {
+            rowPitchOffset = -0.015;
+        } else if (/^Key[QWERTYUIOP]|^Bracket|^Backslash/.test(code)) {
+            rowPitchOffset = 0.01;
+        } else if (/^Key[ASDFGHJKL]|^Semicolon|^Quote/.test(code)) {
+            rowPitchOffset = 0.0;
+        } else if (/^Key[ZXCVBNM]|^Comma|^Period|^Slash/.test(code)) {
+            rowPitchOffset = -0.01;
+        }
+
+        return {
+            pitch: Math.max(0.9, 1.0 + rowPitchOffset + pitchJitter),
+            gainMultiplier: gainJitter,
+            lowpassFreq: 7500 + (Math.random() - 0.5) * 600,
+            hasSubThock: false,
+        };
+    }
+
+    /**
+     * สังเคราะห์เสียง Mechanical Switch แบบ Custom Creamy Thock ด้วย Web Audio API ล้วน
+     */
+    private playSynthThock(ctx: AudioContext, profile: { pitch: number; gainMultiplier: number; hasSubThock: boolean }) {
+        const now = ctx.currentTime;
+        const masterGain = ctx.createGain();
+        const vol = Math.min(1, this.sfxVolume * profile.gainMultiplier);
+        masterGain.gain.setValueAtTime(vol, now);
+        masterGain.connect(ctx.destination);
+
+        // 1. เสียง Bottom-out Thock (มวลเสียงทุ้มจาก PBT Keycap กระทบเพลท)
+        const bodyOsc = ctx.createOscillator();
+        const bodyGain = ctx.createGain();
+        bodyOsc.type = 'triangle';
+        const baseFreq = (profile.hasSubThock ? 135 : 165) * profile.pitch;
+        bodyOsc.frequency.setValueAtTime(baseFreq * 1.6, now);
+        bodyOsc.frequency.exponentialRampToValueAtTime(Math.max(45, baseFreq * 0.48), now + 0.042);
+
+        bodyGain.gain.setValueAtTime(0.001, now);
+        bodyGain.gain.linearRampToValueAtTime(0.95, now + 0.002);
+        bodyGain.gain.exponentialRampToValueAtTime(0.001, now + (profile.hasSubThock ? 0.065 : 0.048));
+
+        bodyOsc.connect(bodyGain);
+        bodyGain.connect(masterGain);
+        bodyOsc.start(now);
+        bodyOsc.stop(now + 0.07);
+
+        // 2. เสียง Tactile Transient (เสียงก้านสวิตช์กระทบแบบนุ่มนวล)
+        const bufferSize = Math.floor(ctx.sampleRate * 0.018);
+        const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            output[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.28));
+        }
+
+        const whiteNoise = ctx.createBufferSource();
+        whiteNoise.buffer = noiseBuffer;
+
+        const bandpass = ctx.createBiquadFilter();
+        bandpass.type = 'bandpass';
+        bandpass.frequency.setValueAtTime((profile.hasSubThock ? 1150 : 1550) * profile.pitch, now);
+        bandpass.Q.setValueAtTime(2.2, now);
+
+        const clickGain = ctx.createGain();
+        clickGain.gain.setValueAtTime(0.65, now);
+        clickGain.gain.exponentialRampToValueAtTime(0.01, now + 0.018);
+
+        whiteNoise.connect(bandpass);
+        bandpass.connect(clickGain);
+        clickGain.connect(masterGain);
+        whiteNoise.start(now);
     }
 
     public subscribe(listener: SoundEventListener): () => void {
@@ -415,20 +561,76 @@ class SoundManager {
         }
 
         const id = soundId || this.currentKeyboardSound;
-        if (id === 'none') return;
+        if (id === 'none' || this.sfxVolume <= 0) return;
 
-        const sound = KEYBOARD_SOUNDS.find(s => s.id === id);
+        const sound = KEYBOARD_SOUNDS.find(s => s.id === id) || KEYBOARD_SOUNDS[1];
         if (!sound || !sound.file) return;
 
-        let pool = this.keyAudioPool.get(id);
+        const profile = this.getRealisticKeyAcousticProfile(event);
+        const ctx = this.getAudioContext();
+
+        // กรณีเลือกเสียงสังเคราะห์ Custom Thock (Deep)
+        if (sound.file === '__synth_thock__' && ctx) {
+            this.playSynthThock(ctx, profile);
+            return;
+        }
+
+        // ใช้ Web Audio API (Zero-Latency + Polyphonic + Acoustic Filter + Sub-Thock สำหรับปุ่มใหญ่)
+        const buffer = this.keyBuffers.get(sound.id);
+        if (ctx && buffer) {
+            try {
+                const now = ctx.currentTime;
+                const source = ctx.createBufferSource();
+                source.buffer = buffer;
+                source.playbackRate.setValueAtTime(profile.pitch, now);
+
+                // Acoustic Low-pass Filter เพื่อจำลองความนุ่มของเคสและโฟมซับเสียงตามน้ำหนักนิ้ว
+                const filter = ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(profile.lowpassFreq, now);
+
+                const gainNode = ctx.createGain();
+                const finalVol = Math.min(1, this.sfxVolume * profile.gainMultiplier);
+                gainNode.gain.setValueAtTime(finalVol, now);
+
+                source.connect(filter);
+                filter.connect(gainNode);
+                gainNode.connect(ctx.destination);
+                source.start(now);
+
+                // เสริมมวลเสียงทุ้มต่ำ (Stabilizer Sub-Thock) เมื่อกด Spacebar, Enter หรือ Backspace
+                if (profile.hasSubThock) {
+                    const subOsc = ctx.createOscillator();
+                    const subGain = ctx.createGain();
+                    subOsc.type = 'sine';
+                    subOsc.frequency.setValueAtTime(115 * profile.pitch, now);
+                    subOsc.frequency.exponentialRampToValueAtTime(52, now + 0.045);
+
+                    subGain.gain.setValueAtTime(Math.min(0.45, finalVol * 0.35), now);
+                    subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+
+                    subOsc.connect(subGain);
+                    subGain.connect(ctx.destination);
+                    subOsc.start(now);
+                    subOsc.stop(now + 0.055);
+                }
+                return;
+            } catch (e) {}
+        }
+
+        // สั่งโหลด Buffer เผื่อไว้สำหรับครั้งถัดไป
+        this.loadKeyBuffer(sound.id, sound.file);
+
+        // Fallback: HTMLAudioElement (กรณีที่ Buffer กำลังโหลดในจังหวะกดปุ่มครั้งแรกสุด)
+        let pool = this.keyAudioPool.get(sound.id);
         if (!pool) {
             pool = [];
-            this.keyAudioPool.set(id, pool);
+            this.keyAudioPool.set(sound.id, pool);
         }
 
         let audio = pool.find(a => a.paused || a.ended);
         if (!audio) {
-            if (pool.length < 6) {
+            if (pool.length < 8) {
                 audio = new Audio(sound.file);
                 pool.push(audio);
             } else {
@@ -436,7 +638,11 @@ class SoundManager {
             }
         }
 
-        audio.volume = this.sfxVolume;
+        audio.volume = Math.min(1, this.sfxVolume * profile.gainMultiplier);
+        audio.playbackRate = profile.pitch;
+        (audio as any).preservesPitch = false;
+        (audio as any).mozPreservesPitch = false;
+        (audio as any).webkitPreservesPitch = false;
         audio.currentTime = 0;
         audio.play().catch(() => {});
     }

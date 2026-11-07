@@ -1096,7 +1096,7 @@ export default function CodeTypingPage() {
             // ไม่ให้กดข้ามถ้ายังไม่ได้เริ่มพิมพ์ในคำนั้น (เหมือนโหมดฟาร์ม)
             if (inputBuffer.length === 0) return;
 
-            if (isSoundOn) soundManager.playKeySound();
+            if (isSoundOn) soundManager.playKeySound(undefined, e as any);
 
             const isWordCorrect = inputBuffer === currentToken.word;
             const nextHistory = { ...typedWordsHistoryRef.current, [activeWordIdx]: inputBuffer };
@@ -1141,7 +1141,7 @@ export default function CodeTypingPage() {
         // 2. กด BACKSPACE (ลบทีละตัว / ถอยกลับคำก่อนหน้าได้)
         if (e.key === 'Backspace') {
             e.preventDefault();
-            if (isSoundOn) soundManager.playKeySound();
+            if (isSoundOn) soundManager.playKeySound(undefined, e as any);
 
             if (inputBuffer.length > 0) {
                 const nextBuf = inputBuffer.slice(0, -1);
