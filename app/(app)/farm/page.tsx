@@ -1246,18 +1246,19 @@ export default function FarmPage() {
 
             // C. พิมพ์ตัวอักษรปกติ (ตรวจทีละตัวทันทีที่กด)
             let typedChar = e.key;
+            const isCapsLockOn = typeof e.getModifierState === 'function' && e.getModifierState('CapsLock');
 
             if (language === 'thai') {
-                // ตรวจสอบว่าคีย์บอร์ดอยู่ใน layout อังกฤษแล้วกดปุ่มไทยหรือไม่
+                // รองรับการใช้ Caps Lock แทนการกด Shift สำหรับแป้นพิมพ์ภาษาไทย และรองรับกรณีเผลอค้างแป้นอังกฤษไว้
                 if (e.code && (e.key.length === 1 || e.key === 'Dead')) {
-                    const isShift = e.shiftKey;
-                    const mappedThai = isShift ? thaiShiftKeyDisplayMap[e.code] : thaiKeyDisplayMap[e.code];
-                    if (mappedThai && !/[a-zA-Z]/.test(e.key)) {
-                        typedChar = mappedThai;
+                    const isEffectiveShift = Boolean(e.shiftKey) || Boolean(isCapsLockOn);
+                    const mappedThai = isEffectiveShift ? thaiShiftKeyDisplayMap[e.code] : thaiKeyDisplayMap[e.code];
+                    if (mappedThai && (!/[a-zA-Z]/.test(e.key) || isCapsLockOn)) {
+                        typedChar = mappedThai.trim();
                     }
                 }
             } else {
-                // โหมดภาษาอังกฤษ: แปลงปุ่มให้อัตโนมัติ (แม้คีย์บอร์ดใน OS จะค้างภาษาไทยอยู่ก็ตาม)
+                // โหมดภาษาอังกฤษ: แปลงปุ่มให้อัตโนมัติ (รองรับทั้ง Shift และ Caps Lock แม้คีย์บอร์ดใน OS จะค้างภาษาไทยอยู่ก็ตาม)
                 typedChar = getEnglishCharFromEvent(e);
             }
 
@@ -2475,335 +2476,335 @@ export default function FarmPage() {
 
                 {/* 📖 ป๊อปอัปคำอธิบายบัฟถาวรจากบทเรียน (Lesson Perks Modal - เรียบง่าย สะอาดตา) */}
                 {isPerkModalOpen && (
+                    <div
+                        onClick={() => setIsPerkModalOpen(false)}
+                        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 overscroll-none"
+                    >
                         <div
-                            onClick={() => setIsPerkModalOpen(false)}
-                            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 overscroll-none"
+                            onClick={(e) => e.stopPropagation()}
+                            className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-gray-100 flex flex-col gap-5 text-gray-800"
                         >
-                            <div
-                                onClick={(e) => e.stopPropagation()}
-                                className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-gray-100 flex flex-col gap-5 text-gray-800"
-                            >
-                                                {/* Header */}
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-2.5">
-                                                        <div>
-                                                            <h3 className="text-base font-black text-gray-800">
-                                                                บัฟติดตัวจากบทเรียน
-                                                            </h3>
-                                                            <p className="text-[11px] text-gray-400 font-medium">
-                                                                เรียนจบครบแต่ละระดับเพื่อปลดล็อกบัฟถาวรในโหมดฟาร์ม
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setIsPerkModalOpen(false)}
-                                                        className="p-1.5 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition cursor-pointer"
-                                                        aria-label="ปิด"
-                                                    >
-                                                        <X size={18} />
-                                                    </button>
-                                                </div>
+                            {/* Header */}
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2.5">
+                                    <div>
+                                        <h3 className="text-base font-black text-gray-800">
+                                            บัฟติดตัวจากบทเรียน
+                                        </h3>
+                                        <p className="text-[11px] text-gray-400 font-medium">
+                                            เรียนจบครบแต่ละระดับเพื่อปลดล็อกบัฟถาวรในโหมดฟาร์ม
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsPerkModalOpen(false)}
+                                    className="p-1.5 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition cursor-pointer"
+                                    aria-label="ปิด"
+                                >
+                                    <X size={18} />
+                                </button>
+                            </div>
 
-                                                    {/* Perk Tiers List */}
-                                                    <div className="flex flex-col gap-2.5">
-                                                        {/* 1. Beginner */}
-                                                        <div className={`p-4 rounded-2xl flex flex-col gap-1.5 transition-colors ${lessonPerks.beginner
-                                                            ? 'bg-emerald-600 text-white shadow-sm'
-                                                            : 'bg-gray-50 border border-gray-100 text-gray-800'
-                                                            }`}>
-                                                            <div className="flex items-center justify-between">
-                                                                <div className="flex items-center gap-2">
-                                                                    <Shield size={16} className={lessonPerks.beginner ? 'text-white' : 'text-gray-400'} />
-                                                                    <span className={`text-xs sm:text-sm font-bold ${lessonPerks.beginner ? 'text-white' : 'text-gray-800'}`}>1. ระดับต้น (Beginner)</span>
-                                                                </div>
-                                                                <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 ${lessonPerks.beginner
-                                                                    ? 'bg-white/20 text-white'
-                                                                    : 'bg-gray-200/70 text-gray-400'
-                                                                    }`}>
-                                                                    {lessonPerks.beginner ? <><Check size={11} strokeWidth={3} /> ปลดล็อกแล้ว</> : <><Lock size={11} /> ล็อกอยู่</>}
-                                                                </span>
-                                                            </div>
-                                                            <p className={`text-xs pl-6 leading-relaxed ${lessonPerks.beginner ? 'text-emerald-50' : 'text-gray-500'}`}>
-                                                                ได้รับเกราะกันพลาด 2 ครั้งต่อรอบ (พิมพ์ผิดคอมโบไม่หลุด) และโบนัสพิมพ์คำถูกครบโดยไม่กดลบ <span className={`font-bold ${lessonPerks.beginner ? 'text-white' : 'text-gray-700'}`}>+5 ถึง +20 EXP</span>
-                                                            </p>
-                                                        </div>
+                            {/* Perk Tiers List */}
+                            <div className="flex flex-col gap-2.5">
+                                {/* 1. Beginner */}
+                                <div className={`p-4 rounded-2xl flex flex-col gap-1.5 transition-colors ${lessonPerks.beginner
+                                    ? 'bg-emerald-600 text-white shadow-sm'
+                                    : 'bg-gray-50 border border-gray-100 text-gray-800'
+                                    }`}>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <Shield size={16} className={lessonPerks.beginner ? 'text-white' : 'text-gray-400'} />
+                                            <span className={`text-xs sm:text-sm font-bold ${lessonPerks.beginner ? 'text-white' : 'text-gray-800'}`}>1. ระดับต้น (Beginner)</span>
+                                        </div>
+                                        <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 ${lessonPerks.beginner
+                                            ? 'bg-white/20 text-white'
+                                            : 'bg-gray-200/70 text-gray-400'
+                                            }`}>
+                                            {lessonPerks.beginner ? <><Check size={11} strokeWidth={3} /> ปลดล็อกแล้ว</> : <><Lock size={11} /> ล็อกอยู่</>}
+                                        </span>
+                                    </div>
+                                    <p className={`text-xs pl-6 leading-relaxed ${lessonPerks.beginner ? 'text-emerald-50' : 'text-gray-500'}`}>
+                                        ได้รับเกราะกันพลาด 2 ครั้งต่อรอบ (พิมพ์ผิดคอมโบไม่หลุด) และโบนัสพิมพ์คำถูกครบโดยไม่กดลบ <span className={`font-bold ${lessonPerks.beginner ? 'text-white' : 'text-gray-700'}`}>+5 ถึง +20 EXP</span>
+                                    </p>
+                                </div>
 
-                                                        {/* 2. Intermediate */}
-                                                        <div className={`p-4 rounded-2xl flex flex-col gap-1.5 transition-colors ${lessonPerks.intermediate
-                                                            ? 'bg-amber-500 text-white shadow-sm'
-                                                            : 'bg-gray-50 border border-gray-100 text-gray-800'
-                                                            }`}>
-                                                            <div className="flex items-center justify-between">
-                                                                <div className="flex items-center gap-2">
-                                                                    <Sparkles size={16} className={lessonPerks.intermediate ? 'text-white' : 'text-gray-400'} />
-                                                                    <span className={`text-xs sm:text-sm font-bold ${lessonPerks.intermediate ? 'text-white' : 'text-gray-800'}`}>2. ระดับกลาง (Intermediate)</span>
-                                                                </div>
-                                                                <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 ${lessonPerks.intermediate
-                                                                    ? 'bg-white/20 text-white'
-                                                                    : 'bg-gray-200/70 text-gray-400'
-                                                                    }`}>
-                                                                    {lessonPerks.intermediate ? <><Check size={11} strokeWidth={3} /> ปลดล็อกแล้ว</> : <><Lock size={11} /> ล็อกอยู่</>}
-                                                                </span>
-                                                            </div>
-                                                            <p className={`text-xs pl-6 leading-relaxed ${lessonPerks.intermediate ? 'text-amber-50' : 'text-gray-500'}`}>
-                                                                เพิ่มโอกาสเจอคำสีทองเป็น <span className={`font-bold ${lessonPerks.intermediate ? 'text-white' : 'text-gray-700'}`}>15%</span> และรับโบนัสพิเศษ <span className={`font-bold ${lessonPerks.intermediate ? 'text-white' : 'text-gray-700'}`}>+15 EXP</span> ทันทีเมื่อพิมพ์คำสีทองถูกครบโดยไม่กดลบ
-                                                            </p>
-                                                        </div>
+                                {/* 2. Intermediate */}
+                                <div className={`p-4 rounded-2xl flex flex-col gap-1.5 transition-colors ${lessonPerks.intermediate
+                                    ? 'bg-amber-500 text-white shadow-sm'
+                                    : 'bg-gray-50 border border-gray-100 text-gray-800'
+                                    }`}>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <Sparkles size={16} className={lessonPerks.intermediate ? 'text-white' : 'text-gray-400'} />
+                                            <span className={`text-xs sm:text-sm font-bold ${lessonPerks.intermediate ? 'text-white' : 'text-gray-800'}`}>2. ระดับกลาง (Intermediate)</span>
+                                        </div>
+                                        <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 ${lessonPerks.intermediate
+                                            ? 'bg-white/20 text-white'
+                                            : 'bg-gray-200/70 text-gray-400'
+                                            }`}>
+                                            {lessonPerks.intermediate ? <><Check size={11} strokeWidth={3} /> ปลดล็อกแล้ว</> : <><Lock size={11} /> ล็อกอยู่</>}
+                                        </span>
+                                    </div>
+                                    <p className={`text-xs pl-6 leading-relaxed ${lessonPerks.intermediate ? 'text-amber-50' : 'text-gray-500'}`}>
+                                        เพิ่มโอกาสเจอคำสีทองเป็น <span className={`font-bold ${lessonPerks.intermediate ? 'text-white' : 'text-gray-700'}`}>15%</span> และรับโบนัสพิเศษ <span className={`font-bold ${lessonPerks.intermediate ? 'text-white' : 'text-gray-700'}`}>+15 EXP</span> ทันทีเมื่อพิมพ์คำสีทองถูกครบโดยไม่กดลบ
+                                    </p>
+                                </div>
 
-                                                        {/* 3. Advanced */}
-                                                        <div className={`p-4 rounded-2xl flex flex-col gap-1.5 transition-colors ${lessonPerks.advanced
-                                                            ? 'bg-purple-600 text-white shadow-sm'
-                                                            : 'bg-gray-50 border border-gray-100 text-gray-800'
-                                                            }`}>
-                                                            <div className="flex items-center justify-between">
-                                                                <div className="flex items-center gap-2">
-                                                                    <Zap size={16} className={lessonPerks.advanced ? 'text-white' : 'text-gray-400'} />
-                                                                    <span className={`text-xs sm:text-sm font-bold ${lessonPerks.advanced ? 'text-white' : 'text-gray-800'}`}>3. ระดับสูง (Advanced)</span>
-                                                                </div>
-                                                                <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 ${lessonPerks.advanced
-                                                                    ? 'bg-white/20 text-white'
-                                                                    : 'bg-gray-200/70 text-gray-400'
-                                                                    }`}>
-                                                                    {lessonPerks.advanced ? <><Check size={11} strokeWidth={3} /> ปลดล็อกแล้ว</> : <><Lock size={11} /> ล็อกอยู่</>}
-                                                                </span>
-                                                            </div>
-                                                            <p className={`text-xs pl-6 leading-relaxed ${lessonPerks.advanced ? 'text-purple-50' : 'text-gray-500'}`}>
-                                                                บวกตัวคูณพื้นฐานถาวร <span className={`font-bold ${lessonPerks.advanced ? 'text-white' : 'text-gray-700'}`}>+0.5x</span> ขยายเพดานคอมโบสูงสุด <span className={`font-bold ${lessonPerks.advanced ? 'text-white' : 'text-gray-700'}`}>+10.0x</span> และเข้าโหมด Fever ทุกๆ 50 คอมโบ
-                                                            </p>
-                                                        </div>
-                                                    </div>
+                                {/* 3. Advanced */}
+                                <div className={`p-4 rounded-2xl flex flex-col gap-1.5 transition-colors ${lessonPerks.advanced
+                                    ? 'bg-purple-600 text-white shadow-sm'
+                                    : 'bg-gray-50 border border-gray-100 text-gray-800'
+                                    }`}>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <Zap size={16} className={lessonPerks.advanced ? 'text-white' : 'text-gray-400'} />
+                                            <span className={`text-xs sm:text-sm font-bold ${lessonPerks.advanced ? 'text-white' : 'text-gray-800'}`}>3. ระดับสูง (Advanced)</span>
+                                        </div>
+                                        <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 ${lessonPerks.advanced
+                                            ? 'bg-white/20 text-white'
+                                            : 'bg-gray-200/70 text-gray-400'
+                                            }`}>
+                                            {lessonPerks.advanced ? <><Check size={11} strokeWidth={3} /> ปลดล็อกแล้ว</> : <><Lock size={11} /> ล็อกอยู่</>}
+                                        </span>
+                                    </div>
+                                    <p className={`text-xs pl-6 leading-relaxed ${lessonPerks.advanced ? 'text-purple-50' : 'text-gray-500'}`}>
+                                        บวกตัวคูณพื้นฐานถาวร <span className={`font-bold ${lessonPerks.advanced ? 'text-white' : 'text-gray-700'}`}>+0.5x</span> ขยายเพดานคอมโบสูงสุด <span className={`font-bold ${lessonPerks.advanced ? 'text-white' : 'text-gray-700'}`}>+10.0x</span> และเข้าโหมด Fever ทุกๆ 50 คอมโบ
+                                    </p>
+                                </div>
+                            </div>
 
-                                                                                {/* Footer */}
-                                                                                <div className="flex items-center justify-end gap-2">
-                                                                                    <button
-                                                                                        type="button"
-                                                                                        onClick={() => setIsPerkModalOpen(false)}
-                                                                                        className="px-4 py-2 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-100 transition cursor-pointer"
-                                                                                    >
-                                                                                        ปิด
-                                                                                    </button>
-                                                                                    <Link
-                                                                                        href="/lessons"
-                                                                                        className="px-4 py-2 rounded-xl bg-[#5cb5db] hover:bg-[#4a9ec2] text-white text-xs font-bold flex items-center gap-1 transition cursor-pointer shadow-xs"
-                                                                                    >
-                                                                                        <span>ไปหน้าบทเรียน</span>
-                                                                                        <ChevronRight size={14} />
-                                                                                    </Link>
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
+                            {/* Footer */}
+                            <div className="flex items-center justify-end gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsPerkModalOpen(false)}
+                                    className="px-4 py-2 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-100 transition cursor-pointer"
+                                >
+                                    ปิด
+                                </button>
+                                <Link
+                                    href="/lessons"
+                                    className="px-4 py-2 rounded-xl bg-[#5cb5db] hover:bg-[#4a9ec2] text-white text-xs font-bold flex items-center gap-1 transition cursor-pointer shadow-xs"
+                                >
+                                    <span>ไปหน้าบทเรียน</span>
+                                    <ChevronRight size={14} />
+                                </Link>
+                            </div>
+                        </div>
+                    </div>
                 )}
 
-                                                                        {/* 🔍 SEO Semantic Section & Sitelinks Hub (Googlebot Crawl Content): กดซ่อน/พับเก็บได้ และซ่อนอัตโนมัติเมื่อเริ่มพิมพ์ (Focus Mode) */}
-                                                                        <section
-                                                                            aria-label="ข้อมูลการฝึกพิมพ์ดีดและพิมพ์สัมผัส 10 นิ้ว"
-                                                                            className={`w-full max-w-6xl mt-4 mb-6 text-gray-600 text-xs sm:text-sm leading-relaxed transition-all duration-300 ease-in-out ${isFocusMode
-                                                                                ? 'opacity-0 pointer-events-none translate-y-4'
-                                                                                : 'opacity-100 translate-y-0'
-                                                                                }`}
-                                                                        >
-                                                                            {/* แถบหัวข้อแบบพับเก็บได้ (มี H1 อยู่ใน DOM ตลอดเวลาเพื่อ SEO แต่ดูคลีนตาและกดซ่อน/เปิดได้) */}
-                                                                            <div className="bg-white rounded-3xl p-4 sm:px-6 sm:py-3.5 shadow-lg shadow-blue-500/5 flex flex-wrap items-center justify-between gap-3">
-                                                                                <h1 className="text-xs font-bold text-gray-700">
-                                                                                    ฝึกพิมพ์ดีดออนไลน์ฟรี ฝึกพิมพ์สัมผัส 10 นิ้ว & ทดสอบความเร็ว WPM | PIMWAI (พิมพ์ไว)
-                                                                                </h1>
+                {/* 🔍 SEO Semantic Section & Sitelinks Hub (Googlebot Crawl Content): กดซ่อน/พับเก็บได้ และซ่อนอัตโนมัติเมื่อเริ่มพิมพ์ (Focus Mode) */}
+                <section
+                    aria-label="ข้อมูลการฝึกพิมพ์ดีดและพิมพ์สัมผัส 10 นิ้ว"
+                    className={`w-full max-w-6xl mt-4 mb-6 text-gray-600 text-xs sm:text-sm leading-relaxed transition-all duration-300 ease-in-out ${isFocusMode
+                        ? 'opacity-0 pointer-events-none translate-y-4'
+                        : 'opacity-100 translate-y-0'
+                        }`}
+                >
+                    {/* แถบหัวข้อแบบพับเก็บได้ (มี H1 อยู่ใน DOM ตลอดเวลาเพื่อ SEO แต่ดูคลีนตาและกดซ่อน/เปิดได้) */}
+                    <div className="bg-white rounded-3xl p-4 sm:px-6 sm:py-3.5 shadow-lg shadow-blue-500/5 flex flex-wrap items-center justify-between gap-3">
+                        <h1 className="text-xs font-bold text-gray-700">
+                            ฝึกพิมพ์ & ฝึกพิมพ์ดีดออนไลน์ฟรี ฝึกพิมพ์สัมผัส 10 นิ้ว ทดสอบความเร็ว WPM | PIMWAI (พิมพ์ไว)
+                        </h1>
 
-                                                                                <button
-                                                                                    type="button"
-                                                                                    onClick={toggleSeoExpanded}
-                                                                                    aria-expanded={isSeoExpanded}
-                                                                                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-gray-100 hover:bg-gray-200/80 text-gray-600 font-bold text-xs transition-colors cursor-pointer select-none"
-                                                                                >
-                                                                                    <span>{isSeoExpanded ? 'ซ่อนคู่มือและข้อมูล' : 'ดูคู่มือวางนิ้ว 10 นิ้ว & ข้อมูลเพิ่มเติม'}</span>
-                                                                                    <ChevronRight
-                                                                                        size={14}
-                                                                                        className={`transition-transform duration-200 ${isSeoExpanded ? '-rotate-90' : 'rotate-90'}`}
-                                                                                    />
-                                                                                </button>
-                                                                            </div>
+                        <button
+                            type="button"
+                            onClick={toggleSeoExpanded}
+                            aria-expanded={isSeoExpanded}
+                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-gray-100 hover:bg-gray-200/80 text-gray-600 font-bold text-xs transition-colors cursor-pointer select-none"
+                        >
+                            <span>{isSeoExpanded ? 'ซ่อนคู่มือและข้อมูล' : 'ดูคู่มือวางนิ้ว 10 นิ้ว & ข้อมูลเพิ่มเติม'}</span>
+                            <ChevronRight
+                                size={14}
+                                className={`transition-transform duration-200 ${isSeoExpanded ? '-rotate-90' : 'rotate-90'}`}
+                            />
+                        </button>
+                    </div>
 
-                                                                            {/* เนื้อหา SEO ทั้งหมดคงอยู่ใน HTML DOM เสมอเพื่อให้ Googlebot เก็บข้อมูลได้ 100% แต่พับซ่อนด้วย CSS ได้ */}
-                                                                            <div
-                                                                                className={`space-y-4 transition-all duration-300 ease-in-out ${isSeoExpanded
-                                                                                    ? 'max-h-[2500px] opacity-100 mt-4 pb-4'
-                                                                                    : 'max-h-0 opacity-0 pointer-events-none mt-0 overflow-hidden'
-                                                                                    }`}
-                                                                            >
-                                                                                {/* 1. คำอธิบายหลัก */}
-                                                                                <div className="bg-white p-5 sm:p-6 rounded-3xl shadow-lg shadow-blue-500/5">
-                                                                                    <p className="text-gray-500 text-xs sm:text-sm leading-relaxed">
-                                                                                        <strong>PIMWAI (พิมพ์ไว)</strong> คือแพลตฟอร์ม<strong>ฝึกพิมพ์ดีดออนไลน์ฟรี</strong>และโปรแกรม<strong>ฝึกพิมพ์สัมผัส 10 นิ้ว</strong>สำหรับคนไทย ออกแบบมาเพื่อช่วยให้คุณฝึกวางนิ้วบนแป้นพิมพ์ภาษาไทย (แป้นเหย้า <strong>ฟ ห ก ด ่ า ส ว</strong>) และภาษาอังกฤษ (<strong>A S D F - J K L ;</strong>) ได้อย่างถูกต้องตามหลักสรีรศาสตร์ พร้อมระบบ<strong>ทดสอบความเร็วพิมพ์ดีด (Typing Test)</strong> วัดค่าความเร็วคำต่อนาที (WPM) และความแม่นยำ (Accuracy) แบบเรียลไทม์ เล่นได้ทันทีบนเว็บเบราว์เซอร์โดยไม่ต้องดาวน์โหลดโปรแกรมและไม่ต้องสมัครสมาชิก
-                                                                                    </p>
-                                                                                </div>
+                    {/* เนื้อหา SEO ทั้งหมดคงอยู่ใน HTML DOM เสมอเพื่อให้ Googlebot เก็บข้อมูลได้ 100% แต่พับซ่อนด้วย CSS ได้ */}
+                    <div
+                        className={`space-y-4 transition-all duration-300 ease-in-out ${isSeoExpanded
+                            ? 'max-h-[2500px] opacity-100 mt-4 pb-4'
+                            : 'max-h-0 opacity-0 pointer-events-none mt-0 overflow-hidden'
+                            }`}
+                    >
+                        {/* 1. คำอธิบายหลัก */}
+                        <div className="bg-white p-5 sm:p-6 rounded-3xl shadow-lg shadow-blue-500/5">
+                            <p className="text-gray-500 text-xs sm:text-sm leading-relaxed">
+                                <strong>PIMWAI (พิมพ์ไว)</strong> คือแพลตฟอร์ม<strong>ฝึกพิมพ์ดีดออนไลน์ฟรี</strong>และโปรแกรม<strong>ฝึกพิมพ์สัมผัส 10 นิ้ว</strong>สำหรับคนไทย ออกแบบมาเพื่อช่วยให้คุณฝึกวางนิ้วบนแป้นพิมพ์ภาษาไทย (แป้นเหย้า <strong>ฟ ห ก ด ่ า ส ว</strong>) และภาษาอังกฤษ (<strong>A S D F - J K L ;</strong>) ได้อย่างถูกต้องตามหลักสรีรศาสตร์ พร้อมระบบ<strong>ทดสอบความเร็วพิมพ์ดีด (Typing Test)</strong> วัดค่าความเร็วคำต่อนาที (WPM) และความแม่นยำ (Accuracy) แบบเรียลไทม์ เล่นได้ทันทีบนเว็บเบราว์เซอร์โดยไม่ต้องดาวน์โหลดโปรแกรมและไม่ต้องสมัครสมาชิก
+                            </p>
+                        </div>
 
-                                                                                {/* 2. Internal Links Hub (ช่วยให้ Google สร้าง Sitelinks หน้าบทเรียน, ทดสอบ WPM, จัดอันดับ แทนหน้าเข้าสู่ระบบ) */}
-                                                                                <nav aria-label="หมวดหมู่การฝึกพิมพ์ดีดหลักบน PIMWAI" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                                                                    <Link
-                                                                                        href="/lessons"
-                                                                                        className="group bg-white p-4 sm:p-5 rounded-3xl shadow-lg shadow-blue-500/5 hover:shadow-xl hover:shadow-blue-500/10 transition-all flex flex-col justify-between"
-                                                                                    >
-                                                                                        <div>
-                                                                                            <h2 className="font-bold text-gray-800 group-hover:text-[#0c648b] text-sm mb-1.5 flex items-center justify-between">
-                                                                                                <span>บทเรียนฝึกพิมพ์สัมผัส 10 นิ้ว</span>
-                                                                                                <ChevronRight size={15} className="text-gray-400 group-hover:text-[#5cb5db] transition-transform group-hover:translate-x-0.5" />
-                                                                                            </h2>
-                                                                                            <p className="text-gray-500 text-xs">
-                                                                                                แบบฝึกหัดพิมพ์ดีดกว่า 100 ด่าน เริ่มตั้งแต่ฝึกพิมพ์แป้นเหย้า <strong>ฟ ห ก ด ่ า ส ว</strong> แป้นบน แป้นล่าง สระ และวรรณยุกต์ ไปจนถึงระดับสูง
-                                                                                            </p>
-                                                                                        </div>
-                                                                                    </Link>
+                        {/* 2. Internal Links Hub (ช่วยให้ Google สร้าง Sitelinks หน้าบทเรียน, ทดสอบ WPM, จัดอันดับ แทนหน้าเข้าสู่ระบบ) */}
+                        <nav aria-label="หมวดหมู่การฝึกพิมพ์ดีดหลักบน PIMWAI" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <Link
+                                href="/lessons"
+                                className="group bg-white p-4 sm:p-5 rounded-3xl shadow-lg shadow-blue-500/5 hover:shadow-xl hover:shadow-blue-500/10 transition-all flex flex-col justify-between"
+                            >
+                                <div>
+                                    <h2 className="font-bold text-gray-800 group-hover:text-[#0c648b] text-sm mb-1.5 flex items-center justify-between">
+                                        <span>บทเรียนฝึกพิมพ์สัมผัส 10 นิ้ว</span>
+                                        <ChevronRight size={15} className="text-gray-400 group-hover:text-[#5cb5db] transition-transform group-hover:translate-x-0.5" />
+                                    </h2>
+                                    <p className="text-gray-500 text-xs">
+                                        แบบฝึกหัดพิมพ์ดีดกว่า 100 ด่าน เริ่มตั้งแต่ฝึกพิมพ์แป้นเหย้า <strong>ฟ ห ก ด ่ า ส ว</strong> แป้นบน แป้นล่าง สระ และวรรณยุกต์ ไปจนถึงระดับสูง
+                                    </p>
+                                </div>
+                            </Link>
 
-                                                                                    <Link
-                                                                                        href="/tests"
-                                                                                        className="group bg-white p-4 sm:p-5 rounded-3xl shadow-lg shadow-blue-500/5 hover:shadow-xl hover:shadow-blue-500/10 transition-all flex flex-col justify-between"
-                                                                                    >
-                                                                                        <div>
-                                                                                            <h2 className="font-bold text-gray-800 group-hover:text-emerald-700 text-sm mb-1.5 flex items-center justify-between">
-                                                                                                <span>ทดสอบความเร็วพิมพ์ดีด (WPM)</span>
-                                                                                                <ChevronRight size={15} className="text-gray-400 group-hover:text-emerald-500 transition-transform group-hover:translate-x-0.5" />
-                                                                                            </h2>
-                                                                                            <p className="text-gray-500 text-xs">
-                                                                                                สอบวัดความเร็วการพิมพ์ดีดแบบจับเวลา 1 นาที, 3 นาที และ 5 นาที พร้อมกราฟวิเคราะห์ตัวอักษรที่พิมพ์ผิดบ่อยเพื่อแก้ไขจุดอ่อน
-                                                                                            </p>
-                                                                                        </div>
-                                                                                    </Link>
+                            <Link
+                                href="/tests"
+                                className="group bg-white p-4 sm:p-5 rounded-3xl shadow-lg shadow-blue-500/5 hover:shadow-xl hover:shadow-blue-500/10 transition-all flex flex-col justify-between"
+                            >
+                                <div>
+                                    <h2 className="font-bold text-gray-800 group-hover:text-emerald-700 text-sm mb-1.5 flex items-center justify-between">
+                                        <span>ทดสอบความเร็วพิมพ์ดีด (WPM)</span>
+                                        <ChevronRight size={15} className="text-gray-400 group-hover:text-emerald-500 transition-transform group-hover:translate-x-0.5" />
+                                    </h2>
+                                    <p className="text-gray-500 text-xs">
+                                        สอบวัดความเร็วการพิมพ์ดีดแบบจับเวลา 1 นาที, 3 นาที และ 5 นาที พร้อมกราฟวิเคราะห์ตัวอักษรที่พิมพ์ผิดบ่อยเพื่อแก้ไขจุดอ่อน
+                                    </p>
+                                </div>
+                            </Link>
 
-                                                                                    <Link
-                                                                                        href="/rankings"
-                                                                                        className="group bg-white p-4 sm:p-5 rounded-3xl shadow-lg shadow-blue-500/5 hover:shadow-xl hover:shadow-blue-500/10 transition-all flex flex-col justify-between"
-                                                                                    >
-                                                                                        <div>
-                                                                                            <h2 className="font-bold text-gray-800 group-hover:text-amber-600 text-sm mb-1.5 flex items-center justify-between">
-                                                                                                <span>จัดอันดับคนพิมพ์เร็ว (Leaderboard)</span>
-                                                                                                <ChevronRight size={15} className="text-gray-400 group-hover:text-amber-500 transition-transform group-hover:translate-x-0.5" />
-                                                                                            </h2>
-                                                                                            <p className="text-gray-500 text-xs">
-                                                                                                ตารางจัดอันดับนักพิมพ์สัมผัสที่มีความเร็ว WPM และระดับแรงค์สูงสุดในไทย แข่งขันเก็บ EXP และสะสมดาวไปกับเพื่อนๆ
-                                                                                            </p>
-                                                                                        </div>
-                                                                                    </Link>
+                            <Link
+                                href="/rankings"
+                                className="group bg-white p-4 sm:p-5 rounded-3xl shadow-lg shadow-blue-500/5 hover:shadow-xl hover:shadow-blue-500/10 transition-all flex flex-col justify-between"
+                            >
+                                <div>
+                                    <h2 className="font-bold text-gray-800 group-hover:text-amber-600 text-sm mb-1.5 flex items-center justify-between">
+                                        <span>จัดอันดับคนพิมพ์เร็ว (Leaderboard)</span>
+                                        <ChevronRight size={15} className="text-gray-400 group-hover:text-amber-500 transition-transform group-hover:translate-x-0.5" />
+                                    </h2>
+                                    <p className="text-gray-500 text-xs">
+                                        ตารางจัดอันดับนักพิมพ์สัมผัสที่มีความเร็ว WPM และระดับแรงค์สูงสุดในไทย แข่งขันเก็บ EXP และสะสมดาวไปกับเพื่อนๆ
+                                    </p>
+                                </div>
+                            </Link>
 
-                                                                                    <Link
-                                                                                        href="/news"
-                                                                                        className="group bg-white p-4 sm:p-5 rounded-3xl shadow-lg shadow-blue-500/5 hover:shadow-xl hover:shadow-blue-500/10 transition-all flex flex-col justify-between"
-                                                                                    >
-                                                                                        <div>
-                                                                                            <h2 className="font-bold text-gray-800 group-hover:text-purple-700 text-sm mb-1.5 flex items-center justify-between">
-                                                                                                <span>เทคนิคพิมพ์เร็ว & อัปเดตระบบ</span>
-                                                                                                <ChevronRight size={15} className="text-gray-400 group-hover:text-purple-500 transition-transform group-hover:translate-x-0.5" />
-                                                                                            </h2>
-                                                                                            <p className="text-gray-500 text-xs">
-                                                                                                ติดตามฟีเจอร์ใหม่ โหมดฝึกพิมพ์บทความ และการปรับปรุงระบบฝึกพิมพ์ดีดบน PIMWAI ให้ลื่นไหลในทุกอุปกรณ์
-                                                                                            </p>
-                                                                                        </div>
-                                                                                    </Link>
-                                                                                </nav>
+                            <Link
+                                href="/news"
+                                className="group bg-white p-4 sm:p-5 rounded-3xl shadow-lg shadow-blue-500/5 hover:shadow-xl hover:shadow-blue-500/10 transition-all flex flex-col justify-between"
+                            >
+                                <div>
+                                    <h2 className="font-bold text-gray-800 group-hover:text-purple-700 text-sm mb-1.5 flex items-center justify-between">
+                                        <span>เทคนิคพิมพ์เร็ว & อัปเดตระบบ</span>
+                                        <ChevronRight size={15} className="text-gray-400 group-hover:text-purple-500 transition-transform group-hover:translate-x-0.5" />
+                                    </h2>
+                                    <p className="text-gray-500 text-xs">
+                                        ติดตามฟีเจอร์ใหม่ โหมดฝึกพิมพ์บทความ และการปรับปรุงระบบฝึกพิมพ์ดีดบน PIMWAI ให้ลื่นไหลในทุกอุปกรณ์
+                                    </p>
+                                </div>
+                            </Link>
+                        </nav>
 
-                                                                                {/* 3. คู่มือวางนิ้วแป้นเหย้า 10 นิ้ว (Home Row Guide: คีย์เวิร์ดหลักที่คนค้นหาเยอะมาก) */}
-                                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                                                    <div className="bg-white p-5 sm:p-6 rounded-3xl shadow-lg shadow-blue-500/5">
-                                                                                        <h2 className="font-bold text-gray-800 text-sm mb-2 flex items-center gap-1.5">
-                                                                                            <span className="w-2 h-2 rounded-full bg-[#5cb5db]"></span>
-                                                                                            วิธีวางนิ้วพิมพ์สัมผัส 10 นิ้ว แป้นเหย้า (ฟ ห ก ด - ่ า ส ว)
-                                                                                        </h2>
-                                                                                        <p className="text-gray-500 text-xs mb-3">
-                                                                                            หัวใจสำคัญของการ<strong>ฝึกพิมพ์สัมผัส 10 นิ้ว</strong>ให้เร็วโดยไม่ต้องก้มมองแป้นพิมพ์ คือการวางนิ้วทั้งสองข้างไว้ที่<strong>แป้นเหย้า (Home Row)</strong> เสมอ:
-                                                                                        </p>
-                                                                                        <div className="grid grid-cols-2 gap-3 text-xs text-gray-600 bg-gray-50/80 p-3 rounded-xl border border-gray-100">
-                                                                                            <div>
-                                                                                                <div className="font-bold text-gray-800 mb-1">มือซ้าย (ฟ ห ก ด / A S D F)</div>
-                                                                                                <ul className="space-y-0.5 text-[11px] text-gray-500">
-                                                                                                    <li>• นิ้วก้อยซ้าย: แป้น <strong>ฟ</strong> (A)</li>
-                                                                                                    <li>• นิ้วนางซ้าย: แป้น <strong>ห</strong> (S)</li>
-                                                                                                    <li>• นิ้วกลางซ้าย: แป้น <strong>ก</strong> (D)</li>
-                                                                                                    <li>• นิ้วชี้ซ้าย: แป้น <strong>ด</strong> (F)</li>
-                                                                                                </ul>
-                                                                                            </div>
-                                                                                            <div>
-                                                                                                <div className="font-bold text-gray-800 mb-1">มือขวา (่ า ส ว / J K L ;)</div>
-                                                                                                <ul className="space-y-0.5 text-[11px] text-gray-500">
-                                                                                                    <li>• นิ้วชี้ขวา: แป้น <strong>ไม้เอก ่</strong> (J)</li>
-                                                                                                    <li>• นิ้วกลางขวา: แป้น <strong>า</strong> (K)</li>
-                                                                                                    <li>• นิ้วนางขวา: แป้น <strong>ส</strong> (L)</li>
-                                                                                                    <li>• นิ้วก้อยขวา: แป้น <strong>ว</strong> (;)</li>
-                                                                                                </ul>
-                                                                                            </div>
-                                                                                        </div>
-                                                                                    </div>
+                        {/* 3. คู่มือวางนิ้วแป้นเหย้า 10 นิ้ว (Home Row Guide: คีย์เวิร์ดหลักที่คนค้นหาเยอะมาก) */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="bg-white p-5 sm:p-6 rounded-3xl shadow-lg shadow-blue-500/5">
+                                <h2 className="font-bold text-gray-800 text-sm mb-2 flex items-center gap-1.5">
+                                    <span className="w-2 h-2 rounded-full bg-[#5cb5db]"></span>
+                                    วิธีวางนิ้วพิมพ์สัมผัส 10 นิ้ว แป้นเหย้า (ฟ ห ก ด - ่ า ส ว)
+                                </h2>
+                                <p className="text-gray-500 text-xs mb-3">
+                                    หัวใจสำคัญของการ<strong>ฝึกพิมพ์สัมผัส 10 นิ้ว</strong>ให้เร็วโดยไม่ต้องก้มมองแป้นพิมพ์ คือการวางนิ้วทั้งสองข้างไว้ที่<strong>แป้นเหย้า (Home Row)</strong> เสมอ:
+                                </p>
+                                <div className="grid grid-cols-2 gap-3 text-xs text-gray-600 bg-gray-50/80 p-3 rounded-xl border border-gray-100">
+                                    <div>
+                                        <div className="font-bold text-gray-800 mb-1">มือซ้าย (ฟ ห ก ด / A S D F)</div>
+                                        <ul className="space-y-0.5 text-[11px] text-gray-500">
+                                            <li>• นิ้วก้อยซ้าย: แป้น <strong>ฟ</strong> (A)</li>
+                                            <li>• นิ้วนางซ้าย: แป้น <strong>ห</strong> (S)</li>
+                                            <li>• นิ้วกลางซ้าย: แป้น <strong>ก</strong> (D)</li>
+                                            <li>• นิ้วชี้ซ้าย: แป้น <strong>ด</strong> (F)</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <div className="font-bold text-gray-800 mb-1">มือขวา (่ า ส ว / J K L ;)</div>
+                                        <ul className="space-y-0.5 text-[11px] text-gray-500">
+                                            <li>• นิ้วชี้ขวา: แป้น <strong>ไม้เอก ่</strong> (J)</li>
+                                            <li>• นิ้วกลางขวา: แป้น <strong>า</strong> (K)</li>
+                                            <li>• นิ้วนางขวา: แป้น <strong>ส</strong> (L)</li>
+                                            <li>• นิ้วก้อยขวา: แป้น <strong>ว</strong> (;)</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
 
-                                                                                    <div className="bg-white p-5 sm:p-6 rounded-3xl shadow-lg shadow-blue-500/5">
-                                                                                        <h2 className="font-bold text-gray-800 text-sm mb-2 flex items-center gap-1.5">
-                                                                                            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                                                                                            มาตรฐานความเร็วพิมพ์ดีด (WPM) และการสอบราชการ
-                                                                                        </h2>
-                                                                                        <p className="text-gray-500 text-xs mb-3">
-                                                                                            ค่า <strong>WPM (Words Per Minute)</strong> คือจำนวนคำที่พิมพ์ได้ถูกต้องในเวลา 1 นาที ซึ่งใช้เป็นเกณฑ์วัดทักษะการพิมพ์งานและสอบปฏิบัติคอมพิวเตอร์:
-                                                                                        </p>
-                                                                                        <ul className="space-y-1.5 text-xs text-gray-500">
-                                                                                            <li>• <strong className="text-gray-700">20 – 30 WPM:</strong> ระดับผู้เริ่มต้น คุ้นเคยกับตำแหน่งแป้นเหย้าและสระพื้นฐาน</li>
-                                                                                            <li>• <strong className="text-gray-700">35 – 50 WPM:</strong> ระดับมาตรฐานวัยทำงาน และผ่านเกณฑ์สอบพิมพ์ดีดหน่วยงานราชการ/เอกชนส่วนใหญ่</li>
-                                                                                            <li>• <strong className="text-gray-700">60 – 80+ WPM:</strong> ระดับนักพิมพ์สัมผัสมืออาชีพ พิมพ์ได้คล่องแคล่วโดยไม่ต้องมองคีย์บอร์ด 100%</li>
-                                                                                        </ul>
-                                                                                    </div>
-                                                                                </div>
+                            <div className="bg-white p-5 sm:p-6 rounded-3xl shadow-lg shadow-blue-500/5">
+                                <h2 className="font-bold text-gray-800 text-sm mb-2 flex items-center gap-1.5">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                    มาตรฐานความเร็วพิมพ์ดีด (WPM) และการสอบราชการ
+                                </h2>
+                                <p className="text-gray-500 text-xs mb-3">
+                                    ค่า <strong>WPM (Words Per Minute)</strong> คือจำนวนคำที่พิมพ์ได้ถูกต้องในเวลา 1 นาที ซึ่งใช้เป็นเกณฑ์วัดทักษะการพิมพ์งานและสอบปฏิบัติคอมพิวเตอร์:
+                                </p>
+                                <ul className="space-y-1.5 text-xs text-gray-500">
+                                    <li>• <strong className="text-gray-700">20 – 30 WPM:</strong> ระดับผู้เริ่มต้น คุ้นเคยกับตำแหน่งแป้นเหย้าและสระพื้นฐาน</li>
+                                    <li>• <strong className="text-gray-700">35 – 50 WPM:</strong> ระดับมาตรฐานวัยทำงาน และผ่านเกณฑ์สอบพิมพ์ดีดหน่วยงานราชการ/เอกชนส่วนใหญ่</li>
+                                    <li>• <strong className="text-gray-700">60 – 80+ WPM:</strong> ระดับนักพิมพ์สัมผัสมืออาชีพ พิมพ์ได้คล่องแคล่วโดยไม่ต้องมองคีย์บอร์ด 100%</li>
+                                </ul>
+                            </div>
+                        </div>
 
-                                                                                {/* 4. คำถามที่พบบ่อย (FAQ Semantic Content สอดคล้องกับ FAQPage Schema) */}
-                                                                                <div className="bg-white p-5 sm:p-6 rounded-3xl shadow-lg shadow-blue-500/5">
-                                                                                    <h2 className="font-bold text-gray-800 text-sm mb-3">
-                                                                                        คำถามที่พบบ่อยเกี่ยวกับการฝึกพิมพ์ดีด (FAQ)
-                                                                                    </h2>
-                                                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-                                                                                        <div>
-                                                                                            <h3 className="font-bold text-gray-700 mb-1">ฝึกพิมพ์ดีดอย่างไรให้พิมพ์เร็วขึ้น?</h3>
-                                                                                            <p className="text-gray-500">
-                                                                                                เริ่มจากการฝึกวางนิ้วที่แป้นเหย้า (ฟ ห ก ด ่ า ส ว) โดยไม่มองแป้นพิมพ์ เน้นความแม่นยำ (Accuracy 95% ขึ้นไป) ก่อนความเร็ว และฝึกต่อเนื่องวันละ 15–20 นาทีเพื่อให้กล้ามเนื้อจดจำตำแหน่งแป้น (Muscle Memory)
-                                                                                            </p>
-                                                                                        </div>
-                                                                                        <div>
-                                                                                            <h3 className="font-bold text-gray-700 mb-1">PIMWAI ใช้งานฟรีไหม ต้องสมัครสมาชิกหรือเปล่า?</h3>
-                                                                                            <p className="text-gray-500">
-                                                                                                ใช้งานฟรี 100% ไม่มีโฆษณาคั่น สามารถเริ่มฝึกพิมพ์ด่วนและทดสอบความเร็ว WPM ได้ทันทีโดยไม่ต้องล็อกอิน หรือหากเข้าสู่ระบบก็จะสามารถบันทึกสถิติ สะสม EXP และจัดอันดับแรงค์ข้ามอุปกรณ์ได้
-                                                                                            </p>
-                                                                                        </div>
-                                                                                        <div>
-                                                                                            <h3 className="font-bold text-gray-700 mb-1">รองรับการฝึกพิมพ์ภาษาอะไรบ้าง?</h3>
-                                                                                            <p className="text-gray-500">
-                                                                                                รองรับทั้งการฝึกพิมพ์ดีดภาษาไทย (แป้นเกษมณี) และภาษาอังกฤษ (QWERTY) มีทั้งโหมดสุ่มคำศัพท์ความถี่สูง 1,000 คำ โหมดบทความเรื่องสั้น โหมดจับเวลา และบทเรียนสอนวางนิ้วตั้งแต่เริ่มต้น
-                                                                                            </p>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                </div>
-                                                                            </div>
-                                                                        </section>
+                        {/* 4. คำถามที่พบบ่อย (FAQ Semantic Content สอดคล้องกับ FAQPage Schema) */}
+                        <div className="bg-white p-5 sm:p-6 rounded-3xl shadow-lg shadow-blue-500/5">
+                            <h2 className="font-bold text-gray-800 text-sm mb-3">
+                                คำถามที่พบบ่อยเกี่ยวกับการฝึกพิมพ์ดีด (FAQ)
+                            </h2>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                                <div>
+                                    <h3 className="font-bold text-gray-700 mb-1">ฝึกพิมพ์ดีดอย่างไรให้พิมพ์เร็วขึ้น?</h3>
+                                    <p className="text-gray-500">
+                                        เริ่มจากการฝึกวางนิ้วที่แป้นเหย้า (ฟ ห ก ด ่ า ส ว) โดยไม่มองแป้นพิมพ์ เน้นความแม่นยำ (Accuracy 95% ขึ้นไป) ก่อนความเร็ว และฝึกต่อเนื่องวันละ 15–20 นาทีเพื่อให้กล้ามเนื้อจดจำตำแหน่งแป้น (Muscle Memory)
+                                    </p>
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-gray-700 mb-1">PIMWAI ใช้งานฟรีไหม ต้องสมัครสมาชิกหรือเปล่า?</h3>
+                                    <p className="text-gray-500">
+                                        ใช้งานฟรี 100% ไม่มีโฆษณาคั่น สามารถเริ่มฝึกพิมพ์ด่วนและทดสอบความเร็ว WPM ได้ทันทีโดยไม่ต้องล็อกอิน หรือหากเข้าสู่ระบบก็จะสามารถบันทึกสถิติ สะสม EXP และจัดอันดับแรงค์ข้ามอุปกรณ์ได้
+                                    </p>
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-gray-700 mb-1">รองรับการฝึกพิมพ์ภาษาอะไรบ้าง?</h3>
+                                    <p className="text-gray-500">
+                                        รองรับทั้งการฝึกพิมพ์ดีดภาษาไทย (แป้นเกษมณี) และภาษาอังกฤษ (QWERTY) มีทั้งโหมดสุ่มคำศัพท์ความถี่สูง 1,000 คำ โหมดบทความเรื่องสั้น โหมดจับเวลา และบทเรียนสอนวางนิ้วตั้งแต่เริ่มต้น
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
 
-                                                                    </main>
+            </main>
 
-                                                                    {/* 👑 Rank Up & Star Up Animation Overlay */}
-                                                                    {rankUpData && (
-                                                                        <RankUpOverlay
-                                                                            prevRank={rankUpData.prevRank}
-                                                                            currentRank={rankUpData.currentRank}
-                                                                            currentRankName={rankUpData.currentRankName}
-                                                                            mode="rank"
-                                                                            onClose={() => setRankUpData(null)}
-                                                                        />
-                                                                    )}
-                                                                    {starUpData && !rankUpData && (
-                                                                        <RankUpOverlay
-                                                                            currentRank={starUpData.rank}
-                                                                            currentStars={starUpData.stars}
-                                                                            mode="star"
-                                                                            onClose={() => setStarUpData(null)}
-                                                                        />
-                                                                    )}
+            {/* 👑 Rank Up & Star Up Animation Overlay */}
+            {rankUpData && (
+                <RankUpOverlay
+                    prevRank={rankUpData.prevRank}
+                    currentRank={rankUpData.currentRank}
+                    currentRankName={rankUpData.currentRankName}
+                    mode="rank"
+                    onClose={() => setRankUpData(null)}
+                />
+            )}
+            {starUpData && !rankUpData && (
+                <RankUpOverlay
+                    currentRank={starUpData.rank}
+                    currentStars={starUpData.stars}
+                    mode="star"
+                    onClose={() => setStarUpData(null)}
+                />
+            )}
 
-                                                                    {/* 🎵 Unified Audio & YouTube Music Settings Modal */}
-                                                                    <QuickAudioModal
-                                                                        isOpen={isAudioModalOpen}
-                                                                        onClose={() => setIsAudioModalOpen(false)}
-                                                                        onKeyboardSoundChange={(soundId) => setIsSoundOn(soundId !== 'none')}
-                                                                    />
-                                                                </div>
-                                                                );
+            {/* 🎵 Unified Audio & YouTube Music Settings Modal */}
+            <QuickAudioModal
+                isOpen={isAudioModalOpen}
+                onClose={() => setIsAudioModalOpen(false)}
+                onKeyboardSoundChange={(soundId) => setIsSoundOn(soundId !== 'none')}
+            />
+        </div>
+    );
 }

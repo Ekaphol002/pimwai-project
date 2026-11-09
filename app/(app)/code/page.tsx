@@ -20,6 +20,7 @@ import {
 import toast, { Toaster } from 'react-hot-toast';
 import { soundManager } from '@/lib/soundEffects';
 import { toDateKey } from '@/lib/streakUtils';
+import { getEnglishCharFromEvent } from '@/lib/englishWords';
 import QuickAudioModal from '@/components/QuickAudioModal/QuickAudioModal';
 
 interface CodeSnippet {
@@ -1174,9 +1175,10 @@ export default function CodeTypingPage() {
 
             setTotalKeystrokes(prev => prev + 1);
 
+            const typedChar = getEnglishCharFromEvent(e) || e.key;
             const nextCharIdx = inputBuffer.length;
             const targetChar = currentToken.word[nextCharIdx];
-            const isCharCorrect = e.key === targetChar;
+            const isCharCorrect = typedChar === targetChar;
 
             if (isCharCorrect) {
                 setCorrectKeystrokes(prev => prev + 1);
@@ -1184,7 +1186,7 @@ export default function CodeTypingPage() {
                 setErrorCount(prev => prev + 1);
             }
 
-            const nextBuf = inputBuffer + e.key;
+            const nextBuf = inputBuffer + typedChar;
             setInputBuffer(nextBuf);
             inputBufferRef.current = nextBuf;
 

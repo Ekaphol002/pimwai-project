@@ -252,9 +252,9 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
         return;
       }
 
-      if (e.key === 'Shift') return;
+      if (e.key === 'Shift' || e.key === 'CapsLock') return;
 
-      const typedKey = e.key;
+      let typedKey = e.key;
 
       // เล่นเสียงคีย์บอร์ดที่ผู้ใช้เลือกไว้
       soundManager.playKeySound(undefined, e);
@@ -290,7 +290,11 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
 
       if (e.key.length > 1 && e.key !== 'Space') return;
 
-      const shift = e.shiftKey;
+      const isCapsLock = typeof e.getModifierState === 'function' && e.getModifierState('CapsLock');
+      const shift = e.shiftKey || isCapsLock;
+      if (isCapsLock && e.code && thaiShiftKeyDisplayMap[e.code]) {
+        typedKey = thaiShiftKeyDisplayMap[e.code].trim();
+      }
       let isCorrect = typedKey === expectedChar;
 
       if (isShiftRequired && !shift) isCorrect = false;

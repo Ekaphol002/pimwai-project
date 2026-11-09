@@ -79,7 +79,7 @@ export default function NewKeyIntro({ targetChar, onComplete, onCorrectPress }: 
                     }, 600);
                 } else {
                     // Wrong key pressed
-                    if (event.code !== 'ShiftLeft' && event.code !== 'ShiftRight' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+                    if (event.code !== 'ShiftLeft' && event.code !== 'ShiftRight' && event.code !== 'CapsLock' && !event.ctrlKey && !event.metaKey && !event.altKey) {
                         setInputStatus('wrong');
                     }
                 }

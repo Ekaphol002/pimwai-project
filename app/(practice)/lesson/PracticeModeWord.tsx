@@ -344,14 +344,14 @@ export default function PracticeModeWord({
         setStartTime(Date.now());
       }
 
-      if (event.key === 'Shift') {
+      if (event.key === 'Shift' || event.key === 'CapsLock') {
         return;
       }
 
       if (event.repeat) return;
 
       const typedKeyCode = event.code;
-      const typedKey = event.key;
+      let typedKey = event.key;
       setPressedKey(typedKeyCode);
 
       // เล่นเสียงคีย์บอร์ดที่ผู้ใช้เลือกไว้
@@ -394,7 +394,11 @@ export default function PracticeModeWord({
       // --- สิ้นสุด Logic Backspace ---
 
       if (event.key.length > 1 && event.key !== 'Space') return;
-      const shiftPressed = event.shiftKey;
+      const isCapsLock = typeof event.getModifierState === 'function' && event.getModifierState('CapsLock');
+      const shiftPressed = event.shiftKey || isCapsLock;
+      if (isCapsLock && typedKeyCode && thaiShiftKeyDisplayMap[typedKeyCode]) {
+        typedKey = thaiShiftKeyDisplayMap[typedKeyCode].trim();
+      }
       let isCorrect = typedKey === expectedChar;
 
       // ตรวจสอบ Shift

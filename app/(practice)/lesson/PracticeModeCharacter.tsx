@@ -238,7 +238,7 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
       // ❌ ลบเงื่อนไขที่บล็อกการพิมพ์ออก (isCurrentCharCorrect !== null) เพื่อให้พิมพ์ต่อเนื่องได้ทันที
       if (!expectedChar) return;
 
-      if (event.key === 'Shift') {
+      if (event.key === 'Shift' || event.key === 'CapsLock') {
         setPressedKey(event.code);
         return;
       }
@@ -248,14 +248,18 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
       }
 
       const typedKeyCode = event.code;
-      const typedKey = event.key;
+      let typedKey = event.key;
       setPressedKey(typedKeyCode);
       event.preventDefault();
 
       // เล่นเสียงคีย์บอร์ดที่ผู้ใช้เลือกไว้
       soundManager.playKeySound(undefined, event);
 
-      const shiftPressed = event.shiftKey;
+      const isCapsLock = typeof event.getModifierState === 'function' && event.getModifierState('CapsLock');
+      const shiftPressed = event.shiftKey || isCapsLock;
+      if (isCapsLock && typedKeyCode && thaiShiftKeyDisplayMap[typedKeyCode]) {
+        typedKey = thaiShiftKeyDisplayMap[typedKeyCode].trim();
+      }
 
       // ------------------------------------
       // Logic ตรวจคำ (เหมือนเดิม 100%)
