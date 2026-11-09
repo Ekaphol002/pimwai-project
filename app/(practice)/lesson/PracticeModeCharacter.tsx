@@ -11,7 +11,8 @@ import {
   reverseThaiKeyMap,
   thaiShiftKeyDisplayMap,
   leftHandKeys,
-  rightHandKeys
+  rightHandKeys,
+  resolveThaiKeyWithCapsLock
 } from '@/lib/keyMaps';
 import { soundManager } from '@/lib/soundEffects';
 import { CheckCircle2 } from 'lucide-react';
@@ -248,18 +249,13 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
       }
 
       const typedKeyCode = event.code;
-      let typedKey = event.key;
       setPressedKey(typedKeyCode);
       event.preventDefault();
 
       // เล่นเสียงคีย์บอร์ดที่ผู้ใช้เลือกไว้
       soundManager.playKeySound(undefined, event);
 
-      const isCapsLock = typeof event.getModifierState === 'function' && event.getModifierState('CapsLock');
-      const shiftPressed = event.shiftKey || isCapsLock;
-      if (isCapsLock && typedKeyCode && thaiShiftKeyDisplayMap[typedKeyCode]) {
-        typedKey = thaiShiftKeyDisplayMap[typedKeyCode].trim();
-      }
+      const { typedChar: typedKey, isEffectiveShift: shiftPressed } = resolveThaiKeyWithCapsLock(event);
 
       // ------------------------------------
       // Logic ตรวจคำ (เหมือนเดิม 100%)

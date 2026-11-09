@@ -8,7 +8,7 @@ import ConveyorBox from '@/components/ConveyorBox/ConveyorBox';
 import PracticeResultModal from '@/components/PracticeResultModal/PracticeResultModal';
 import PracticeNavbar from '@/components/PracticeNavbar/PracticeNavbar';
 import { SENTENCES_POOL } from '@/data/sentences';
-import { thaiShiftKeyDisplayMap } from '@/lib/keyMaps';
+import { thaiShiftKeyDisplayMap, resolveThaiKeyWithCapsLock } from '@/lib/keyMaps';
 import { soundManager } from '@/lib/soundEffects';
 
 // ลดจำนวนตัวอักษรต่อบรรทัดลงเล็กน้อยเพื่อให้ตัดคำภาษาไทยสวยขึ้น
@@ -290,11 +290,8 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
 
       if (e.key.length > 1 && e.key !== 'Space') return;
 
-      const isCapsLock = typeof e.getModifierState === 'function' && e.getModifierState('CapsLock');
-      const shift = e.shiftKey || isCapsLock;
-      if (isCapsLock && e.code && thaiShiftKeyDisplayMap[e.code]) {
-        typedKey = thaiShiftKeyDisplayMap[e.code].trim();
-      }
+      const { typedChar: resolvedChar, isEffectiveShift: shift } = resolveThaiKeyWithCapsLock(e);
+      typedKey = resolvedChar;
       let isCorrect = typedKey === expectedChar;
 
       if (isShiftRequired && !shift) isCorrect = false;

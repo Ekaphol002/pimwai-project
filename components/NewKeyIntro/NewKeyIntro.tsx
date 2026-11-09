@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { reverseThaiKeyMap, fingerMap, leftHandKeys } from '@/lib/keyMaps';
+import { reverseThaiKeyMap, fingerMap, leftHandKeys, resolveThaiKeyWithCapsLock } from '@/lib/keyMaps';
 import Image from 'next/image';
 
 interface NewKeyIntroProps {
@@ -55,17 +55,17 @@ export default function NewKeyIntro({ targetChar, onComplete, onCorrectPress }: 
             if (isAnimating) return;
 
             if (phase === 1) {
+                if (event.code === 'ShiftLeft' || event.code === 'ShiftRight' || event.code === 'CapsLock') {
+                    return;
+                }
                 // Determine expected key code
                 let expectedCode = reverseThaiKeyMap[targetChar];
                 if (targetChar === ' ') expectedCode = 'Space';
 
-                // ต้องเช็คว่าพิมพ์ออกมาเป็นตัวไทยจริงๆ (ไม่ใช่แค่ตรงตำแหน่งปุ่มกายภาพ)
-                const isThaiChar = /[\u0E00-\u0E7F]/.test(event.key) || event.key === ' ';
+                const { typedChar: resolvedChar } = resolveThaiKeyWithCapsLock(event);
+                const isThaiChar = /[\u0E00-\u0E7F]/.test(resolvedChar) || resolvedChar === ' ';
 
-                // Check if correct key pressed:
-                // 1. ต้องเป็นตัวอักษรไทย (หรือ Space)
-                // 2. ตรงตำแหน่งปุ่มกายภาพ หรือ ตรงตัวอักษร
-                const isCorrect = isThaiChar && ((expectedCode && event.code === expectedCode) || event.key === targetChar);
+                const isCorrect = isThaiChar && ((expectedCode && event.code === expectedCode && resolvedChar === targetChar) || resolvedChar === targetChar);
 
                 if (isCorrect) {
                     setInputStatus('correct');

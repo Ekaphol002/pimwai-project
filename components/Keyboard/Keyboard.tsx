@@ -1,11 +1,12 @@
 // components/Keyboard/Keyboard.tsx
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   row1, row2, row3, row4, row5,
   thaiKeyDisplayMap,
-  thaiShiftKeyDisplayMap
+  thaiShiftKeyDisplayMap,
+  subscribeCapsLock
 } from '@/lib/keyMaps';
 
 interface KeyboardProps {
@@ -25,6 +26,14 @@ const Keyboard = ({
   heatmapData,
   useBlueBlink = false
 }: KeyboardProps) => {
+  const [isCapsLockOn, setIsCapsLockOn] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = subscribeCapsLock((isOn) => {
+      setIsCapsLockOn(isOn);
+    });
+    return () => unsubscribe();
+  }, []);
 
   const maxErrors = heatmapData
     ? Math.max(...Object.values(heatmapData), 1) // หาค่าผิดมากสุดเพื่อคำนวณความเข้มสี
@@ -47,12 +56,14 @@ const Keyboard = ({
           const isPressed = pressedKey === key;
           const isError = errorKey === key;
           const isExpected = expectedKey === key;
-          const isShiftHighlight = key === highlightedShiftKey;
+          // ถ้าเปิด CapsLock อยู่แล้ว ไม่ต้องกะพริบเตือนให้กดปุ่ม Shift ซ้ำ
+          const isShiftHighlight = !isCapsLockOn && key === highlightedShiftKey;
           const isShiftPressed = pressedKey === 'ShiftLeft' || pressedKey === 'ShiftRight';
+          const isEffectiveUpper = Boolean(isShiftPressed) !== Boolean(isCapsLockOn);
 
           const unshiftedText = thaiKeyDisplayMap[key] || key;
           const shiftedText = thaiShiftKeyDisplayMap[key] || unshiftedText;
-          const displayText = isShiftPressed ? shiftedText : unshiftedText;
+          const displayText = isEffectiveUpper ? shiftedText : unshiftedText;
 
           const specialKeysLeft = ['Tab', 'CapsLock', 'ShiftLeft', 'ControlLeft', 'AltLeft', 'CmdLeft'];
           const specialKeysRight = ['Backspace', 'Backslash', 'Enter', 'ShiftRight', 'AltRight', 'CmdRight', 'ControlRight'];
@@ -88,6 +99,8 @@ const Keyboard = ({
             // สถานะปุ่มอื่น ๆ (กดแล้ว, ปุ่มคาดการณ์) สำหรับโหมดพิมพ์ปกติ
             if (isPressed && isError) {
               keyStyle += ' bg-red-500 text-white transform scale-95 shadow-inner';
+            } else if (key === 'CapsLock' && isCapsLockOn) {
+              keyStyle += ' bg-[#5cb5db] text-white font-bold shadow-inner ring-2 ring-[#5cb5db]/40';
             } else if ((isExpected || isShiftHighlight) && !isPressed) {
               if (useBlueBlink) {
                 keyStyle += ' bg-blue-500 animate-blink-blue'; // Use new blink animation
@@ -117,6 +130,15 @@ const Keyboard = ({
                 <div className="relative w-full h-full">
                   <span className="absolute top-0.5 left-1 text-xs">{formatKeyText(shiftedText)}</span>
                   <span className="absolute bottom-0.5 right-1 text-sm">{formatKeyText(unshiftedText)}</span>
+                </div>
+              ) : key === 'CapsLock' ? (
+                <div className="relative w-full h-full flex items-end justify-start">
+                  <span
+                    className={`absolute top-0.5 right-0.5 w-2 h-2 rounded-full transition-colors ${
+                      isCapsLockOn ? 'bg-emerald-300 shadow-xs' : 'bg-gray-300'
+                    }`}
+                  />
+                  <span>{formatKeyText(displayText)}</span>
                 </div>
               ) : (
                 formatKeyText(displayText)

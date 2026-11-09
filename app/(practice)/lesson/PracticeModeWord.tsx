@@ -10,7 +10,8 @@ import {
   reverseThaiKeyMap,
   thaiShiftKeyDisplayMap,
   leftHandKeys,
-  rightHandKeys
+  rightHandKeys,
+  resolveThaiKeyWithCapsLock
 } from '@/lib/keyMaps';
 import { soundManager } from '@/lib/soundEffects';
 import { CheckCircle2 } from 'lucide-react';
@@ -394,11 +395,8 @@ export default function PracticeModeWord({
       // --- สิ้นสุด Logic Backspace ---
 
       if (event.key.length > 1 && event.key !== 'Space') return;
-      const isCapsLock = typeof event.getModifierState === 'function' && event.getModifierState('CapsLock');
-      const shiftPressed = event.shiftKey || isCapsLock;
-      if (isCapsLock && typedKeyCode && thaiShiftKeyDisplayMap[typedKeyCode]) {
-        typedKey = thaiShiftKeyDisplayMap[typedKeyCode].trim();
-      }
+      const { typedChar: resolvedChar, isEffectiveShift: shiftPressed } = resolveThaiKeyWithCapsLock(event);
+      typedKey = resolvedChar;
       let isCorrect = typedKey === expectedChar;
 
       // ตรวจสอบ Shift

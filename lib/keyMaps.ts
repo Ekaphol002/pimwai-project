@@ -83,3 +83,88 @@ export const fingerMap: { [key: string]: number } = {
   'Digit0': 4, 'Minus': 4, 'Equal': 4, 'KeyP': 4, 'BracketLeft': 4, 'BracketRight': 4,
   'Backslash': 4, 'Semicolon': 4, 'Quote': 4, 'Slash': 4, 'ShiftRight': 4, 'Enter': 4, 'Backspace': 4,
 };
+
+// ============================================================================
+// 🔒 Global CapsLock State Manager
+// รองรับการกดปุ่ม CapsLock เพื่อล็อกพิมพ์ตัวบน/ตัวพิมพ์ใหญ่ตลอดเวลา ทั้งบนแป้นไทยและอังกฤษ
+// (แก้ปัญหา Windows ที่เมื่ออยู่แป้นภาษาไทยแล้วกด CapsLock ค่า e.getModifierState('CapsLock') จะไม่ยอมสลับเป็น true)
+// ============================================================================
+type CapsLockListener = (isOn: boolean) => void;
+
+let globalCapsLockOn = false;
+let hasInitializedCapsLock = false;
+const capsLockListeners = new Set<CapsLockListener>();
+
+function notifyCapsLockListeners() {
+  capsLockListeners.forEach((fn) => {
+    try {
+      fn(globalCapsLockOn);
+    } catch (e) {}
+  });
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener(
+    'keydown',
+    (e: KeyboardEvent) => {
+      if (e.code === 'CapsLock' || e.key === 'CapsLock') {
+        if (!e.repeat) {
+          hasInitializedCapsLock = true;
+          globalCapsLockOn = !globalCapsLockOn;
+          notifyCapsLockListeners();
+        }
+        return;
+      }
+
+      if (!hasInitializedCapsLock && typeof e.getModifierState === 'function') {
+        hasInitializedCapsLock = true;
+        const osCaps = e.getModifierState('CapsLock');
+        if (osCaps !== globalCapsLockOn) {
+          globalCapsLockOn = osCaps;
+          notifyCapsLockListeners();
+        }
+      }
+    },
+    true // Capture phase: ทำงานก่อน keydown handler ของทุกหน้าเสมอ
+  );
+}
+
+export function isCapsLockActive(): boolean {
+  return globalCapsLockOn;
+}
+
+export function subscribeCapsLock(listener: CapsLockListener): () => void {
+  capsLockListeners.add(listener);
+  listener(globalCapsLockOn);
+  return () => {
+    capsLockListeners.delete(listener);
+  };
+}
+
+/**
+ * แปลงปุ่มที่กดเป็นตัวอักษรไทยตามสถานะ Shift หรือ CapsLock
+ * ถ้าเปิด CapsLock อยู่ จะได้ตัวอักษรไทยแถวบน (Shift) ตลอดเวลาโดยไม่ต้องกด Shift ค้าง
+ */
+export function resolveThaiKeyWithCapsLock(e: {
+  key: string;
+  code?: string;
+  shiftKey: boolean;
+}): { typedChar: string; isEffectiveShift: boolean } {
+  const capsOn = isCapsLockActive();
+  const isEffectiveShift = Boolean(e.shiftKey) !== Boolean(capsOn);
+
+  if (e.code) {
+    if (e.code === 'Space' || e.key === ' ') {
+      return { typedChar: ' ', isEffectiveShift: false };
+    }
+    const mapped = isEffectiveShift
+      ? thaiShiftKeyDisplayMap[e.code]
+      : thaiKeyDisplayMap[e.code];
+
+    if (mapped && mapped !== 'Tab' && mapped !== 'Caps Lock' && mapped !== 'Shift' && mapped !== 'Enter' && mapped !== 'Ctrl' && mapped !== 'Alt' && mapped !== 'Cmd' && mapped !== 'Backspace') {
+      return { typedChar: mapped.trim(), isEffectiveShift };
+    }
+  }
+
+  return { typedChar: e.key, isEffectiveShift };
+}

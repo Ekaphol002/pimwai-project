@@ -520,34 +520,38 @@ export const codeToEnglishShiftMap: Record<string, string> = {
   Semicolon: ':', Quote: '"', Comma: '<', Period: '>', Slash: '?', Backquote: '~', Space: ' '
 };
 
+import { isCapsLockActive } from './keyMaps';
+
 /**
  * แปลง Key Event สำหรับโหมดพิมพ์ภาษาอังกฤษ:
- * 1. รองรับทั้งการกดปุ่ม Shift และปุ่ม Caps Lock (เมื่อเปิด Caps Lock จะพิมพ์ตัวพิมพ์ใหญ่ได้ทันทีเหมือน Shift)
- * 2. ถ้าคีย์บอร์ดพิมพ์เป็นภาษาอังกฤษอยู่แล้ว (ASCII) -> ใช้ค่านั้นโดยตรง
- * 3. ถ้าคีย์บอร์ดค้างภาษาไทย (เช่น 'ฟ', 'ห', 'Dead') -> แปลงจาก e.code เป็นอักษรอังกฤษอัตโนมัติพร้อมเช็ก Shift / CapsLock
+ * 1. รองรับทั้งการกดปุ่ม Shift และปุ่ม Caps Lock (เมื่อเปิด Caps Lock จะพิมพ์ตัวพิมพ์ใหญ่ A-Z ตลอดเวลาแม้แป้น OS จะอยู่ภาษาไทยหรืออังกฤษ)
+ * 2. ถ้าเป็นปุ่มสัญลักษณ์/ตัวเลข แปลงจาก e.code หรือ e.key ตามปกติ
  */
 export function getEnglishCharFromEvent(e: {
   key: string;
   code?: string;
   shiftKey: boolean;
-  getModifierState?: (keyArg: string) => boolean;
 }): string {
-  const isCapsLock = typeof e.getModifierState === 'function' ? e.getModifierState('CapsLock') : false;
+  const isCapsLock = isCapsLockActive();
 
-  if (e.key && e.key.length === 1 && /^[\x20-\x7E]$/.test(e.key)) {
-    return e.key;
-  }
   if (e.code) {
     const isLetterKey = /^Key[A-Z]$/.test(e.code);
-    // สำหรับตัวอักษร A-Z: ถ้าเปิด CapsLock หรือกด Shift อย่างใดอย่างหนึ่ง (XOR) ให้ได้ตัวพิมพ์ใหญ่
+    // สำหรับตัวอักษร A-Z: ถ้าเปิด CapsLock หรือกด Shift อย่างใดอย่างหนึ่ง (XOR) ให้ได้ตัวพิมพ์ใหญ่เสมอ
     if (isLetterKey) {
       const useUpper = Boolean(e.shiftKey) !== Boolean(isCapsLock);
       return useUpper ? (codeToEnglishShiftMap[e.code] || '') : (codeToEnglishMap[e.code] || '');
+    }
+    if (e.key && e.key.length === 1 && /^[\x20-\x7E]$/.test(e.key)) {
+      return e.key;
     }
     if (e.shiftKey) {
       return codeToEnglishShiftMap[e.code] || '';
     }
     return codeToEnglishMap[e.code] || '';
+  }
+
+  if (e.key && e.key.length === 1 && /^[\x20-\x7E]$/.test(e.key)) {
+    return isCapsLock ? e.key.toUpperCase() : e.key;
   }
   return '';
 }

@@ -35,7 +35,7 @@ import ExpBar from '@/components/ExpBar/ExpBar';
 import QuickAudioModal from '@/components/QuickAudioModal/QuickAudioModal';
 import { calculateRankInfo, getRankMultiplierConfig } from '@/lib/rankUtils';
 import { soundManager } from '@/lib/soundEffects';
-import { thaiKeyDisplayMap, thaiShiftKeyDisplayMap } from '@/lib/keyMaps';
+import { thaiKeyDisplayMap, thaiShiftKeyDisplayMap, subscribeCapsLock, resolveThaiKeyWithCapsLock } from '@/lib/keyMaps';
 import toast, { Toaster } from 'react-hot-toast';
 import { MONKEYTYPE_THAI_WORDS } from '@/lib/thaiWords';
 import { MONKEYTYPE_ENGLISH_WORDS, getEnglishCharFromEvent } from '@/lib/englishWords';
@@ -291,6 +291,8 @@ export default function FarmPage() {
         height: 0
     });
     const [isTyping, setIsTyping] = useState<boolean>(false);
+    const [isCapsLockOn, setIsCapsLockOn] = useState<boolean>(false);
+    const isCapsLockOnRef = useRef<boolean>(false);
 
     // Live Metrics
     const [combo, setCombo] = useState<number>(0);
@@ -376,6 +378,22 @@ export default function FarmPage() {
     useEffect(() => { comboRef.current = combo; }, [combo]);
     useEffect(() => { userTotalExpRef.current = userTotalExp; }, [userTotalExp]);
 
+    useEffect(() => {
+        const unsubscribe = subscribeCapsLock((isOn) => {
+            setIsCapsLockOn(isOn);
+            isCapsLockOnRef.current = isOn;
+        });
+        return () => unsubscribe();
+    }, []);
+
+    // เมื่อสลับ CapsLock ในโหมดคำศัพท์ภาษาอังกฤษ ให้ปรับตัวอักษรที่พิมพ์ค้างอยู่ในคำปัจจุบันให้ตรงกับตัวพิมพ์ใหญ่/เล็กทันที
+    useEffect(() => {
+        const isCurrentArticle = mode === 'quote' || (mode === 'zen' && zenType === 'quote');
+        if (language === 'english' && !isCurrentArticle) {
+            setInputBuffer(prev => prev ? (isCapsLockOn ? prev.toUpperCase() : prev.toLowerCase()) : prev);
+        }
+    }, [isCapsLockOn, language, mode, zenType]);
+
     // Helper Functions สำหรับแจ้งเตือน Toast
     const triggerBountyToast = useCallback((text: string, amount: number, isGolden: boolean = false) => {
         const id = Date.now();
@@ -433,7 +451,7 @@ export default function FarmPage() {
 
     useLayoutEffect(() => {
         updateCaretPosition();
-    }, [inputBuffer, activeWordIdx, wordList, updateCaretPosition]);
+    }, [inputBuffer, activeWordIdx, wordList, isCapsLockOn, updateCaretPosition]);
 
     useEffect(() => {
         const handleResize = () => updateCaretPosition();
@@ -1021,6 +1039,7 @@ export default function FarmPage() {
 
             // Ignore Special Navigation Keys
             if (e.ctrlKey || e.metaKey || e.altKey) return;
+            if (e.code === 'CapsLock' || e.key === 'CapsLock') return;
             if (e.key === 'Tab') {
                 e.preventDefault();
                 resetGame();
@@ -1039,7 +1058,9 @@ export default function FarmPage() {
             const targetWordObj = wordList[activeWordIdx];
             if (!targetWordObj) return;
 
-            const targetWord = targetWordObj.word;
+            const targetWord = (language === 'english' && !isArticleMode && isCapsLockOnRef.current)
+                ? targetWordObj.word.toUpperCase()
+                : targetWordObj.word;
 
             // Start Timer on First Keypress
             if (!startTime) {
@@ -1246,19 +1267,17 @@ export default function FarmPage() {
 
             // C. พิมพ์ตัวอักษรปกติ (ตรวจทีละตัวทันทีที่กด)
             let typedChar = e.key;
-            const isCapsLockOn = typeof e.getModifierState === 'function' && e.getModifierState('CapsLock');
 
             if (language === 'thai') {
-                // รองรับการใช้ Caps Lock แทนการกด Shift สำหรับแป้นพิมพ์ภาษาไทย และรองรับกรณีเผลอค้างแป้นอังกฤษไว้
+                // รองรับการใช้ Caps Lock เพื่อพิมพ์ตัวบน/ตัวยกแคร่ตลอดเวลา และรองรับกรณีเผลอค้างแป้นอังกฤษไว้
                 if (e.code && (e.key.length === 1 || e.key === 'Dead')) {
-                    const isEffectiveShift = Boolean(e.shiftKey) || Boolean(isCapsLockOn);
-                    const mappedThai = isEffectiveShift ? thaiShiftKeyDisplayMap[e.code] : thaiKeyDisplayMap[e.code];
-                    if (mappedThai && (!/[a-zA-Z]/.test(e.key) || isCapsLockOn)) {
-                        typedChar = mappedThai.trim();
+                    const { typedChar: resolvedThai } = resolveThaiKeyWithCapsLock(e);
+                    if (resolvedThai) {
+                        typedChar = resolvedThai;
                     }
                 }
             } else {
-                // โหมดภาษาอังกฤษ: แปลงปุ่มให้อัตโนมัติ (รองรับทั้ง Shift และ Caps Lock แม้คีย์บอร์ดใน OS จะค้างภาษาไทยอยู่ก็ตาม)
+                // โหมดภาษาอังกฤษ: แปลงปุ่มให้อัตโนมัติ (เมื่อเปิด Caps Lock จะได้ตัวพิมพ์ใหญ่ A-Z ตลอดเวลา)
                 typedChar = getEnglishCharFromEvent(e);
             }
 
@@ -1992,6 +2011,16 @@ export default function FarmPage() {
                                             <span className="text-xs font-black logo-font">{currentWpm} WPM</span>
                                         </div>
 
+                                        {/* Caps Lock Indicator */}
+                                        {isCapsLockOn && (
+                                            <div
+                                                className="bg-indigo-600 text-white px-2.5 py-1.5 rounded-xl flex items-center gap-1 shadow-xs shrink-0"
+                                                title="เปิด Caps Lock อยู่ (พิมพ์ตัวใหญ่ / ตัวยกแคร่ตลอด)"
+                                            >
+                                                <span className="text-xs font-black logo-font">CAPS LOCK</span>
+                                            </div>
+                                        )}
+
 
 
                                         {/* Time Countdown (ถ้าเป็นโหมดเวลา) */}
@@ -2244,8 +2273,14 @@ export default function FarmPage() {
                                     };
 
                                     if (isCompleted) {
-                                        const typedWord = typedWordsHistory[idx] ?? wObj.word;
-                                        const targetWord = wObj.word;
+                                        const effectiveWord = (language === 'english' && !isArticleMode && isCapsLockOn)
+                                            ? wObj.word.toUpperCase()
+                                            : wObj.word;
+                                        const rawTypedWord = typedWordsHistory[idx] ?? effectiveWord;
+                                        const typedWord = (language === 'english' && !isArticleMode)
+                                            ? (isCapsLockOn ? rawTypedWord.toUpperCase() : rawTypedWord.toLowerCase())
+                                            : rawTypedWord;
+                                        const targetWord = effectiveWord;
                                         const isWordFullyCorrect = typedWord === targetWord;
 
                                         if (isWordFullyCorrect) {
@@ -2286,7 +2321,9 @@ export default function FarmPage() {
                                     }
 
                                     if (isActive) {
-                                        const targetWord = wObj.word;
+                                        const targetWord = (language === 'english' && !isArticleMode && isCapsLockOn)
+                                            ? wObj.word.toUpperCase()
+                                            : wObj.word;
                                         const typedLen = inputBuffer.length;
                                         const targetLen = targetWord.length;
                                         const hasOverflow = typedLen > targetLen;
@@ -2324,6 +2361,10 @@ export default function FarmPage() {
                                         );
                                     }
 
+                                    const pendingDisplayWord = (language === 'english' && !isArticleMode && isCapsLockOn)
+                                        ? wObj.word.toUpperCase()
+                                        : wObj.word;
+
                                     return (
                                         <span
                                             key={idx}
@@ -2333,7 +2374,7 @@ export default function FarmPage() {
                                                 : "text-gray-300"
                                                 }`}
                                         >
-                                            {toStandardDisplayOrder(wObj.word)}
+                                            {toStandardDisplayOrder(pendingDisplayWord)}
                                             {renderWordFloaters(idx)}
                                         </span>
                                     );
