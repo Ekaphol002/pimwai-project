@@ -1541,16 +1541,16 @@ export default function FarmPage() {
             <main className={`flex-1 w-full max-w-6xl mx-auto px-2 sm:px-4 py-4 sm:py-8 pb-24 sm:pb-8 flex flex-col items-center justify-center transition-all ${isFocusMode ? 'cursor-none' : ''}`}>
 
                 {/* 🌟 Top Quick Config Bar (ซ่อนอัตโนมัติเมื่อเริ่มพิมพ์ จนกว่าจะขยับเมาส์) */}
-                <div className={`w-full max-w-6xl mb-4 sm:mb-6 transition-all duration-300 ease-in-out ${isFocusMode
+                <div className={`w-full sm:w-auto max-w-6xl flex justify-center mb-4 sm:mb-6 transition-all duration-300 ease-in-out ${isFocusMode
                     ? 'opacity-0 pointer-events-none -translate-y-4'
                     : 'opacity-100 translate-y-0'
                     }`}>
-                    <div className="w-full bg-white px-3 sm:px-6 py-2.5 sm:py-3 rounded-2xl sm:rounded-3xl shadow-lg shadow-blue-500/5 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 text-xs sm:text-sm font-bold text-gray-500">
+                    <div className="w-full sm:w-auto bg-white px-3 sm:px-6 py-2.5 sm:py-3 rounded-2xl sm:rounded-3xl shadow-lg shadow-blue-500/5 flex flex-col sm:flex-row items-start sm:items-center justify-start sm:justify-center gap-2 sm:gap-4 text-xs sm:text-sm font-bold text-gray-500">
 
-                        {/* Group 1: Language + Punctuation + Numbers + Audio (on mobile) */}
-                        <div className="flex items-center justify-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
+                        {/* แถวที่ 1 บนมือถือ (ชิดซ้าย): ภาษา + ตัวเลือกย่อย (เวลา/คำ/บทความ) + ปุ่มเสียง */}
+                        <div className="w-full sm:w-auto flex items-center justify-start gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
                             {/* Sub-Group: Language */}
-                            <div className="flex items-center gap-1 sm:gap-1.5 pr-2 sm:pr-3 border-r border-gray-200">
+                            <div className="flex items-center gap-1 sm:gap-1.5 pr-2 border-r border-gray-200 shrink-0">
                                 <button
                                     onClick={() => handleLanguageChange('thai')}
                                     className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 rounded-lg transition-all cursor-pointer ${language === 'thai' ? 'bg-[#5cb5db] text-white shadow-xs font-bold' : 'hover:text-[#5cb5db]'
@@ -1567,37 +1567,112 @@ export default function FarmPage() {
                                 </button>
                             </div>
 
-                            {/* Sub-Group: Punctuation & Numbers (ซ่อนในโหมดบทความ) */}
-                            {!isArticleMode && (
-                                <div className="flex items-center gap-1.5 sm:gap-2 pr-2 sm:pr-3 border-r border-gray-200">
-                                    <button
-                                        onClick={() => setIncludePunctuation(!includePunctuation)}
-                                        className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg transition-all cursor-pointer ${includePunctuation ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
-                                            }`}
-                                        title="สัญลักษณ์"
-                                    >
-                                        <AtSign size={14} />
-                                        <span className="hidden sm:inline">สัญลักษณ์</span>
-                                    </button>
+                            {/* Sub-Group: Values / Sub-options (Time / Words / Zen / Quote) */}
+                            <div className="flex items-center justify-start gap-1.5 sm:gap-2">
+                                {mode === 'time' && (
+                                    <div className="flex items-center gap-1 sm:gap-1">
+                                        {[15, 30, 60, 120].map((t) => (
+                                            <button
+                                                key={t}
+                                                onClick={() => setTimeLimit(t)}
+                                                className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${timeLimit === t ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
+                                                    }`}
+                                            >
+                                                {t}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
 
-                                    <button
-                                        onClick={() => setIncludeNumbers(!includeNumbers)}
-                                        className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg transition-all cursor-pointer ${includeNumbers ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
-                                            }`}
-                                        title="ตัวเลข"
-                                    >
-                                        <Hash size={14} />
-                                        <span className="hidden sm:inline">ตัวเลข</span>
-                                    </button>
-                                </div>
-                            )}
+                                {mode === 'words' && (
+                                    <div className="flex items-center gap-1 sm:gap-1">
+                                        {[10, 25, 50, 100].map((w) => (
+                                            <button
+                                                key={w}
+                                                onClick={() => setWordLimit(w)}
+                                                className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${wordLimit === w ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
+                                                    }`}
+                                            >
+                                                {w}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
 
-                            {/* 🎵 ปุ่มตั้งค่าเสียงคีย์บอร์ด & เพลง (บนมือถือ อยู่แถวบนติดกับตัวเลือก) */}
+                                {mode === 'zen' && (
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-1 sm:gap-1">
+                                            <button
+                                                onClick={() => setZenType('words')}
+                                                className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${zenType === 'words' ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
+                                                    }`}
+                                            >
+                                                คำ
+                                            </button>
+                                            <button
+                                                onClick={() => setZenType('quote')}
+                                                className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${zenType === 'quote' ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
+                                                    }`}
+                                            >
+                                                บทความ
+                                            </button>
+                                        </div>
+                                        {zenType === 'quote' && (
+                                            <div className="flex items-center gap-1 border-l border-gray-200 pl-2">
+                                                {(['all', 'short', 'medium', 'long'] as const).map((qLen) => {
+                                                    const labels: Record<string, string> = {
+                                                        all: 'สุ่มทั้งหมด',
+                                                        short: 'สั้น',
+                                                        medium: 'ปานกลาง',
+                                                        long: 'ยาว'
+                                                    };
+                                                    return (
+                                                        <button
+                                                            key={qLen}
+                                                            onClick={() => setQuoteLength(qLen)}
+                                                            className={`px-1.5 py-0.5 rounded-md text-[12px] sm:text-[13px] transition-all cursor-pointer ${quoteLength === qLen ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
+                                                                }`}
+                                                        >
+                                                            {labels[qLen]}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {mode === 'quote' && (
+                                    <div className="flex items-center gap-1">
+                                        {(['all', 'short', 'medium', 'long'] as const).map((qLen) => {
+                                            const labels: Record<string, string> = {
+                                                all: 'สุ่มทั้งหมด',
+                                                short: 'สั้น',
+                                                medium: 'ปานกลาง',
+                                                long: 'ยาว'
+                                            };
+                                            return (
+                                                <button
+                                                    key={qLen}
+                                                    onClick={() => setQuoteLength(qLen)}
+                                                    className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${quoteLength === qLen ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
+                                                        }`}
+                                                >
+                                                    {labels[qLen]}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* 🎵 ปุ่มตั้งค่าเสียงคีย์บอร์ด & เพลง (บนมือถือ อยู่แถวบน) */}
+                            <div className="w-[1px] h-3.5 bg-gray-200 sm:hidden"></div>
                             <button
                                 type="button"
                                 onClick={() => setIsAudioModalOpen(true)}
                                 title="ตั้งค่าเสียงคีย์บอร์ด & เพลงพื้นหลัง"
-                                className="sm:hidden p-1 rounded-lg text-gray-400 hover:text-[#5cb5db] hover:bg-gray-50 transition-all cursor-pointer flex items-center justify-center shrink-0"
+                                className="sm:hidden p-1 rounded-lg text-gray-400 hover:text-[#5cb5db] hover:bg-gray-50 transition-all cursor-pointer flex items-center justify-center shrink-0 ml-auto sm:ml-0"
                             >
                                 {isSoundOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
                             </button>
@@ -1606,11 +1681,11 @@ export default function FarmPage() {
                         {/* เส้นคั่นบน Desktop */}
                         <div className="w-[1px] h-4 bg-gray-200 hidden sm:block"></div>
 
-                        {/* Group 2: Main Mode (เวลา, คำ, Zen, บทความ) */}
-                        <div className="flex items-center justify-center gap-1 sm:gap-2 flex-wrap sm:flex-nowrap">
+                        {/* แถวที่ 2 บนมือถือ (ชิดซ้าย): Main Mode (เวลา, คำ, Zen, บทความ) */}
+                        <div className="w-full sm:w-auto flex items-center justify-start gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap">
                             <button
                                 onClick={() => setMode('time')}
-                                className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 rounded-lg transition-all cursor-pointer ${mode === 'time' ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
+                                className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 rounded-lg transition-all cursor-pointer ${mode === 'time' ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
                                     }`}
                             >
                                 <Clock size={14} />
@@ -1619,7 +1694,7 @@ export default function FarmPage() {
 
                             <button
                                 onClick={() => setMode('words')}
-                                className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 rounded-lg transition-all cursor-pointer ${mode === 'words' ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
+                                className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 rounded-lg transition-all cursor-pointer ${mode === 'words' ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
                                     }`}
                             >
                                 <Type size={14} />
@@ -1628,7 +1703,7 @@ export default function FarmPage() {
 
                             <button
                                 onClick={() => setMode('zen')}
-                                className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 rounded-lg transition-all cursor-pointer ${mode === 'zen' ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
+                                className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 rounded-lg transition-all cursor-pointer ${mode === 'zen' ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
                                     }`}
                             >
                                 <InfinityIcon size={14} />
@@ -1638,111 +1713,12 @@ export default function FarmPage() {
 
                             <button
                                 onClick={() => setMode('quote')}
-                                className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 rounded-lg transition-all cursor-pointer ${mode === 'quote' ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
+                                className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 rounded-lg transition-all cursor-pointer ${mode === 'quote' ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
                                     }`}
                             >
                                 <BookOpen size={14} />
                                 <span>บทความ</span>
                             </button>
-                        </div>
-
-                        {/* Group 3: Values / Sub-options (Time / Words / Zen / Quote) */}
-                        <div className="flex items-center justify-center gap-2 sm:border-l sm:border-gray-200 sm:pl-3">
-                            {mode === 'time' && (
-                                <div className="flex items-center gap-1 sm:gap-1">
-                                    {[15, 30, 60, 120].map((t) => (
-                                        <button
-                                            key={t}
-                                            onClick={() => setTimeLimit(t)}
-                                            className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${timeLimit === t ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
-                                                }`}
-                                        >
-                                            {t}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-
-                            {mode === 'words' && (
-                                <div className="flex items-center gap-1 sm:gap-1">
-                                    {[10, 25, 50, 100].map((w) => (
-                                        <button
-                                            key={w}
-                                            onClick={() => setWordLimit(w)}
-                                            className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${wordLimit === w ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
-                                                }`}
-                                        >
-                                            {w}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-
-                            {mode === 'zen' && (
-                                <div className="flex items-center gap-2">
-                                    <div className="flex items-center gap-1.5 sm:gap-1">
-                                        <button
-                                            onClick={() => setZenType('words')}
-                                            className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${zenType === 'words' ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
-                                                }`}
-                                        >
-                                            คำ
-                                        </button>
-                                        <button
-                                            onClick={() => setZenType('quote')}
-                                            className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${zenType === 'quote' ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
-                                                }`}
-                                        >
-                                            บทความ
-                                        </button>
-                                    </div>
-                                    {zenType === 'quote' && (
-                                        <div className="flex items-center gap-1 border-l border-gray-200 pl-2">
-                                            {(['all', 'short', 'medium', 'long'] as const).map((qLen) => {
-                                                const labels: Record<string, string> = {
-                                                    all: 'สุ่มทั้งหมด',
-                                                    short: 'สั้น',
-                                                    medium: 'ปานกลาง',
-                                                    long: 'ยาว'
-                                                };
-                                                return (
-                                                    <button
-                                                        key={qLen}
-                                                        onClick={() => setQuoteLength(qLen)}
-                                                        className={`px-1.5 py-0.5 rounded-md text-[12px] sm:text-[13px] transition-all cursor-pointer ${quoteLength === qLen ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
-                                                            }`}
-                                                    >
-                                                        {labels[qLen]}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {mode === 'quote' && (
-                                <div className="flex items-center gap-1">
-                                    {(['all', 'short', 'medium', 'long'] as const).map((qLen) => {
-                                        const labels: Record<string, string> = {
-                                            all: 'สุ่มทั้งหมด',
-                                            short: 'สั้น',
-                                            medium: 'ปานกลาง',
-                                            long: 'ยาว'
-                                        };
-                                        return (
-                                            <button
-                                                key={qLen}
-                                                onClick={() => setQuoteLength(qLen)}
-                                                className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${quoteLength === qLen ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
-                                                    }`}
-                                            >
-                                                {labels[qLen]}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            )}
                         </div>
 
                         {/* 🎵 ปุ่มตั้งค่าเสียงคีย์บอร์ด & เพลง (Desktop) */}
@@ -1948,11 +1924,14 @@ export default function FarmPage() {
                                     </div>
 
                                     {/* Skeleton Middle: Combo & Speed Badges */}
-                                    <div className="w-full sm:w-auto flex items-center justify-start sm:justify-center gap-1 sm:gap-2 flex-nowrap overflow-x-auto py-0.5 no-scrollbar">
-                                        <div className="w-14 sm:w-22 h-6 sm:h-8 bg-gray-200/70 rounded-xl shrink-0"></div>
-                                        <div className="w-14 sm:w-22 h-6 sm:h-8 bg-gray-200/70 rounded-xl shrink-0"></div>
-                                        <div className="w-10 sm:w-16 h-6 sm:h-8 bg-gray-200/70 rounded-xl shrink-0"></div>
-                                        <div className="w-12 sm:w-16 h-6 sm:h-8 bg-gray-200/70 rounded-xl shrink-0"></div>
+                                    <div className="w-full sm:w-auto flex items-center justify-between sm:justify-center gap-1 sm:gap-2 flex-nowrap py-0.5">
+                                        <div className="flex items-center gap-1 sm:gap-2 flex-nowrap shrink-0">
+                                            <div className="w-12 sm:w-22 h-6 sm:h-8 bg-gray-200/70 rounded-xl shrink-0"></div>
+                                            <div className="w-14 sm:w-22 h-6 sm:h-8 bg-gray-200/70 rounded-xl shrink-0"></div>
+                                            <div className="w-10 sm:w-16 h-6 sm:h-8 bg-gray-200/70 rounded-xl shrink-0"></div>
+                                            <div className="w-12 sm:w-16 h-6 sm:h-8 bg-gray-200/70 rounded-xl shrink-0"></div>
+                                        </div>
+                                        <div className="sm:hidden w-16 h-4 bg-gray-200/50 rounded shrink-0"></div>
                                     </div>
 
                                     {/* Skeleton Right: EXP Progress Bar */}
@@ -2035,68 +2014,91 @@ export default function FarmPage() {
                                         </div>
                                     </div>
 
-                                    {/* 2. Middle (ตรงกลาง): Combo + EXP Multiplier + Shield + Speed + Countdown (ชิดซ้ายบนมือถือ) */}
-                                    <div className="w-full sm:w-auto flex items-center justify-start sm:justify-center gap-1 sm:gap-2 flex-nowrap py-0.5">
-                                        {/* Combo Badge */}
-                                        <div className={`text-white px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-1 shadow-xs transition-all shrink-0 ${isFeverActive
-                                            ? 'bg-purple-600 border border-purple-500'
-                                            : 'bg-gradient-to-r from-orange-500 to-amber-500 shadow-orange-500/20'
-                                            }`}>
-                                            <Flame size={12} className="fill-white" />
-                                            <span className="font-black text-[10px] sm:text-xs logo-font">{combo} <span className="hidden sm:inline">COMBO</span></span>
+                                    {/* 2. Middle (ตรงกลาง): Combo + EXP Multiplier + Shield + Speed (ซ้าย) + ปุ่มเปิดแป้นพิมพ์ (ขวา) อยู่แถวเดียวกัน */}
+                                    <div className="w-full sm:w-auto flex items-center justify-between sm:justify-center gap-1 sm:gap-2 flex-nowrap py-0.5">
+                                        {/* Left Side: Badges */}
+                                        <div className="flex items-center gap-1 sm:gap-2 flex-nowrap shrink-0">
+                                            {/* Combo Badge */}
+                                            <div className={`text-white px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-1 shadow-xs transition-all shrink-0 ${isFeverActive
+                                                ? 'bg-purple-600 border border-purple-500'
+                                                : 'bg-gradient-to-r from-orange-500 to-amber-500 shadow-orange-500/20'
+                                                }`}>
+                                                <Flame size={12} className="fill-white" />
+                                                <span className="font-black text-[10px] sm:text-xs logo-font">{combo} <span className="hidden sm:inline">COMBO</span></span>
+                                            </div>
+
+                                            {/* EXP Multiplier Badge */}
+                                            {isFeverActive ? (
+                                                <div className="bg-purple-600 border border-purple-500 text-white px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-1 shadow-xs shrink-0">
+                                                    <Flame size={11} className="fill-white text-white" />
+                                                    <span className="font-black text-[10px] sm:text-xs logo-font">FEVER x{multiplier.toFixed(2)}</span>
+                                                </div>
+                                            ) : (
+                                                <div className="bg-cyan-500 border border-cyan-400 text-white px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-1 shadow-xs shrink-0">
+                                                    <Zap size={11} className="fill-white text-white" />
+                                                    <span className="font-black text-[10px] sm:text-xs logo-font"><span className="hidden sm:inline">EXP </span>x{multiplier.toFixed(2)}</span>
+                                                </div>
+                                            )}
+
+                                            {/* Double Shield Status (ถ้ามี Perk Beginner) */}
+                                            {lessonPerks.beginner && (
+                                                <div
+                                                    className={`px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-1 text-[10px] sm:text-xs font-black shadow-xs transition-all shrink-0 ${shieldsLeft > 0
+                                                        ? 'bg-emerald-500 text-white border border-emerald-400'
+                                                        : 'bg-gray-100 text-gray-400 border border-gray-200'
+                                                        }`}
+                                                    title="เกราะป้องกันคอมโบจากการกดพลาด"
+                                                >
+                                                    <Shield size={11} className={shieldsLeft > 0 ? "fill-white" : "text-gray-400"} />
+                                                    <span className="logo-font">{shieldsLeft}/2<span className="hidden sm:inline"> เกราะ</span></span>
+                                                </div>
+                                            )}
+
+                                            {/* Live Speed */}
+                                            <div
+                                                className="bg-gray-500 text-white px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-1 shadow-xs shrink-0"
+                                                title="ความเร็วคำต่อนาที (Words Per Minute)"
+                                            >
+                                                <span className="text-[10px] sm:text-xs font-black logo-font">{currentWpm} WPM</span>
+                                            </div>
+
+                                            {/* Caps Lock Indicator */}
+                                            {isCapsLockOn && (
+                                                <div
+                                                    className="bg-indigo-600 text-white px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-1 shadow-xs shrink-0"
+                                                    title="เปิด Caps Lock อยู่ (พิมพ์ตัวใหญ่ / ตัวยกแคร่ตลอด)"
+                                                >
+                                                    <span className="text-[10px] sm:text-xs font-black logo-font">CAPS</span>
+                                                </div>
+                                            )}
+
+                                            {/* Time Countdown (ถ้าเป็นโหมดเวลา) */}
+                                            {mode === 'time' && (
+                                                <div className="bg-[#5cb5db] text-white px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-[10px] sm:text-xs font-black logo-font shrink-0">
+                                                    {timeLeft}s
+                                                </div>
+                                            )}
                                         </div>
 
-                                        {/* EXP Multiplier Badge */}
-                                        {isFeverActive ? (
-                                            <div className="bg-purple-600 border border-purple-500 text-white px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-1 shadow-xs shrink-0">
-                                                <Flame size={11} className="fill-white text-white" />
-                                                <span className="font-black text-[10px] sm:text-xs logo-font">FEVER x{multiplier.toFixed(2)}</span>
-                                            </div>
-                                        ) : (
-                                            <div className="bg-cyan-500 border border-cyan-400 text-white px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-1 shadow-xs shrink-0">
-                                                <Zap size={11} className="fill-white text-white" />
-                                                <span className="font-black text-[10px] sm:text-xs logo-font"><span className="hidden sm:inline">EXP </span>x{multiplier.toFixed(2)}</span>
-                                            </div>
-                                        )}
-
-                                        {/* Double Shield Status (ถ้ามี Perk Beginner) */}
-                                        {lessonPerks.beginner && (
-                                            <div
-                                                className={`px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-1 text-[10px] sm:text-xs font-black shadow-xs transition-all shrink-0 ${shieldsLeft > 0
-                                                    ? 'bg-emerald-500 text-white border border-emerald-400'
-                                                    : 'bg-gray-100 text-gray-400 border border-gray-200'
-                                                    }`}
-                                                title="เกราะป้องกันคอมโบจากการกดพลาด"
-                                            >
-                                                <Shield size={11} className={shieldsLeft > 0 ? "fill-white" : "text-gray-400"} />
-                                                <span className="logo-font">{shieldsLeft}/2<span className="hidden sm:inline"> เกราะ</span></span>
-                                            </div>
-                                        )}
-
-                                        {/* Live Speed */}
-                                        <div
-                                            className="bg-gray-500 text-white px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-1 shadow-xs shrink-0"
-                                            title="ความเร็วคำต่อนาที (Words Per Minute)"
+                                        {/* Right Side (Mobile เท่านั้น): ปุ่มเปิดแป้นพิมพ์ อยู่แถวเดียวกันกับป้ายสถานะ! */}
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (isMobileFocused) {
+                                                    mobileInputRef.current?.blur();
+                                                } else {
+                                                    mobileInputRef.current?.focus();
+                                                }
+                                            }}
+                                            className={`sm:hidden inline-flex items-center gap-1 py-1 px-1 text-xs font-bold transition-colors select-none shrink-0 ${
+                                                isMobileFocused
+                                                    ? 'text-[#5cb5db]'
+                                                    : 'text-gray-400 hover:text-gray-600 active:text-[#5cb5db]'
+                                            }`}
                                         >
-                                            <span className="text-[10px] sm:text-xs font-black logo-font">{currentWpm} WPM</span>
-                                        </div>
-
-                                        {/* Caps Lock Indicator */}
-                                        {isCapsLockOn && (
-                                            <div
-                                                className="bg-indigo-600 text-white px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-1 shadow-xs shrink-0"
-                                                title="เปิด Caps Lock อยู่ (พิมพ์ตัวใหญ่ / ตัวยกแคร่ตลอด)"
-                                            >
-                                                <span className="text-[10px] sm:text-xs font-black logo-font">CAPS</span>
-                                            </div>
-                                        )}
-
-                                        {/* Time Countdown (ถ้าเป็นโหมดเวลา) */}
-                                        {mode === 'time' && (
-                                            <div className="bg-[#5cb5db] text-white px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-[10px] sm:text-xs font-black logo-font shrink-0">
-                                                {timeLeft}s
-                                            </div>
-                                        )}
+                                            <Keyboard size={14} />
+                                            <span>{isMobileFocused ? 'ปิดแป้นพิมพ์' : 'เปิดแป้นพิมพ์'}</span>
+                                        </button>
                                     </div>
 
                                     {/* 3. Right (Desktop เท่านั้น): EXP Bar + EXP สะสมรอบนี้ */}
@@ -2155,27 +2157,7 @@ export default function FarmPage() {
                                 onBlur={() => setIsMobileFocused(false)}
                             />
 
-                            {/* Mobile Keyboard Button (ไม่มีพื้นหลัง ทั้งตอนกดและไม่กด - ชิดขวา) */}
-                            <div className="sm:hidden flex items-center justify-end my-1 px-1">
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        if (isMobileFocused) {
-                                            mobileInputRef.current?.blur();
-                                        } else {
-                                            mobileInputRef.current?.focus();
-                                        }
-                                    }}
-                                    className={`inline-flex items-center gap-1.5 py-1 px-1 text-xs font-bold transition-colors select-none ${
-                                        isMobileFocused
-                                            ? 'text-[#5cb5db]'
-                                            : 'text-gray-400 hover:text-gray-600 active:text-[#5cb5db]'
-                                    }`}
-                                >
-                                    <Keyboard size={15} />
-                                    <span>{isMobileFocused ? 'ปิดแป้นพิมพ์' : 'เปิดแป้นพิมพ์'}</span>
-                                </button>
-                            </div>
+
 
                             {/* Words Stream Box with Smooth Scrolling (3 Full Visible Lines) */}
                             <div
