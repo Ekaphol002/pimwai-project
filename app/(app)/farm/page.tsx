@@ -1346,6 +1346,13 @@ export default function FarmPage() {
         const inputType = e.inputType;
         const data = e.data;
 
+        // 🛡️ ปฏิเสธการสั่งพิมพ์ด้วยเสียง (Dictation) และการวางข้อความ (Paste)
+        if (inputType === 'insertFromDictation' || inputType === 'insertFromPaste' || inputType === 'insertFromDrop') {
+            e.preventDefault();
+            toast.error('ไม่อนุญาตให้ใช้การพิมพ์ด้วยเสียงหรือวางข้อความ', { id: 'no-voice' });
+            return;
+        }
+
         if (inputType === 'deleteContentBackward') {
             e.preventDefault();
             processBackspaceAction();
@@ -1354,6 +1361,14 @@ export default function FarmPage() {
 
         if (data) {
             e.preventDefault();
+
+            // 🛡️ Anti-Cheat: การกดแป้นพิมพ์จริงจะส่งมาครั้งละ 1 ตัวอักษร (หรือสระอำ 2 ตัวอักษร)
+            // ถ้าส่งมาเป็นก้อนยาว (length > 2) แสดงว่ามาจากการพูดด้วยเสียง (Voice Typing) หรือ Autocomplete
+            if (data.length > 2) {
+                toast.error('ไม่อนุญาตให้ใช้การพิมพ์ด้วยเสียงหรือวางข้อความ', { id: 'no-voice' });
+                return;
+            }
+
             for (const char of data) {
                 if (char === ' ') {
                     processSpaceAction();
@@ -1367,6 +1382,13 @@ export default function FarmPage() {
     const handleMobileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
         if (val) {
+            // 🛡️ บล็อกข้อความที่เข้ามาเป็นก้อนยาวจากการพูดด้วยเสียงหรือวาง
+            if (val.length > 2) {
+                e.target.value = '';
+                toast.error('ไม่อนุญาตให้ใช้การพิมพ์ด้วยเสียงหรือวางข้อความ', { id: 'no-voice' });
+                return;
+            }
+
             for (const char of val) {
                 if (char === ' ') {
                     processSpaceAction();
@@ -2153,6 +2175,10 @@ export default function FarmPage() {
                                 tabIndex={-1}
                                 onBeforeInput={handleMobileBeforeInput}
                                 onChange={handleMobileChange}
+                                onPaste={(e) => {
+                                    e.preventDefault();
+                                    toast.error('ไม่อนุญาตให้วางข้อความ', { id: 'no-voice' });
+                                }}
                                 onFocus={() => setIsMobileFocused(true)}
                                 onBlur={() => setIsMobileFocused(false)}
                             />
