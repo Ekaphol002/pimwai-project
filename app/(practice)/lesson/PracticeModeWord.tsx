@@ -321,6 +321,9 @@ export default function PracticeModeWord({
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      // 🛡️ Anti-Cheat: ปฏิเสธ Synthetic Event / บอทสคริปต์ที่รันผ่าน Console หรือ Browser Extension (ต้องมาจากคีย์บอร์ดจริงเท่านั้น)
+      if (!event.isTrusted) return;
+
       const target = event.target as HTMLElement | null;
       if (
         target && (
@@ -452,7 +455,10 @@ export default function PracticeModeWord({
       }
     };
 
-    const handleKeyUp = (event: KeyboardEvent) => { setPressedKey(null); };
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (!event.isTrusted) return;
+      setPressedKey(null);
+    };
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
     return () => {

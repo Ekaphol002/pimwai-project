@@ -6,45 +6,72 @@ import { containsProfanity } from '@/lib/profanityFilter';
 import bcrypt from 'bcrypt';
 import { getStartOfTodayBangkok } from '@/lib/streakUtils';
 
+export const dynamic = 'force-dynamic';
+
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 export async function GET() {
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user?.email && !session?.user?.id) {
-            return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+            return NextResponse.json({ success: false, error: 'Unauthorized' }, {
+                status: 401,
+                headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate' }
+            });
         }
 
-        const searchConditions = [];
-        if (session.user.id) searchConditions.push({ id: session.user.id });
-        if (session.user.email) searchConditions.push({ email: session.user.email });
-        if (session.user.name) searchConditions.push({ username: session.user.name }, { name: session.user.name });
+        const userId = (session.user as any)?.id;
+        const userEmail = session.user?.email;
+        const userName = session.user?.name;
 
-        const user = await prisma.user.findFirst({
-            where: searchConditions.length > 0 ? { OR: searchConditions } : {},
-            select: {
-                id: true,
-                name: true,
-                username: true,
-                email: true,
-                image: true,
-                rank: true,
-                stars: true,
-                currentExp: true,
-                createdAt: true,
-                password: true,
-                lastNameChangedAt: true,
-                showInLeaderboard: true,
-                keyboardSound: true,
-                isAvatarLocked: true,
-                farmTimeSeconds: true,
-                accounts: {
-                    select: {
-                        provider: true
-                    }
+        const userSelect = {
+            id: true,
+            name: true,
+            username: true,
+            email: true,
+            image: true,
+            rank: true,
+            stars: true,
+            currentExp: true,
+            createdAt: true,
+            password: true,
+            lastNameChangedAt: true,
+            showInLeaderboard: true,
+            keyboardSound: true,
+            isAvatarLocked: true,
+            farmTimeSeconds: true,
+            accounts: {
+                select: {
+                    provider: true
                 }
             }
-        });
+        };
+
+        // ค้นหาอย่างแม่นยำตามลำดับ: id ก่อน -> email -> แล้วค่อย username
+        let user: any = null;
+        if (userId) {
+            user = await prisma.user.findUnique({
+                where: { id: userId },
+                select: userSelect
+            });
+        }
+        if (!user && userEmail) {
+            user = await prisma.user.findUnique({
+                where: { email: userEmail },
+                select: userSelect
+            });
+        }
+        if (!user && userName) {
+            user = await prisma.user.findFirst({
+                where: {
+                    OR: [
+                        { username: userName },
+                        { name: userName }
+                    ]
+                },
+                select: userSelect
+            });
+        }
 
         if (!user) {
             return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
@@ -209,6 +236,10 @@ export async function GET() {
             canChangeName,
             nextAvailableDate,
             daysLeft
+        }, {
+            headers: {
+                'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate'
+            }
         });
     } catch (error) {
         console.error('Profile GET Error:', error);

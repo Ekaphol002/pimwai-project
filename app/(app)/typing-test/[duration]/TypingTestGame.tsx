@@ -230,6 +230,9 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // 🛡️ Anti-Cheat: ปฏิเสธ Synthetic Event / บอทสคริปต์ที่รันผ่าน Console หรือ Browser Extension (ต้องมาจากคีย์บอร์ดจริงเท่านั้น)
+      if (!e.isTrusted) return;
+
       const target = e.target as HTMLElement | null;
       if (
         target && (

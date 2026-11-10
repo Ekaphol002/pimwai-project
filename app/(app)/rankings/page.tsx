@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { User, Loader2, Star, Crown, Flame, Flag, AlertTriangle, X } from 'lucide-react';
 import { useSession } from "next-auth/react";
 import toast, { Toaster } from 'react-hot-toast';
@@ -79,36 +79,45 @@ export default function LeaderboardPage() {
     const [reportDetails, setReportDetails] = useState('');
     const [isSubmittingReport, setIsSubmittingReport] = useState(false);
 
-    const fetchLeaderboard = async (isFirstLoad = false) => {
-        if (isFirstLoad) setIsInitialLoading(true);
+    // Request ID ป้องกัน Race Condition เมื่อผู้ใช้คลิกสลับแท็บเร็วๆ ก่อนคำขอก่อนหน้าจะโหลดเสร็จ
+    const activeRequestIdRef = useRef(0);
+    const isFirstMountRef = useRef(true);
+
+    const fetchLeaderboard = useCallback(async (
+        targetMode: 'speed' | 'rank' | 'streak',
+        targetTime: number,
+        isFirst = false
+    ) => {
+        if (isFirst) setIsInitialLoading(true);
         else setIsTableLoading(true);
 
+        const requestId = ++activeRequestIdRef.current;
+
         try {
-            const res = await fetch(`/api/leaderboard?mode=${mode}&duration=${selectedTime}`, {
+            const res = await fetch(`/api/leaderboard?mode=${targetMode}&duration=${targetTime}`, {
                 cache: 'no-store'
             });
             const data = await res.json();
-            if (data.success) {
+            // ตรวจสอบว่าเป็นคำขอล่าสุดจริงหรือไม่ ป้องกันผลลัพธ์เก่ามาทับแท็บปัจจุบัน
+            if (requestId === activeRequestIdRef.current && data.success) {
                 setLeaderboardData(data.leaderboard || []);
                 setMyRankData(data.myData || data.myRank || null);
             }
         } catch (error) {
             console.error("Fetch Error:", error);
         } finally {
-            setIsInitialLoading(false);
-            setIsTableLoading(false);
+            if (requestId === activeRequestIdRef.current) {
+                setIsInitialLoading(false);
+                setIsTableLoading(false);
+            }
         }
-    };
-
-    useEffect(() => {
-        fetchLeaderboard(true);
     }, []);
 
     useEffect(() => {
-        if (!isInitialLoading) {
-            fetchLeaderboard(false);
-        }
-    }, [mode, selectedTime]);
+        const isFirst = isFirstMountRef.current;
+        isFirstMountRef.current = false;
+        fetchLeaderboard(mode, selectedTime, isFirst);
+    }, [mode, selectedTime, fetchLeaderboard]);
 
     // ปิดเมนูคลิกขวาเมื่อคลิกที่อื่น
     useEffect(() => {

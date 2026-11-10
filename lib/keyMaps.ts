@@ -107,6 +107,7 @@ if (typeof window !== 'undefined') {
   window.addEventListener(
     'keydown',
     (e: KeyboardEvent) => {
+      if (!e.isTrusted) return;
       if (e.code === 'CapsLock' || e.key === 'CapsLock') {
         if (!e.repeat) {
           hasInitializedCapsLock = true;

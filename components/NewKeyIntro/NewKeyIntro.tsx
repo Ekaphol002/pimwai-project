@@ -52,6 +52,7 @@ export default function NewKeyIntro({ targetChar, onComplete, onCorrectPress }: 
 
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
+            if (!event.isTrusted) return;
             if (isAnimating) return;
 
             if (phase === 1) {

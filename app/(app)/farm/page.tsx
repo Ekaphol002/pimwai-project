@@ -29,7 +29,8 @@ import {
     Lock,
     Check,
     BookOpen,
-    Music
+    Music,
+    Keyboard
 } from 'lucide-react';
 import ExpBar from '@/components/ExpBar/ExpBar';
 import QuickAudioModal from '@/components/QuickAudioModal/QuickAudioModal';
@@ -98,7 +99,7 @@ function generateWordList(
 }
 
 export default function FarmPage() {
-    const { data: session } = useSession();
+    const { data: session, status } = useSession();
 
     // Settings
     const [language, setLanguage] = useState<'thai' | 'english'>('thai');
@@ -115,6 +116,10 @@ export default function FarmPage() {
     const [isSoundOn, setIsSoundOn] = useState<boolean>(true);
     const [isAudioModalOpen, setIsAudioModalOpen] = useState<boolean>(false);
     const [isBgmPlaying, setIsBgmPlaying] = useState<boolean>(false);
+
+    // 📱 Mobile Typing Support
+    const mobileInputRef = useRef<HTMLInputElement>(null);
+    const [isMobileFocused, setIsMobileFocused] = useState<boolean>(false);
 
     // ซิงค์สถานะเสียงคีย์บอร์ดและเพลงพื้นหลังกับ soundManager แบบเรียลไทม์
     useEffect(() => {
@@ -492,7 +497,10 @@ export default function FarmPage() {
 
     // 1. Fetch User Profile เมื่อเปิดหน้าเว็บ (รวม Lesson Perks และ Guest Mode)
     useEffect(() => {
-        fetch('/api/user/profile')
+        // รอให้สถานะ session ตรวจสอบเสร็จก่อน เพื่อป้องกัน race condition ที่คิดว่าเป็น Guest ชั่วคราว
+        if (status === 'loading') return;
+
+        fetch('/api/user/profile', { cache: 'no-store' })
             .then(res => res.json())
             .then(data => {
                 if (data.success && data.user) {
@@ -585,7 +593,7 @@ export default function FarmPage() {
                 }
                 setIsUserLoaded(true);
             });
-    }, [session?.user?.email]);
+    }, [session?.user?.email, (session?.user as any)?.id, status]);
 
     // 2. เริ่มต้นหรือเริ่มรอบคำต่อไป (คำต่อไป / Next Words)
     const nextNewWords = useCallback((overrideLang?: 'thai' | 'english' | unknown) => {
@@ -1014,9 +1022,368 @@ export default function FarmPage() {
         }
     }, [isFinished, syncExpToDatabase]);
 
-    // 7. Keyboard Event Handler
+    // 7. Core Typing Actions (รองรับทั้ง Keyboard คอมพิวเตอร์ และ คีย์บอร์ดมือถือ)
+    const startTypingSessionIfNeeded = useCallback(() => {
+        setIsTyping(true);
+        lastTypingTimeRef.current = Date.now();
+        if (lastTimerTickTimeRef.current === 0) {
+            lastTimerTickTimeRef.current = Date.now();
+        }
+        if (!startTime) {
+            const nowTime = Date.now();
+            setStartTime(nowTime);
+            startTimeRef.current = nowTime;
+        }
+    }, [startTime]);
+
+    const processSpaceAction = useCallback((e?: KeyboardEvent) => {
+        if (isFinished) return;
+        startTypingSessionIfNeeded();
+
+        const targetWordObj = wordList[activeWordIdx];
+        if (!targetWordObj) return;
+
+        const targetWord = (language === 'english' && !isArticleMode && isCapsLockOnRef.current)
+            ? targetWordObj.word.toUpperCase()
+            : targetWordObj.word;
+
+        if (inputBuffer.length === 0) return;
+
+        if (isSoundOn) soundManager.playKeySound(undefined, e);
+
+        const rInfo = calculateRankInfo(userTotalExpRef.current, isTop10UserRef.current);
+        const rCfg = getRankMultiplierConfig(rInfo.rank, rInfo.stars);
+        const baseRankMul = rCfg.totalBaseMultiplier + (lessonPerksRef.current.advanced ? 0.5 : 0);
+        const maxCap = rCfg.maxMultiplierCap + (lessonPerksRef.current.advanced ? 10.0 : 0);
+
+        const isWordFullyCorrect = inputBuffer === targetWord;
+
+        const updatedHistory = [...typedWordsHistory];
+        updatedHistory[activeWordIdx] = inputBuffer;
+        setTypedWordsHistory(updatedHistory);
+
+        const updatedStatus = [...completedWordsStatus];
+        updatedStatus[activeWordIdx] = isWordFullyCorrect ? 'correct' : 'incorrect';
+        setCompletedWordsStatus(updatedStatus);
+
+        totalAllKeystrokesCountRef.current += 1;
+        if (isWordFullyCorrect) {
+            totalCorrectKeystrokesCountRef.current += 1;
+            recentCorrectKeyTimesRef.current.push(Date.now());
+            unsyncedWordsCountRef.current += 1;
+        }
+        updateRealtimeWpm();
+
+        if (!isWordFullyCorrect) {
+            if (shieldsLeftRef.current > 0) {
+                const nextShields = Math.max(0, shieldsLeftRef.current - 1);
+                setShieldsLeft(nextShields);
+                shieldsLeftRef.current = nextShields;
+                triggerWordFloater(activeWordIdx, 'shield', '-1 ป้องกัน');
+            } else {
+                setCombo(0);
+                const nextWordIsGolden = wordList[activeWordIdx + 1]?.isGolden;
+                setMultiplier(Number((baseRankMul + (nextWordIsGolden ? 1.0 : 0)).toFixed(2)));
+            }
+        } else {
+            if (!isArticleMode && !wordHasBackspaceRef.current && !rewardedWordIndicesRef.current.has(activeWordIdx)) {
+                rewardedWordIndicesRef.current.add(activeWordIdx);
+                let bountyExp = 0;
+                let isGoldenBounty = false;
+
+                if (targetWordObj.isGolden && lessonPerksRef.current.intermediate) {
+                    const wordLen = targetWord.length;
+                    bountyExp = 20 + Math.min(15, Math.max(0, (wordLen - 4) * 2));
+                    isGoldenBounty = true;
+                } else if (lessonPerksRef.current.beginner) {
+                    const wordLen = targetWord.length;
+                    if (wordLen <= 3) {
+                        bountyExp = 5;
+                    } else if (wordLen <= 6) {
+                        bountyExp = 8;
+                    } else if (wordLen <= 9) {
+                        bountyExp = 12;
+                    } else {
+                        bountyExp = Math.min(20, 14 + Math.floor((wordLen - 9) * 1.5));
+                    }
+                }
+
+                if (bountyExp > 0) {
+                    setRoundExpEarned(prev => prev + bountyExp);
+                    setSessionExpEarned(prev => prev + bountyExp);
+                    setUserTotalExp(prev => {
+                        const nextTotal = prev + bountyExp;
+                        userTotalExpRef.current = nextTotal;
+                        if (!session?.user) {
+                            try {
+                                localStorage.setItem('pimwai_guest_exp', String(nextTotal));
+                            } catch (e) { }
+                        }
+                        return nextTotal;
+                    });
+                    pendingSyncExpRef.current += bountyExp;
+
+                    if (pendingSyncExpRef.current >= 150) {
+                        syncExpToDatabase();
+                    }
+                }
+
+                const totalWordExp = wordExpEarnedRef.current + bountyExp;
+                if (totalWordExp > 0) {
+                    const floaterType = isFeverActiveRef.current
+                        ? 'fever_bounty'
+                        : targetWordObj.isGolden
+                            ? 'golden_bounty'
+                            : 'bounty';
+                    triggerWordFloater(activeWordIdx, floaterType, `+${totalWordExp} EXP`, totalWordExp);
+                }
+            } else {
+                const totalWordExp = wordExpEarnedRef.current;
+                if (totalWordExp > 0) {
+                    const floaterType = isFeverActiveRef.current
+                        ? 'fever_bounty'
+                        : targetWordObj.isGolden
+                            ? 'golden_bounty'
+                            : 'bounty';
+                    triggerWordFloater(activeWordIdx, floaterType, `+${totalWordExp} EXP`, totalWordExp);
+                }
+            }
+        }
+
+        if (mode === 'zen' && activeWordIdx + 15 >= wordList.length) {
+            if (zenType === 'words') {
+                const extraWords = generateWordList(50, includePunctuation, includeNumbers, lessonPerksRef.current.intermediate, language);
+                setWordList(prev => [...prev, ...extraWords]);
+            } else {
+                const nextArticle = getRandomArticle(language, quoteLength, currentArticleRef.current?.id);
+                currentArticleRef.current = nextArticle;
+                setCurrentArticle(nextArticle);
+                const nextTokens = tokenizeArticle(nextArticle.text, language);
+                const extraWords = nextTokens.map((t) => ({
+                    word: language === 'thai' ? toTypingOrder(t) : t,
+                    isGolden: false
+                }));
+                setWordList(prev => [...prev, ...extraWords]);
+            }
+        }
+
+        if ((mode === 'words' && activeWordIdx + 1 >= wordLimit) || (mode === 'quote' && activeWordIdx + 1 >= wordList.length)) {
+            setEndTime(Date.now());
+            setIsFinished(true);
+            setIsTyping(false);
+            syncExpToDatabase();
+            return;
+        }
+
+        const nextWordObj = wordList[activeWordIdx + 1];
+        if (nextWordObj && isWordFullyCorrect) {
+            const comboBoost = Math.floor(comboRef.current / 10) * 0.2;
+            const goldenBoost = nextWordObj.isGolden ? 1.0 : 0;
+            const nextMul = Math.min(maxCap, Number((baseRankMul + comboBoost + goldenBoost).toFixed(2)));
+            setMultiplier(nextMul);
+        }
+
+        wordHasBackspaceRef.current = false;
+        setActiveWordIdx(prev => prev + 1);
+        setInputBuffer("");
+        maxExpCharIdxRef.current = 0;
+        wordExpEarnedRef.current = 0;
+    }, [isFinished, startTypingSessionIfNeeded, wordList, activeWordIdx, language, isArticleMode, inputBuffer, isSoundOn, typedWordsHistory, completedWordsStatus, updateRealtimeWpm, mode, zenType, quoteLength, wordLimit, session, syncExpToDatabase, triggerWordFloater, includePunctuation, includeNumbers]);
+
+    const processBackspaceAction = useCallback((e?: KeyboardEvent) => {
+        if (isFinished) return;
+        startTypingSessionIfNeeded();
+
+        if (isSoundOn) soundManager.playKeySound(undefined, e);
+
+        wordHasBackspaceRef.current = true;
+
+        if (inputBuffer.length > 0) {
+            setInputBuffer(prev => prev.slice(0, -1));
+        } else if (activeWordIdx > 0) {
+            const prevIdx = activeWordIdx - 1;
+            const prevTyped = typedWordsHistory[prevIdx] ?? "";
+            setActiveWordIdx(prevIdx);
+            setInputBuffer(prevTyped);
+            maxExpCharIdxRef.current = prevTyped.length;
+        }
+    }, [isFinished, startTypingSessionIfNeeded, isSoundOn, inputBuffer.length, activeWordIdx, typedWordsHistory]);
+
+    const processCharacterAction = useCallback((typedChar: string, e?: KeyboardEvent) => {
+        if (isFinished || typedChar.length !== 1) return;
+        startTypingSessionIfNeeded();
+
+        const targetWordObj = wordList[activeWordIdx];
+        if (!targetWordObj) return;
+
+        const targetWord = (language === 'english' && !isArticleMode && isCapsLockOnRef.current)
+            ? targetWordObj.word.toUpperCase()
+            : targetWordObj.word;
+
+        if (isSoundOn) soundManager.playKeySound(undefined, e);
+
+        const rInfo = calculateRankInfo(userTotalExpRef.current, isTop10UserRef.current);
+        const rCfg = getRankMultiplierConfig(rInfo.rank, rInfo.stars);
+        const baseRankMul = rCfg.totalBaseMultiplier + (lessonPerksRef.current.advanced ? 0.5 : 0);
+        const maxCap = rCfg.maxMultiplierCap + (lessonPerksRef.current.advanced ? 10.0 : 0);
+
+        setTotalKeystrokes(prev => prev + 1);
+        totalAllKeystrokesCountRef.current += 1;
+
+        const nextCharIdx = inputBuffer.length;
+        const isCharCorrect = targetWord[nextCharIdx] === typedChar;
+
+        if (isCharCorrect) {
+            setCorrectKeystrokes(prev => prev + 1);
+            totalCorrectKeystrokesCountRef.current += 1;
+            recentCorrectKeyTimesRef.current.push(Date.now());
+
+            const newCombo = combo + 1;
+            setCombo(newCombo);
+            setMaxCombo(prev => Math.max(prev, newCombo));
+
+            if (lessonPerksRef.current.advanced && newCombo > 0 && newCombo % 50 === 0) {
+                setIsFeverActive(true);
+                setFeverTimeLeft(7);
+                toast('เข้าสู่โหมด Fever Mode! (7 วินาที)', {
+                    id: 'fever-mode-toast',
+                    icon: <Zap size={18} className="fill-purple-600 text-purple-600 shrink-0" />,
+                    duration: 3000
+                });
+            }
+
+            const comboBoost = Math.floor(newCombo / 10) * 0.2;
+            const goldenBoost = targetWordObj.isGolden ? 1.0 : 0;
+            const targetMul = baseRankMul + comboBoost + goldenBoost;
+            const newMul = Math.min(maxCap, Number(targetMul.toFixed(2)));
+            setMultiplier(newMul);
+
+            if (nextCharIdx >= maxExpCharIdxRef.current) {
+                maxExpCharIdxRef.current = nextCharIdx + 1;
+                let charExpGain = Math.max(1, Math.round(1 * newMul));
+
+                if (isFeverActiveRef.current) {
+                    charExpGain *= 2;
+                }
+
+                setRoundExpEarned(prev => prev + charExpGain);
+                setSessionExpEarned(prev => prev + charExpGain);
+                wordExpEarnedRef.current += charExpGain;
+                setUserTotalExp(prev => {
+                    const nextTotal = prev + charExpGain;
+                    userTotalExpRef.current = nextTotal;
+                    if (!session?.user) {
+                        try {
+                            localStorage.setItem('pimwai_guest_exp', String(nextTotal));
+                        } catch (e) { }
+                    }
+                    return nextTotal;
+                });
+                pendingSyncExpRef.current += charExpGain;
+
+                if (pendingSyncExpRef.current >= 150) {
+                    syncExpToDatabase();
+                }
+            }
+        } else {
+            if (shieldsLeftRef.current > 0) {
+                const nextShields = Math.max(0, shieldsLeftRef.current - 1);
+                setShieldsLeft(nextShields);
+                shieldsLeftRef.current = nextShields;
+                triggerWordFloater(activeWordIdx, 'shield', '-1 ป้องกัน');
+            } else {
+                setCombo(prev => Math.floor(prev / 2));
+                const resetMul = Number((baseRankMul + (targetWordObj.isGolden ? 1.0 : 0)).toFixed(2));
+                setMultiplier(resetMul);
+            }
+        }
+
+        const newInput = inputBuffer + typedChar;
+        setInputBuffer(newInput);
+
+        if (((mode === 'words' && activeWordIdx === wordLimit - 1) || (mode === 'quote' && activeWordIdx === wordList.length - 1)) && newInput === targetWord) {
+            const updatedHistory = [...typedWordsHistory];
+            updatedHistory[activeWordIdx] = newInput;
+            setTypedWordsHistory(updatedHistory);
+
+            const updatedStatus = [...completedWordsStatus];
+            updatedStatus[activeWordIdx] = 'correct';
+            setCompletedWordsStatus(updatedStatus);
+
+            if (!isArticleMode && !wordHasBackspaceRef.current && !rewardedWordIndicesRef.current.has(activeWordIdx)) {
+                rewardedWordIndicesRef.current.add(activeWordIdx);
+                let bountyExp = 0;
+                let isGoldenBounty = false;
+                if (targetWordObj.isGolden && lessonPerksRef.current.intermediate) {
+                    bountyExp = 30;
+                    isGoldenBounty = true;
+                } else if (lessonPerksRef.current.beginner) {
+                    bountyExp = 5;
+                }
+                if (bountyExp > 0) {
+                    if (isFeverActiveRef.current) bountyExp *= 2;
+                    setRoundExpEarned(prev => prev + bountyExp);
+                    setSessionExpEarned(prev => prev + bountyExp);
+                    setUserTotalExp(prev => prev + bountyExp);
+                    pendingSyncExpRef.current += bountyExp;
+                    triggerWordFloater(activeWordIdx, isGoldenBounty ? 'golden_bounty' : 'bounty', `+${bountyExp} EXP`, bountyExp);
+                }
+            }
+
+            setEndTime(Date.now());
+            setIsFinished(true);
+            setIsTyping(false);
+            syncExpToDatabase();
+            return;
+        }
+
+        updateRealtimeWpm();
+    }, [isFinished, startTypingSessionIfNeeded, wordList, activeWordIdx, language, isArticleMode, isSoundOn, inputBuffer, combo, setMaxCombo, session, syncExpToDatabase, triggerWordFloater, mode, wordLimit, typedWordsHistory, completedWordsStatus, updateRealtimeWpm]);
+
+    // 📱 Mobile Event Handlers (สำหรับ Input เสมือนบนมือถือ)
+    const handleMobileBeforeInput = useCallback((e: any) => {
+        if (isFinished) return;
+        const inputType = e.inputType;
+        const data = e.data;
+
+        if (inputType === 'deleteContentBackward') {
+            e.preventDefault();
+            processBackspaceAction();
+            return;
+        }
+
+        if (data) {
+            e.preventDefault();
+            for (const char of data) {
+                if (char === ' ') {
+                    processSpaceAction();
+                } else {
+                    processCharacterAction(char);
+                }
+            }
+        }
+    }, [isFinished, processBackspaceAction, processSpaceAction, processCharacterAction]);
+
+    const handleMobileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value;
+        if (val) {
+            for (const char of val) {
+                if (char === ' ') {
+                    processSpaceAction();
+                } else {
+                    processCharacterAction(char);
+                }
+            }
+            e.target.value = '';
+        }
+    }, [processSpaceAction, processCharacterAction]);
+
+    // 8. Desktop Keyboard Event Handler
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
+            // 🛡️ Anti-Cheat: ปฏิเสธ Synthetic Event / บอทสคริปต์ที่รันผ่าน Console หรือ Browser Extension (ต้องมาจากคีย์บอร์ดจริงเท่านั้น)
+            if (!e.isTrusted) return;
+
             if (isAudioModalOpen) {
                 if (e.key === 'Escape') {
                     setIsAudioModalOpen(false);
@@ -1024,10 +1391,10 @@ export default function FarmPage() {
                 return;
             }
 
-            // ข้ามการตรวจจับหากผู้ใช้กำลังพิมพ์อยู่ใน input หรือ textarea ใดๆ
+            // ข้ามการตรวจจับหากผู้ใช้กำลังพิมพ์อยู่ใน input หรือ textarea ใดๆ (ยกเว้น mobileInputRef)
             const target = e.target as HTMLElement | null;
             if (
-                target && (
+                target && target !== mobileInputRef.current && (
                     target.tagName === 'INPUT' ||
                     target.tagName === 'TEXTAREA' ||
                     target.isContentEditable ||
@@ -1048,228 +1415,23 @@ export default function FarmPage() {
 
             if (isFinished) return;
 
-            // เมื่อเริ่มพิมพ์ ให้หยุดการกระพริบของเคอร์เซอร์ทันที และบันทึกเวลาที่กำลังพิมพ์
-            setIsTyping(true);
-            lastTypingTimeRef.current = Date.now();
-            if (lastTimerTickTimeRef.current === 0) {
-                lastTimerTickTimeRef.current = Date.now();
-            }
-
-            const targetWordObj = wordList[activeWordIdx];
-            if (!targetWordObj) return;
-
-            const targetWord = (language === 'english' && !isArticleMode && isCapsLockOnRef.current)
-                ? targetWordObj.word.toUpperCase()
-                : targetWordObj.word;
-
-            // Start Timer on First Keypress
-            if (!startTime) {
-                const nowTime = Date.now();
-                setStartTime(nowTime);
-                startTimeRef.current = nowTime;
-            }
-
-            // คำนวณ Base Multiplier & Cap ตาม Rank ปัจจุบัน
-            const rInfo = calculateRankInfo(userTotalExpRef.current, isTop10UserRef.current);
-            const rCfg = getRankMultiplierConfig(rInfo.rank, rInfo.stars);
-            const baseRankMul = rCfg.totalBaseMultiplier + (lessonPerksRef.current.advanced ? 0.5 : 0);
-            const maxCap = rCfg.maxMultiplierCap + (lessonPerksRef.current.advanced ? 10.0 : 0);
-
-            // A. กด SPACEBAR (ข้ามไปยังคำถัดไป ถ้าพิมพ์ตัวแรกไปแล้ว)
+            // A. Spacebar
             if (e.key === ' ' || e.code === 'Space') {
                 e.preventDefault();
-                // 1. จะกดเว้นวรรคไม่ได้ ถ้ายังไม่ได้พิมพ์ตัวแรกของคำนั้น (กันสแปม Spacebar)
-                if (inputBuffer.length === 0) return;
-
-                if (isSoundOn) soundManager.playKeySound(undefined, e);
-
-                const isWordFullyCorrect = inputBuffer === targetWord;
-
-                // บันทึกคำที่พิมพ์ไว้ในประวัติ
-                const updatedHistory = [...typedWordsHistory];
-                updatedHistory[activeWordIdx] = inputBuffer;
-                setTypedWordsHistory(updatedHistory);
-
-                const updatedStatus = [...completedWordsStatus];
-                updatedStatus[activeWordIdx] = isWordFullyCorrect ? 'correct' : 'incorrect';
-                setCompletedWordsStatus(updatedStatus);
-
-                totalAllKeystrokesCountRef.current += 1;
-                if (isWordFullyCorrect) {
-                    totalCorrectKeystrokesCountRef.current += 1;
-                    recentCorrectKeyTimesRef.current.push(Date.now());
-                    unsyncedWordsCountRef.current += 1;
-                }
-                updateRealtimeWpm();
-
-                if (!isWordFullyCorrect) {
-                    // ถ้าพิมพ์ไม่ครบ หรือมีตัวผิดตอนกดเว้นวรรคข้าม
-                    if (shieldsLeftRef.current > 0) {
-                        // 🛡️ Double Shield ทำงาน! ไม่เสียคอมโบ
-                        const nextShields = Math.max(0, shieldsLeftRef.current - 1);
-                        setShieldsLeft(nextShields);
-                        shieldsLeftRef.current = nextShields;
-                        triggerWordFloater(activeWordIdx, 'shield', '-1 ป้องกัน');
-                    } else {
-                        setCombo(0);
-                        const nextWordIsGolden = wordList[activeWordIdx + 1]?.isGolden;
-                        setMultiplier(Number((baseRankMul + (nextWordIsGolden ? 1.0 : 0)).toFixed(2)));
-                    }
-                } else {
-                    // ✨ คำถูกต้องสมบูรณ์ 100%! ตรวจสอบเงื่อนไขรับ Flawless Bounty (ปิดการทำงานในโหมดบทความเพื่อความสมดุล)
-                    if (!isArticleMode && !wordHasBackspaceRef.current && !rewardedWordIndicesRef.current.has(activeWordIdx)) {
-                        rewardedWordIndicesRef.current.add(activeWordIdx);
-
-                        let bountyExp = 0;
-                        let isGoldenBounty = false;
-
-                        if (targetWordObj.isGolden && lessonPerksRef.current.intermediate) {
-                            // Intermediate Perk: Golden Word Bounty +20 EXP
-                            const wordLen = targetWord.length;
-                            bountyExp = 20 + Math.min(15, Math.max(0, (wordLen - 4) * 2));
-                            isGoldenBounty = true;
-                        } else if (lessonPerksRef.current.beginner) {
-                            // Beginner Perk: Flawless Word Bounty เริ่มต้นอย่างต่ำ +5 EXP และเพิ่มตามความยาวคำ
-                            const wordLen = targetWord.length;
-                            if (wordLen <= 3) {
-                                bountyExp = 5;
-                            } else if (wordLen <= 6) {
-                                bountyExp = 8;
-                            } else if (wordLen <= 9) {
-                                bountyExp = 12;
-                            } else {
-                                bountyExp = Math.min(20, 14 + Math.floor((wordLen - 9) * 1.5));
-                            }
-                        }
-
-                        if (bountyExp > 0) {
-                            // ไม่คูณซ้อน Fever (*= 2) แต่ให้เป็นโบนัส Flat Bounty เพื่อป้องกันคะแนนระเบิด
-                            setRoundExpEarned(prev => prev + bountyExp);
-                            setSessionExpEarned(prev => prev + bountyExp);
-                            setUserTotalExp(prev => {
-                                const nextTotal = prev + bountyExp;
-                                userTotalExpRef.current = nextTotal;
-                                if (!session?.user) {
-                                    try {
-                                        localStorage.setItem('pimwai_guest_exp', String(nextTotal));
-                                    } catch (e) { }
-                                }
-                                return nextTotal;
-                            });
-                            pendingSyncExpRef.current += bountyExp;
-
-                            if (pendingSyncExpRef.current >= 150) {
-                                syncExpToDatabase();
-                            }
-                        }
-
-                        // 🎈 แสดง EXP รวมทั้งหมดที่ได้จากคำนี้ (ทั้งจากตัวอักษร + โบนัสจบคำ) ลอยขึ้นบนหัวคำทุกคำที่พิมพ์ถูก!
-                        const totalWordExp = wordExpEarnedRef.current + bountyExp;
-                        if (totalWordExp > 0) {
-                            const floaterType = isFeverActiveRef.current
-                                ? 'fever_bounty'
-                                : targetWordObj.isGolden
-                                    ? 'golden_bounty'
-                                    : 'bounty';
-                            triggerWordFloater(
-                                activeWordIdx,
-                                floaterType,
-                                `+${totalWordExp} EXP`,
-                                totalWordExp
-                            );
-                        }
-                    } else {
-                        // กรณีคำนี้เคยได้โบนัสไปแล้ว หรือมีกดแก้แต่พิมพ์ถูกครบ: ก็ยังแสดง EXP รวมที่ได้จากคำนี้ขึ้นมาให้เห็นชัดเจน
-                        const totalWordExp = wordExpEarnedRef.current;
-                        if (totalWordExp > 0) {
-                            const floaterType = isFeverActiveRef.current
-                                ? 'fever_bounty'
-                                : targetWordObj.isGolden
-                                    ? 'golden_bounty'
-                                    : 'bounty';
-                            triggerWordFloater(
-                                activeWordIdx,
-                                floaterType,
-                                `+${totalWordExp} EXP`,
-                                totalWordExp
-                            );
-                        }
-                    }
-                }
-
-                // สุ่มเติมคำหรือบทความเพิ่มเรื่อยๆ ถ้าเป็นโหมด Zen (พิมพ์เรื่อยๆ ไม่มีวันจบ)
-                if (mode === 'zen' && activeWordIdx + 15 >= wordList.length) {
-                    if (zenType === 'words') {
-                        const extraWords = generateWordList(50, includePunctuation, includeNumbers, lessonPerksRef.current.intermediate, language);
-                        setWordList(prev => [...prev, ...extraWords]);
-                    } else {
-                        const nextArticle = getRandomArticle(language, quoteLength, currentArticleRef.current?.id);
-                        currentArticleRef.current = nextArticle;
-                        setCurrentArticle(nextArticle);
-                        const nextTokens = tokenizeArticle(nextArticle.text, language);
-                        const extraWords = nextTokens.map((t) => ({
-                            word: language === 'thai' ? toTypingOrder(t) : t,
-                            isGolden: false
-                        }));
-                        setWordList(prev => [...prev, ...extraWords]);
-                    }
-                }
-
-                // ตรวจสอบจบในโหมด Words หรือโหมดบทความ (Quote)
-                if ((mode === 'words' && activeWordIdx + 1 >= wordLimit) || (mode === 'quote' && activeWordIdx + 1 >= wordList.length)) {
-                    setEndTime(Date.now());
-                    setIsFinished(true);
-                    setIsTyping(false);
-                    syncExpToDatabase();
-                    return;
-                }
-
-                // อัปเดต Multiplier สำหรับคำถัดไป (ถ้าคำถัดไปเป็นสีทองจะได้รับโบนัสทันที)
-                const nextWordObj = wordList[activeWordIdx + 1];
-                if (nextWordObj && isWordFullyCorrect) {
-                    const comboBoost = Math.floor(comboRef.current / 10) * 0.2;
-                    const goldenBoost = nextWordObj.isGolden ? 1.0 : 0;
-                    const nextMul = Math.min(maxCap, Number((baseRankMul + comboBoost + goldenBoost).toFixed(2)));
-                    setMultiplier(nextMul);
-                }
-
-                // เคลียร์สถานะ Backspace สำหรับคำใหม่
-                wordHasBackspaceRef.current = false;
-
-                // เคอร์เซอร์เลื่อนไปอยู่หน้าคำถัดไป
-                setActiveWordIdx(prev => prev + 1);
-                setInputBuffer("");
-                maxExpCharIdxRef.current = 0;
-                wordExpEarnedRef.current = 0;
+                processSpaceAction(e);
                 return;
             }
 
-            // B. กด BACKSPACE (ลบตัวอักษร / ลบย้อนกลับไปคำก่อนหน้าได้)
+            // B. Backspace
             if (e.key === 'Backspace') {
                 e.preventDefault();
-                if (isSoundOn) soundManager.playKeySound(undefined, e);
-
-                // 🔒 เมื่อกด Backspace จะถือว่าคำนี้ไม่ใช่ Flawless ทันที (ป้องกันการลบมาแก้คำ)
-                wordHasBackspaceRef.current = true;
-
-                if (inputBuffer.length > 0) {
-                    setInputBuffer(prev => prev.slice(0, -1));
-                } else if (activeWordIdx > 0) {
-                    // ย้อนกลับไปแก้ไขคำก่อนหน้าได้
-                    const prevIdx = activeWordIdx - 1;
-                    const prevTyped = typedWordsHistory[prevIdx] ?? "";
-                    setActiveWordIdx(prevIdx);
-                    setInputBuffer(prevTyped);
-                    maxExpCharIdxRef.current = prevTyped.length;
-                }
+                processBackspaceAction(e);
                 return;
             }
 
-            // C. พิมพ์ตัวอักษรปกติ (ตรวจทีละตัวทันทีที่กด)
+            // C. Character Keys
             let typedChar = e.key;
-
             if (language === 'thai') {
-                // รองรับการใช้ Caps Lock เพื่อพิมพ์ตัวบน/ตัวยกแคร่ตลอดเวลา และรองรับกรณีเผลอค้างแป้นอังกฤษไว้
                 if (e.code && (e.key.length === 1 || e.key === 'Dead')) {
                     const { typedChar: resolvedThai } = resolveThaiKeyWithCapsLock(e);
                     if (resolvedThai) {
@@ -1277,166 +1439,25 @@ export default function FarmPage() {
                     }
                 }
             } else {
-                // โหมดภาษาอังกฤษ: แปลงปุ่มให้อัตโนมัติ (เมื่อเปิด Caps Lock จะได้ตัวพิมพ์ใหญ่ A-Z ตลอดเวลา)
                 typedChar = getEnglishCharFromEvent(e);
             }
 
             if (typedChar.length === 1) {
                 e.preventDefault();
-                if (isSoundOn) soundManager.playKeySound(undefined, e);
-
-                setTotalKeystrokes(prev => prev + 1);
-                totalAllKeystrokesCountRef.current += 1;
-
-                const nextCharIdx = inputBuffer.length;
-                const isCharCorrect = targetWord[nextCharIdx] === typedChar;
-
-                if (isCharCorrect) {
-                    setCorrectKeystrokes(prev => prev + 1);
-                    totalCorrectKeystrokesCountRef.current += 1;
-                    recentCorrectKeyTimesRef.current.push(Date.now());
-
-                    // เพิ่มคอมโบทีละตัวอักษรที่พิมพ์ถูก
-                    const newCombo = combo + 1;
-                    setCombo(newCombo);
-                    setMaxCombo(prev => Math.max(prev, newCombo));
-
-                    // 🔥 Advanced Perk: Fever Mode ทริกเกอร์ทุกๆ 50 คอมโบ (50, 100, 150...) นาน 7 วินาที
-                    if (lessonPerksRef.current.advanced && newCombo > 0 && newCombo % 50 === 0) {
-                        setIsFeverActive(true);
-                        setFeverTimeLeft(7);
-                        toast('เข้าสู่โหมด Fever Mode! (7 วินาที)', {
-                            id: 'fever-mode-toast',
-                            icon: <Zap size={18} className="fill-purple-600 text-purple-600 shrink-0" />,
-                            duration: 3000
-                        });
-                    }
-
-                    // Multiplier Curve: Base Rank Multiplier + ทุก 10 คอมโบ +0.2x + คำสีทอง +1.0x
-                    const comboBoost = Math.floor(newCombo / 10) * 0.2;
-                    const goldenBoost = targetWordObj.isGolden ? 1.0 : 0;
-                    const targetMul = baseRankMul + comboBoost + goldenBoost;
-                    const newMul = Math.min(maxCap, Number(targetMul.toFixed(2)));
-                    setMultiplier(newMul);
-
-                    // เพิ่ม EXP ทันทีทีละตัวอักษร! (1 ตัว = 1 EXP * Multiplier)
-                    // ป้องกันการปั๊ม EXP จากการกด Backspace ลบแล้วพิมพ์ใหม่:
-                    // จะได้ EXP ก็ต่อเมื่อพิมพ์ถึงตำแหน่งตัวอักษรใหม่ที่ไม่เคยได้ EXP มาก่อนในคำนี้เท่านั้น
-                    if (nextCharIdx >= maxExpCharIdxRef.current) {
-                        maxExpCharIdxRef.current = nextCharIdx + 1;
-                        let charExpGain = Math.max(1, Math.round(1 * newMul));
-
-                        // ถ้าอยู่ใน Fever Mode: คูณ 2 ทีละตัวอักษร (EXP x2 ต่อตัวอักษรที่พิมพ์ถูก)
-                        if (isFeverActiveRef.current) {
-                            charExpGain *= 2;
-                        }
-
-                        setRoundExpEarned(prev => prev + charExpGain);
-                        setSessionExpEarned(prev => prev + charExpGain);
-                        wordExpEarnedRef.current += charExpGain;
-                        setUserTotalExp(prev => {
-                            const nextTotal = prev + charExpGain;
-                            userTotalExpRef.current = nextTotal;
-                            if (!session?.user) {
-                                try {
-                                    localStorage.setItem('pimwai_guest_exp', String(nextTotal));
-                                } catch (e) { }
-                            }
-                            return nextTotal;
-                        });
-                        pendingSyncExpRef.current += charExpGain;
-
-                        if (pendingSyncExpRef.current >= 150) {
-                            syncExpToDatabase();
-                        }
-                    }
-                } else {
-                    // กดผิดตัวอักษร! ตรวจสอบเกราะป้องกัน (Beginner Perk)
-                    if (shieldsLeftRef.current > 0) {
-                        const nextShields = Math.max(0, shieldsLeftRef.current - 1);
-                        setShieldsLeft(nextShields);
-                        shieldsLeftRef.current = nextShields;
-                        triggerWordFloater(activeWordIdx, 'shield', '-1 ป้องกัน');
-                    } else {
-                        // ไม่มีเกราะ: ลดคอมโบลงครึ่งหนึ่ง
-                        setCombo(prev => Math.floor(prev / 2));
-                        const resetMul = Number((baseRankMul + (targetWordObj.isGolden ? 1.0 : 0)).toFixed(2));
-                        setMultiplier(resetMul);
-                    }
-                }
-
-                const newInput = inputBuffer + typedChar;
-                setInputBuffer(newInput);
-
-                // ตรวจสอบจบในโหมด Words หรือโหมดบทความ ทันทีที่พิมพ์ตัวสุดท้ายของคำสุดท้ายครบถูกต้อง
-                if (((mode === 'words' && activeWordIdx === wordLimit - 1) || (mode === 'quote' && activeWordIdx === wordList.length - 1)) && newInput === targetWord) {
-                    const updatedHistory = [...typedWordsHistory];
-                    updatedHistory[activeWordIdx] = newInput;
-                    setTypedWordsHistory(updatedHistory);
-
-                    const updatedStatus = [...completedWordsStatus];
-                    updatedStatus[activeWordIdx] = 'correct';
-                    setCompletedWordsStatus(updatedStatus);
-
-                    if (!isArticleMode && !wordHasBackspaceRef.current && !rewardedWordIndicesRef.current.has(activeWordIdx)) {
-                        rewardedWordIndicesRef.current.add(activeWordIdx);
-                        let bountyExp = 0;
-                        let isGoldenBounty = false;
-                        if (targetWordObj.isGolden && lessonPerksRef.current.intermediate) {
-                            bountyExp = 30;
-                            isGoldenBounty = true;
-                        } else if (lessonPerksRef.current.beginner) {
-                            bountyExp = 5;
-                        }
-                        if (bountyExp > 0) {
-                            if (isFeverActiveRef.current) bountyExp *= 2;
-                            setRoundExpEarned(prev => prev + bountyExp);
-                            setSessionExpEarned(prev => prev + bountyExp);
-                            setUserTotalExp(prev => prev + bountyExp);
-                            pendingSyncExpRef.current += bountyExp;
-                            triggerWordFloater(activeWordIdx, isGoldenBounty ? 'golden_bounty' : 'bounty', `+${bountyExp} EXP`, bountyExp);
-                        }
-                    }
-
-                    setEndTime(Date.now());
-                    setIsFinished(true);
-                    setIsTyping(false);
-                    syncExpToDatabase();
-                    return;
-                }
-
-                // คำนวณ WPM และ Accuracy แบบสดจากความเร็วจริง ณ ขณะนั้น
-                updateRealtimeWpm();
+                processCharacterAction(typedChar, e);
             }
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [
-        wordList,
-        activeWordIdx,
-        inputBuffer,
-        typedWordsHistory,
-        completedWordsStatus,
-        isFinished,
-        startTime,
-        combo,
-        correctKeystrokes,
-        totalKeystrokes,
-        isSoundOn,
         isAudioModalOpen,
-        mode,
-        zenType,
-        quoteLength,
-        wordLimit,
-        includePunctuation,
-        includeNumbers,
-        language,
+        isFinished,
         resetGame,
-        syncExpToDatabase,
-        triggerBountyToast,
-        triggerShieldToast,
-        triggerWordFloater
+        processSpaceAction,
+        processBackspaceAction,
+        processCharacterAction,
+        language
     ]);
 
     // คำนวณข้อมูล Rank และดาวจาก EXP สะสมจริง (พร้อมเงื่อนไข Top 10)
@@ -1517,206 +1538,228 @@ export default function FarmPage() {
         <div className="min-h-screen bg-[#f4f7fb] flex flex-col font-sans relative overflow-x-hidden selection:bg-[#5cb5db]/30 selection:text-[#0c648b]">
             <Toaster position="top-center" reverseOrder={false} />
 
-            <main className={`flex-1 w-full max-w-6xl mx-auto px-4 py-6 sm:py-8 flex flex-col items-center justify-center transition-all ${isFocusMode ? 'cursor-none' : ''}`}>
+            <main className={`flex-1 w-full max-w-6xl mx-auto px-2 sm:px-4 py-4 sm:py-8 pb-24 sm:pb-8 flex flex-col items-center justify-center transition-all ${isFocusMode ? 'cursor-none' : ''}`}>
 
                 {/* 🌟 Top Quick Config Bar (ซ่อนอัตโนมัติเมื่อเริ่มพิมพ์ จนกว่าจะขยับเมาส์) */}
-                <div className={`flex flex-wrap items-stretch justify-center gap-2.5 mb-6 transition-all duration-300 ease-in-out ${isFocusMode
+                <div className={`w-full max-w-6xl mb-4 sm:mb-6 transition-all duration-300 ease-in-out ${isFocusMode
                     ? 'opacity-0 pointer-events-none -translate-y-4'
                     : 'opacity-100 translate-y-0'
                     }`}>
-                    <div className="bg-white px-6 py-3 rounded-3xl shadow-lg shadow-blue-500/5 flex flex-wrap items-center justify-center gap-3 sm:gap-6 text-xs sm:text-sm font-bold text-gray-500">
+                    <div className="w-full bg-white px-3 sm:px-6 py-2.5 sm:py-3 rounded-2xl sm:rounded-3xl shadow-lg shadow-blue-500/5 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 text-xs sm:text-sm font-bold text-gray-500">
 
-                        {/* Sub-Group: Language */}
-                        <div className="flex items-center gap-1.5 pr-3 sm:border-r border-gray-200">
+                        {/* Group 1: Language + Punctuation + Numbers + Audio (on mobile) */}
+                        <div className="flex items-center justify-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
+                            {/* Sub-Group: Language */}
+                            <div className="flex items-center gap-1 sm:gap-1.5 pr-2 sm:pr-3 border-r border-gray-200">
+                                <button
+                                    onClick={() => handleLanguageChange('thai')}
+                                    className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 rounded-lg transition-all cursor-pointer ${language === 'thai' ? 'bg-[#5cb5db] text-white shadow-xs font-bold' : 'hover:text-[#5cb5db]'
+                                        }`}
+                                >
+                                    <span>ไทย</span>
+                                </button>
+                                <button
+                                    onClick={() => handleLanguageChange('english')}
+                                    className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 rounded-lg transition-all cursor-pointer ${language === 'english' ? 'bg-[#5cb5db] text-white shadow-xs font-bold' : 'hover:text-[#5cb5db]'
+                                        }`}
+                                >
+                                    <span>English</span>
+                                </button>
+                            </div>
+
+                            {/* Sub-Group: Punctuation & Numbers (ซ่อนในโหมดบทความ) */}
+                            {!isArticleMode && (
+                                <div className="flex items-center gap-1.5 sm:gap-2 pr-2 sm:pr-3 border-r border-gray-200">
+                                    <button
+                                        onClick={() => setIncludePunctuation(!includePunctuation)}
+                                        className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg transition-all cursor-pointer ${includePunctuation ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
+                                            }`}
+                                        title="สัญลักษณ์"
+                                    >
+                                        <AtSign size={14} />
+                                        <span className="hidden sm:inline">สัญลักษณ์</span>
+                                    </button>
+
+                                    <button
+                                        onClick={() => setIncludeNumbers(!includeNumbers)}
+                                        className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg transition-all cursor-pointer ${includeNumbers ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
+                                            }`}
+                                        title="ตัวเลข"
+                                    >
+                                        <Hash size={14} />
+                                        <span className="hidden sm:inline">ตัวเลข</span>
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* 🎵 ปุ่มตั้งค่าเสียงคีย์บอร์ด & เพลง (บนมือถือ อยู่แถวบนติดกับตัวเลือก) */}
                             <button
-                                onClick={() => handleLanguageChange('thai')}
-                                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer ${language === 'thai' ? 'bg-[#5cb5db] text-white shadow-xs font-bold' : 'hover:text-[#5cb5db]'
-                                    }`}
+                                type="button"
+                                onClick={() => setIsAudioModalOpen(true)}
+                                title="ตั้งค่าเสียงคีย์บอร์ด & เพลงพื้นหลัง"
+                                className="sm:hidden p-1 rounded-lg text-gray-400 hover:text-[#5cb5db] hover:bg-gray-50 transition-all cursor-pointer flex items-center justify-center shrink-0"
                             >
-                                <span>ไทย</span>
-                            </button>
-                            <button
-                                onClick={() => handleLanguageChange('english')}
-                                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer ${language === 'english' ? 'bg-[#5cb5db] text-white shadow-xs font-bold' : 'hover:text-[#5cb5db]'
-                                    }`}
-                            >
-                                <span>English</span>
+                                {isSoundOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
                             </button>
                         </div>
 
-                        {/* Sub-Group: Punctuation & Numbers (ซ่อนในโหมดบทความ) */}
-                        {!isArticleMode && (
-                            <div className="flex items-center gap-2 pr-3 sm:border-r border-gray-200">
-                                <button
-                                    onClick={() => setIncludePunctuation(!includePunctuation)}
-                                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg transition-all cursor-pointer ${includePunctuation ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
-                                        }`}
-                                >
-                                    <AtSign size={14} />
-                                    <span>สัญลักษณ์</span>
-                                </button>
+                        {/* เส้นคั่นบน Desktop */}
+                        <div className="w-[1px] h-4 bg-gray-200 hidden sm:block"></div>
 
-                                <button
-                                    onClick={() => setIncludeNumbers(!includeNumbers)}
-                                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg transition-all cursor-pointer ${includeNumbers ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
-                                        }`}
-                                >
-                                    <Hash size={14} />
-                                    <span>ตัวเลข</span>
-                                </button>
-                            </div>
-                        )}
-
-                        {/* Sub-Group: Main Mode */}
-                        <div className="flex items-center gap-2 pr-3 sm:border-r border-gray-200">
+                        {/* Group 2: Main Mode (เวลา, คำ, Zen, บทความ) */}
+                        <div className="flex items-center justify-center gap-1 sm:gap-2 flex-wrap sm:flex-nowrap">
                             <button
                                 onClick={() => setMode('time')}
-                                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer ${mode === 'time' ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
+                                className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 rounded-lg transition-all cursor-pointer ${mode === 'time' ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
                                     }`}
                             >
-                                <Clock size={15} />
+                                <Clock size={14} />
                                 <span>เวลา</span>
                             </button>
 
                             <button
                                 onClick={() => setMode('words')}
-                                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer ${mode === 'words' ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
+                                className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 rounded-lg transition-all cursor-pointer ${mode === 'words' ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
                                     }`}
                             >
-                                <Type size={15} />
+                                <Type size={14} />
                                 <span>คำ</span>
                             </button>
 
                             <button
                                 onClick={() => setMode('zen')}
-                                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer ${mode === 'zen' ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
+                                className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 rounded-lg transition-all cursor-pointer ${mode === 'zen' ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
                                     }`}
                             >
-                                <InfinityIcon size={15} />
-                                <span>พิมพ์ชิลล์ (Zen)</span>
+                                <InfinityIcon size={14} />
+                                <span className="hidden sm:inline">พิมพ์ชิลล์ (Zen)</span>
+                                <span className="sm:hidden">Zen</span>
                             </button>
 
                             <button
                                 onClick={() => setMode('quote')}
-                                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer ${mode === 'quote' ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
+                                className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 rounded-lg transition-all cursor-pointer ${mode === 'quote' ? 'bg-[#5cb5db] text-white shadow-xs' : 'hover:text-[#5cb5db]'
                                     }`}
                             >
-                                <BookOpen size={15} />
+                                <BookOpen size={14} />
                                 <span>บทความ</span>
                             </button>
                         </div>
 
-                        {/* Sub-Group: Values (Time / Words / Quote) */}
-                        {mode === 'time' && (
-                            <div className="flex items-center gap-1">
-                                {[15, 30, 60, 120].map((t) => (
-                                    <button
-                                        key={t}
-                                        onClick={() => setTimeLimit(t)}
-                                        className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${timeLimit === t ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
-                                            }`}
-                                    >
-                                        {t}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-
-                        {mode === 'words' && (
-                            <div className="flex items-center gap-1">
-                                {[10, 25, 50, 100].map((w) => (
-                                    <button
-                                        key={w}
-                                        onClick={() => setWordLimit(w)}
-                                        className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${wordLimit === w ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
-                                            }`}
-                                    >
-                                        {w}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-
-                        {mode === 'zen' && (
-                            <div className="flex items-center gap-2">
-                                <div className="flex items-center gap-1">
-                                    <button
-                                        onClick={() => setZenType('words')}
-                                        className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${zenType === 'words' ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
-                                            }`}
-                                    >
-                                        คำ
-                                    </button>
-                                    <button
-                                        onClick={() => setZenType('quote')}
-                                        className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${zenType === 'quote' ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
-                                            }`}
-                                    >
-                                        บทความ
-                                    </button>
-                                </div>
-                                {zenType === 'quote' && (
-                                    <div className="flex items-center gap-1 border-l border-gray-200 pl-2">
-                                        {(['all', 'short', 'medium', 'long'] as const).map((qLen) => {
-                                            const labels: Record<string, string> = {
-                                                all: 'สุ่มทั้งหมด',
-                                                short: 'สั้น',
-                                                medium: 'ปานกลาง',
-                                                long: 'ยาว'
-                                            };
-                                            return (
-                                                <button
-                                                    key={qLen}
-                                                    onClick={() => setQuoteLength(qLen)}
-                                                    className={`px-1.5 py-0.5 rounded-md text-[13px] transition-all cursor-pointer ${quoteLength === qLen ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
-                                                        }`}
-                                                >
-                                                    {labels[qLen]}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {mode === 'quote' && (
-                            <div className="flex items-center gap-1">
-                                {(['all', 'short', 'medium', 'long'] as const).map((qLen) => {
-                                    const labels: Record<string, string> = {
-                                        all: 'สุ่มทั้งหมด',
-                                        short: 'สั้น',
-                                        medium: 'ปานกลาง',
-                                        long: 'ยาว'
-                                    };
-                                    return (
+                        {/* Group 3: Values / Sub-options (Time / Words / Zen / Quote) */}
+                        <div className="flex items-center justify-center gap-2 sm:border-l sm:border-gray-200 sm:pl-3">
+                            {mode === 'time' && (
+                                <div className="flex items-center gap-1 sm:gap-1">
+                                    {[15, 30, 60, 120].map((t) => (
                                         <button
-                                            key={qLen}
-                                            onClick={() => setQuoteLength(qLen)}
-                                            className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${quoteLength === qLen ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
+                                            key={t}
+                                            onClick={() => setTimeLimit(t)}
+                                            className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${timeLimit === t ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
                                                 }`}
                                         >
-                                            {labels[qLen]}
+                                            {t}
                                         </button>
-                                    );
-                                })}
-                            </div>
-                        )}
+                                    ))}
+                                </div>
+                            )}
 
+                            {mode === 'words' && (
+                                <div className="flex items-center gap-1 sm:gap-1">
+                                    {[10, 25, 50, 100].map((w) => (
+                                        <button
+                                            key={w}
+                                            onClick={() => setWordLimit(w)}
+                                            className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${wordLimit === w ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
+                                                }`}
+                                        >
+                                            {w}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+
+                            {mode === 'zen' && (
+                                <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-1.5 sm:gap-1">
+                                        <button
+                                            onClick={() => setZenType('words')}
+                                            className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${zenType === 'words' ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
+                                                }`}
+                                        >
+                                            คำ
+                                        </button>
+                                        <button
+                                            onClick={() => setZenType('quote')}
+                                            className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${zenType === 'quote' ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
+                                                }`}
+                                        >
+                                            บทความ
+                                        </button>
+                                    </div>
+                                    {zenType === 'quote' && (
+                                        <div className="flex items-center gap-1 border-l border-gray-200 pl-2">
+                                            {(['all', 'short', 'medium', 'long'] as const).map((qLen) => {
+                                                const labels: Record<string, string> = {
+                                                    all: 'สุ่มทั้งหมด',
+                                                    short: 'สั้น',
+                                                    medium: 'ปานกลาง',
+                                                    long: 'ยาว'
+                                                };
+                                                return (
+                                                    <button
+                                                        key={qLen}
+                                                        onClick={() => setQuoteLength(qLen)}
+                                                        className={`px-1.5 py-0.5 rounded-md text-[12px] sm:text-[13px] transition-all cursor-pointer ${quoteLength === qLen ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
+                                                            }`}
+                                                    >
+                                                        {labels[qLen]}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {mode === 'quote' && (
+                                <div className="flex items-center gap-1">
+                                    {(['all', 'short', 'medium', 'long'] as const).map((qLen) => {
+                                        const labels: Record<string, string> = {
+                                            all: 'สุ่มทั้งหมด',
+                                            short: 'สั้น',
+                                            medium: 'ปานกลาง',
+                                            long: 'ยาว'
+                                        };
+                                        return (
+                                            <button
+                                                key={qLen}
+                                                onClick={() => setQuoteLength(qLen)}
+                                                className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${quoteLength === qLen ? 'text-[#5cb5db] font-black underline underline-offset-4' : 'hover:text-gray-800'
+                                                    }`}
+                                            >
+                                                {labels[qLen]}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* 🎵 ปุ่มตั้งค่าเสียงคีย์บอร์ด & เพลง (Desktop) */}
+                        <div className="w-[1px] h-4 bg-gray-200 hidden sm:block mx-0.5"></div>
+                        <button
+                            type="button"
+                            onClick={() => setIsAudioModalOpen(true)}
+                            title="ตั้งค่าเสียงคีย์บอร์ด & เพลงพื้นหลัง"
+                            className="hidden sm:flex p-1 sm:px-2.5 sm:py-1 rounded-lg text-gray-400 hover:text-[#5cb5db] hover:bg-gray-50 transition-all cursor-pointer items-center justify-center shrink-0"
+                        >
+                            {isSoundOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
+                        </button>
                     </div>
-
-                    {/* 🎵 กล่องปุ่มตั้งค่าเสียง & เพลง แยกออกมาอยู่แถวเดียวกัน (กล่องเหมือนกัน ไอคอนสีเทาล้วน) */}
-                    <button
-                        onClick={() => setIsAudioModalOpen(true)}
-                        title="ตั้งค่าเสียงคีย์บอร์ด & เพลงพื้นหลัง"
-                        className="bg-white px-4 py-3 rounded-3xl shadow-lg shadow-blue-500/5 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-all cursor-pointer"
-                    >
-                        {isSoundOn ? <Volume2 size={18} /> : <VolumeX size={18} />}
-                    </button>
                 </div>
 
                 {/* ⌨️ Main Typing Stream Box */}
-                <div className="w-full max-w-6xl bg-white rounded-3xl p-6 sm:p-8 shadow-lg shadow-blue-500/5 relative min-h-[420px] flex flex-col justify-between overflow-hidden">
+                <div className="w-full max-w-6xl bg-white rounded-2xl sm:rounded-3xl p-3 sm:p-8 shadow-lg shadow-blue-500/5 relative min-h-[380px] sm:min-h-[420px] flex flex-col justify-between overflow-hidden">
 
                     {/* CSS Keyframes สำหรับ Pop-up ข้อความลอยกลางบนหัวคำ (Hold at Top-Center then Smooth Float Up) */}
                     <style dangerouslySetInnerHTML={{
@@ -1888,152 +1931,177 @@ export default function FarmPage() {
                         <>
                             {/* 👑 Integrated Rank, Star & EXP Progress Header (แสดง Skeleton ตอนโหลดเพื่อป้องกันการกระพริบเป็น Rank 1) */}
                             {!isUserLoaded ? (
-                                <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-4 pb-3 mb-2 border-b border-gray-100/90 animate-pulse">
+                                <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 pb-3 mb-2 border-b border-gray-100/90 animate-pulse">
                                     {/* Skeleton Left: Rank Image & Info */}
-                                    <div className="flex items-center gap-3.5 shrink-0">
-                                        <div className="w-14 h-12 bg-gray-200/70 rounded-2xl"></div>
-                                        <div className="flex flex-col gap-2">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-24 h-5 bg-gray-200/80 rounded-full"></div>
-                                                <div className="w-16 h-4 bg-gray-200/60 rounded-full"></div>
+                                    <div className="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-2.5 sm:gap-3 shrink-0">
+                                        <div className="flex items-center gap-2.5 shrink-0">
+                                            <div className="w-10 sm:w-12 h-10 sm:h-12 bg-gray-200/80 rounded-2xl shrink-0"></div>
+                                            <div className="flex flex-col gap-1 justify-center">
+                                                <div className="flex items-center gap-1.5">
+                                                    <div className="w-20 h-4 sm:h-5 bg-gray-200/80 rounded-full"></div>
+                                                    <div className="hidden sm:block w-12 h-5 bg-gray-200/60 rounded-full"></div>
+                                                </div>
+                                                <div className="w-14 h-3 bg-gray-200/60 rounded"></div>
                                             </div>
-                                            <div className="w-20 h-3 bg-gray-200/60 rounded-full"></div>
                                         </div>
+                                        <div className="sm:hidden w-16 h-4 bg-gray-200/60 rounded"></div>
                                     </div>
 
                                     {/* Skeleton Middle: Combo & Speed Badges */}
-                                    <div className="flex items-center gap-2 shrink-0">
-                                        <div className="w-24 h-8 bg-gray-200/70 rounded-xl"></div>
-                                        <div className="w-24 h-8 bg-gray-200/70 rounded-xl"></div>
-                                        <div className="w-16 h-8 bg-gray-200/70 rounded-xl"></div>
+                                    <div className="w-full sm:w-auto flex items-center justify-start sm:justify-center gap-1 sm:gap-2 flex-nowrap overflow-x-auto py-0.5 no-scrollbar">
+                                        <div className="w-14 sm:w-22 h-6 sm:h-8 bg-gray-200/70 rounded-xl shrink-0"></div>
+                                        <div className="w-14 sm:w-22 h-6 sm:h-8 bg-gray-200/70 rounded-xl shrink-0"></div>
+                                        <div className="w-10 sm:w-16 h-6 sm:h-8 bg-gray-200/70 rounded-xl shrink-0"></div>
+                                        <div className="w-12 sm:w-16 h-6 sm:h-8 bg-gray-200/70 rounded-xl shrink-0"></div>
                                     </div>
 
                                     {/* Skeleton Right: EXP Progress Bar */}
-                                    <div className="w-full sm:w-72 flex flex-col justify-center px-1 shrink-0 gap-2">
+                                    <div className="hidden sm:flex w-72 flex-col justify-center px-1 shrink-0 gap-1.5">
                                         <div className="flex justify-between items-center">
                                             <div className="w-20 h-3 bg-gray-200/70 rounded"></div>
                                             <div className="w-24 h-3 bg-gray-200/70 rounded"></div>
                                         </div>
-                                        <div className="w-full h-3.5 bg-gray-200/70 rounded-full"></div>
-                                        <div className="w-32 h-4 bg-gray-200/50 rounded self-center mt-0.5"></div>
+                                        <div className="w-full h-2.5 sm:h-3.5 bg-gray-200/70 rounded-full"></div>
                                     </div>
                                 </div>
                             ) : (
-                                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pb-3 mb-2 border-b border-gray-100/90 animate-in fade-in duration-300">
+                                <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-4 pb-3 mb-2 border-b border-gray-100/90 animate-in fade-in duration-300">
 
-                                    {/* 1. Left: Rank Image + Badge + Stars + Base Multiplier */}
-                                    <div className="flex items-center gap-3.5 shrink-0">
-                                        <div className="relative group shrink-0 flex items-center justify-center">
-                                            <div className="absolute inset-0 rounded-full"></div>
-                                            <Image
-                                                src={`/Rank${rank}.png`}
-                                                width={75}
-                                                height={50}
-                                                alt={rankName}
-                                                className="relative object-contain drop-shadow-sm h-12 w-auto"
-                                                onError={(e) => { e.currentTarget.srcset = "/Rank1.png" }}
-                                            />
-                                        </div>
-
-                                        <div className="flex flex-col">
-                                            <div className="flex items-center gap-2">
-                                                <span className={`px-2.5 py-0.5 bg-gradient-to-r ${badgeBg} text-white font-black text-[11px] rounded-full tracking-wider uppercase shadow-xs`}>
-                                                    {rankName}
-                                                </span>
-                                                <span className="px-2 py-0.5 bg-gray-100 border border-gray-200 text-gray-600 font-bold text-[10px] rounded-full">
-                                                    Base x{(getRankMultiplierConfig(rank, stars).totalBaseMultiplier + (lessonPerks.advanced ? 0.5 : 0)).toFixed(2)}
-                                                </span>
+                                    {/* 1. Left (อันที่วงบน): Rank Image + Badge + Stars/TOP 10 + Base Multiplier (แถวเดียวกัน) */}
+                                    <div className="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-2 sm:gap-3.5 shrink-0">
+                                        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                                            <div className="relative group shrink-0 flex items-center justify-center">
+                                                <Image
+                                                    src={`/Rank${rank}.png`}
+                                                    width={75}
+                                                    height={50}
+                                                    alt={rankName}
+                                                    className="relative object-contain drop-shadow-sm h-9 sm:h-12 w-auto shrink-0"
+                                                    onError={(e) => { e.currentTarget.srcset = "/Rank1.png" }}
+                                                />
                                             </div>
-                                            {/* 🌟 แสดงดาว (เฉพาะ Rank 1 - 6) หรือ ป้าย TOP 10 สำหรับ Rank 7 (ไม่มีดาว) */}
-                                            {rank === 7 ? (
-                                                <div className="flex items-center mt-1">
-                                                    <span className="text-[9px] font-black px-2.5 py-0.5 bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-500 text-white rounded-full uppercase tracking-wider shadow-xs">
-                                                        TOP 10
+
+                                            <div className="flex flex-col justify-center shrink-0">
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className={`px-2 sm:px-2.5 py-0.5 bg-gradient-to-r ${badgeBg} text-white font-black text-[10px] sm:text-[11px] rounded-full tracking-wider uppercase shadow-xs shrink-0`}>
+                                                        {rankName}
+                                                    </span>
+                                                    <span className="hidden sm:inline-flex px-2 py-0.5 bg-gray-100 border border-gray-200 text-gray-600 font-bold text-[10px] rounded-full shrink-0">
+                                                        Base x{(getRankMultiplierConfig(rank, stars).totalBaseMultiplier + (lessonPerks.advanced ? 0.5 : 0)).toFixed(2)}
                                                     </span>
                                                 </div>
-                                            ) : (
-                                                <div className="flex gap-1 mt-1.5 items-center">
-                                                    {[1, 2, 3, 4, 5].map((s) => (
-                                                        <Star
-                                                            key={s}
-                                                            size={13}
-                                                            className={`${s <= stars ? "fill-yellow-400 text-yellow-400 drop-shadow-xs" : "fill-gray-200 text-gray-200"}`}
-                                                        />
-                                                    ))}
-                                                </div>
-                                            )}
+
+                                                {/* 🌟 แสดงดาว (เฉพาะ Rank 1 - 6) หรือ ป้าย TOP 10 สำหรับ Rank 7 (อยู่ใต้ชื่อ) */}
+                                                {rank === 7 ? (
+                                                    <div className="flex items-center mt-0.5 sm:mt-1">
+                                                        <span className="text-[9px] font-black px-2 py-0.5 bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-500 text-white rounded-full uppercase tracking-wider shadow-xs shrink-0">
+                                                            TOP 10
+                                                        </span>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex gap-0.5 sm:gap-1 items-center mt-0.5 sm:mt-1 pl-0.5">
+                                                        {[1, 2, 3, 4, 5].map((s) => (
+                                                            <Star
+                                                                key={s}
+                                                                size={11}
+                                                                className={`${s <= stars ? "fill-yellow-400 text-yellow-400 drop-shadow-xs" : "fill-gray-200 text-gray-200"}`}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Mobile-only Progress summary on the right side of Row 1 (รวมทั้งหลอด ExpBar ขนาดกะทัดรัด มาอยู่แถวเดียวกันกับด้านบน 100%) */}
+                                        <div className="sm:hidden flex flex-col items-end shrink-0 pl-1">
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-gray-700 font-mono font-bold text-[11px]">
+                                                    {userTotalExp.toLocaleString()} XP
+                                                </span>
+                                                <span className="text-emerald-600 font-bold text-[10px] flex items-center gap-0.5">
+                                                    <Sparkles size={10} className="text-yellow-500 fill-yellow-500 shrink-0" />
+                                                    +{sessionExpEarned.toLocaleString()}
+                                                </span>
+                                            </div>
+                                            {/* 🌟 หลอด ExpBar ย้ายขึ้นมาอยู่แถวเดียวกันตรงนี้เลย! */}
+                                            <div className="w-24 mt-1">
+                                                <ExpBar
+                                                    currentExp={(rank === 7 || isTop10Eligible) ? 100 : currentBarExp}
+                                                    maxExp={(rank === 7 || isTop10Eligible) ? 100 : maxBarExp}
+                                                    barColor={`bg-gradient-to-r ${badgeBg}`}
+                                                    showText={false}
+                                                />
+                                            </div>
                                         </div>
                                     </div>
 
-                                    {/* 2. Middle: Combo + EXP Multiplier (with Fever State) + Shield + Speed */}
-                                    <div className="flex items-center gap-1.5 sm:gap-2 flex-nowrap shrink-0 justify-center">
+                                    {/* 2. Middle (ตรงกลาง): Combo + EXP Multiplier + Shield + Speed + Countdown (ชิดซ้ายบนมือถือ) */}
+                                    <div className="w-full sm:w-auto flex items-center justify-start sm:justify-center gap-1 sm:gap-2 flex-nowrap py-0.5">
                                         {/* Combo Badge */}
-                                        <div className={`text-white px-2.5 sm:px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xs transition-all shrink-0 ${isFeverActive
+                                        <div className={`text-white px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-1 shadow-xs transition-all shrink-0 ${isFeverActive
                                             ? 'bg-purple-600 border border-purple-500'
                                             : 'bg-gradient-to-r from-orange-500 to-amber-500 shadow-orange-500/20'
                                             }`}>
-                                            <Flame size={15} className="fill-white" />
-                                            <span className="font-black text-xs logo-font">{combo} COMBO</span>
+                                            <Flame size={12} className="fill-white" />
+                                            <span className="font-black text-[10px] sm:text-xs logo-font">{combo} <span className="hidden sm:inline">COMBO</span></span>
                                         </div>
 
                                         {/* EXP Multiplier Badge */}
                                         {isFeverActive ? (
-                                            <div className="bg-purple-600 border border-purple-500 text-white px-2.5 py-1.5 rounded-xl flex items-center gap-1 shadow-xs shrink-0">
-                                                <Flame size={14} className="fill-white text-white" />
-                                                <span className="font-black text-xs logo-font">FEVER x{multiplier.toFixed(2)} ({feverTimeLeft}s)</span>
+                                            <div className="bg-purple-600 border border-purple-500 text-white px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-1 shadow-xs shrink-0">
+                                                <Flame size={11} className="fill-white text-white" />
+                                                <span className="font-black text-[10px] sm:text-xs logo-font">FEVER x{multiplier.toFixed(2)}</span>
                                             </div>
                                         ) : (
-                                            <div className="bg-cyan-500 border border-cyan-400 text-white px-2.5 py-1.5 rounded-xl flex items-center gap-1 shadow-xs shrink-0">
-                                                <Zap size={13} className="fill-white text-white" />
-                                                <span className="font-black text-xs logo-font">EXP x{multiplier.toFixed(2)}</span>
+                                            <div className="bg-cyan-500 border border-cyan-400 text-white px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-1 shadow-xs shrink-0">
+                                                <Zap size={11} className="fill-white text-white" />
+                                                <span className="font-black text-[10px] sm:text-xs logo-font"><span className="hidden sm:inline">EXP </span>x{multiplier.toFixed(2)}</span>
                                             </div>
                                         )}
 
                                         {/* Double Shield Status (ถ้ามี Perk Beginner) */}
                                         {lessonPerks.beginner && (
                                             <div
-                                                className={`px-2.5 py-1.5 rounded-xl flex items-center gap-1 text-xs font-black shadow-xs transition-all shrink-0 ${shieldsLeft > 0
+                                                className={`px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-1 text-[10px] sm:text-xs font-black shadow-xs transition-all shrink-0 ${shieldsLeft > 0
                                                     ? 'bg-emerald-500 text-white border border-emerald-400'
                                                     : 'bg-gray-100 text-gray-400 border border-gray-200'
                                                     }`}
                                                 title="เกราะป้องกันคอมโบจากการกดพลาด"
                                             >
-                                                <Shield size={13} className={shieldsLeft > 0 ? "fill-white" : "text-gray-400"} />
-                                                <span className="logo-font">{shieldsLeft}/2 เกราะ</span>
+                                                <Shield size={11} className={shieldsLeft > 0 ? "fill-white" : "text-gray-400"} />
+                                                <span className="logo-font">{shieldsLeft}/2<span className="hidden sm:inline"> เกราะ</span></span>
                                             </div>
                                         )}
 
                                         {/* Live Speed */}
                                         <div
-                                            className="bg-gray-500 text-white px-2.5 sm:px-3 py-1.5 rounded-xl flex items-center gap-1 shadow-xs shrink-0"
+                                            className="bg-gray-500 text-white px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-1 shadow-xs shrink-0"
                                             title="ความเร็วคำต่อนาที (Words Per Minute)"
                                         >
-                                            <span className="text-xs font-black logo-font">{currentWpm} WPM</span>
+                                            <span className="text-[10px] sm:text-xs font-black logo-font">{currentWpm} WPM</span>
                                         </div>
 
                                         {/* Caps Lock Indicator */}
                                         {isCapsLockOn && (
                                             <div
-                                                className="bg-indigo-600 text-white px-2.5 py-1.5 rounded-xl flex items-center gap-1 shadow-xs shrink-0"
+                                                className="bg-indigo-600 text-white px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-1 shadow-xs shrink-0"
                                                 title="เปิด Caps Lock อยู่ (พิมพ์ตัวใหญ่ / ตัวยกแคร่ตลอด)"
                                             >
-                                                <span className="text-xs font-black logo-font">CAPS LOCK</span>
+                                                <span className="text-[10px] sm:text-xs font-black logo-font">CAPS</span>
                                             </div>
                                         )}
 
-
-
                                         {/* Time Countdown (ถ้าเป็นโหมดเวลา) */}
                                         {mode === 'time' && (
-                                            <div className="bg-[#5cb5db] text-white px-2.5 py-1.5 rounded-xl text-xs font-black logo-font">
+                                            <div className="bg-[#5cb5db] text-white px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-[10px] sm:text-xs font-black logo-font shrink-0">
                                                 {timeLeft}s
                                             </div>
                                         )}
                                     </div>
 
-                                    {/* 3. Right: EXP Bar + EXP สะสมรอบนี้ (ใหญ่ชัดเจน) */}
-                                    <div className="w-full sm:w-72 flex flex-col justify-center px-1 shrink-0">
-                                        <div className="flex justify-between items-center text-xs font-bold text-gray-400 mb-1.5">
+                                    {/* 3. Right (Desktop เท่านั้น): EXP Bar + EXP สะสมรอบนี้ */}
+                                    <div className="hidden sm:flex w-72 flex-col justify-center px-1 shrink-0">
+                                        <div className="hidden sm:flex justify-between items-center text-xs font-bold text-gray-400 mb-1.5">
                                             <span>RANK PROGRESS</span>
                                             {rank === 7 ? (
                                                 <span className="text-purple-600 font-mono font-bold text-xs">{userTotalExp.toLocaleString()} XP</span>
@@ -2055,8 +2123,8 @@ export default function FarmPage() {
                                             showText={false}
                                         />
 
-                                        {/* แสดง EXP สะสมรอบนี้ (ขนาดใหญ่ชัดเจนตามสั่ง) */}
-                                        <div className="flex items-center justify-center gap-2 text-xs sm:text-sm font-bold mt-2 px-1">
+                                        {/* แสดง EXP สะสมรอบนี้ (Desktop) */}
+                                        <div className="hidden sm:flex items-center justify-center gap-2 text-xs sm:text-sm font-bold mt-2 px-1">
                                             <span className="text-gray-500 font-semibold">EXP สะสมรอบนี้:</span>
                                             <span className="text-emerald-600 font-black text-sm sm:text-base flex items-center gap-1 logo-font">
                                                 <Sparkles size={15} className="text-yellow-500 fill-yellow-500 shrink-0" />
@@ -2069,10 +2137,55 @@ export default function FarmPage() {
                             )}
 
 
+                            {/* Hidden input for mobile virtual keyboard */}
+                            <input
+                                ref={mobileInputRef}
+                                type="text"
+                                inputMode="text"
+                                autoCapitalize="none"
+                                autoComplete="off"
+                                autoCorrect="off"
+                                spellCheck={false}
+                                className="absolute -top-96 left-0 opacity-0 pointer-events-none w-1 h-1 select-none"
+                                aria-hidden="true"
+                                tabIndex={-1}
+                                onBeforeInput={handleMobileBeforeInput}
+                                onChange={handleMobileChange}
+                                onFocus={() => setIsMobileFocused(true)}
+                                onBlur={() => setIsMobileFocused(false)}
+                            />
+
+                            {/* Mobile Keyboard Button (ไม่มีพื้นหลัง ทั้งตอนกดและไม่กด - ชิดขวา) */}
+                            <div className="sm:hidden flex items-center justify-end my-1 px-1">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (isMobileFocused) {
+                                            mobileInputRef.current?.blur();
+                                        } else {
+                                            mobileInputRef.current?.focus();
+                                        }
+                                    }}
+                                    className={`inline-flex items-center gap-1.5 py-1 px-1 text-xs font-bold transition-colors select-none ${
+                                        isMobileFocused
+                                            ? 'text-[#5cb5db]'
+                                            : 'text-gray-400 hover:text-gray-600 active:text-[#5cb5db]'
+                                    }`}
+                                >
+                                    <Keyboard size={15} />
+                                    <span>{isMobileFocused ? 'ปิดแป้นพิมพ์' : 'เปิดแป้นพิมพ์'}</span>
+                                </button>
+                            </div>
+
                             {/* Words Stream Box with Smooth Scrolling (3 Full Visible Lines) */}
                             <div
                                 ref={typingContainerRef}
-                                className="flex-1 overflow-hidden max-w-full overflow-x-hidden h-[216px] max-h-[216px] sm:h-[220px] sm:max-h-[220px] relative flex flex-wrap items-baseline gap-x-3 sm:gap-x-4 gap-y-3 sm:gap-y-3.5 text-2xl sm:text-3xl font-medium leading-normal select-none my-1 pt-8 pb-2 antialiased"
+                                onClick={() => {
+                                    if (typeof window !== 'undefined' && window.innerWidth < 640) {
+                                        mobileInputRef.current?.focus();
+                                    }
+                                }}
+                                className="flex-1 overflow-hidden max-w-full overflow-x-hidden h-[180px] max-h-[180px] sm:h-[220px] sm:max-h-[220px] relative flex flex-wrap items-baseline gap-x-2.5 sm:gap-x-4 gap-y-2.5 sm:gap-y-3.5 text-xl sm:text-3xl font-medium leading-normal select-none my-1 pt-6 sm:pt-8 pb-2 antialiased cursor-text"
                             >
                                 {/* 🎯 Container-Level Ultra-Smooth Floating Caret (อัปเดตผ่าน DOM Ref ทันทีในเฟรมเดียว ลื่น 60/120fps) */}
                                 {!isFinished && (
@@ -2382,47 +2495,49 @@ export default function FarmPage() {
                             </div>
 
                             {/* Bottom Controls inside Box */}
-                            <div className="mt-6 flex items-center justify-between pt-4 border-t border-gray-100">
-                                {/* Action Buttons: ปุ่มถัดไป (>) และ ปุ่มเริ่มใหม่ (🔄) */}
-                                <div className="flex items-center gap-3 sm:gap-4 select-none">
-                                    {/* 1. ปุ่มถัดไป (คำต่อไป) */}
-                                    <button
-                                        type="button"
-                                        onClick={nextNewWords}
-                                        className="text-gray-400 hover:text-gray-800 transition-all duration-150 hover:scale-115 active:scale-90 cursor-pointer p-1.5 select-none"
-                                        title="คำต่อไป (Tab)"
-                                    >
-                                        <ChevronRight size={24} strokeWidth={2.8} />
-                                    </button>
+                            <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0 pt-3 sm:pt-4 border-t border-gray-100">
+                                {/* Action Buttons: ปุ่มถัดไป (>) และ ปุ่มเริ่มใหม่ (🔄) + เวลาวันนี้ */}
+                                <div className="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-3 sm:gap-4 select-none">
+                                    <div className="flex items-center gap-1.5 sm:gap-2">
+                                        {/* 1. ปุ่มถัดไป (คำต่อไป) */}
+                                        <button
+                                            type="button"
+                                            onClick={nextNewWords}
+                                            className="text-gray-400 hover:text-gray-800 transition-all duration-150 hover:scale-115 active:scale-90 cursor-pointer p-1.5 select-none"
+                                            title="คำต่อไป (Tab)"
+                                        >
+                                            <ChevronRight size={22} strokeWidth={2.8} />
+                                        </button>
 
-                                    {/* 2. ปุ่มเริ่มใหม่ (คำเดิม) */}
-                                    <button
-                                        type="button"
-                                        onClick={repeatSameWords}
-                                        className="text-gray-400 hover:text-gray-800 transition-all duration-150 hover:scale-115 active:scale-90 cursor-pointer p-1.5 select-none"
-                                        title="เริ่มใหม่ (คำเดิม)"
-                                    >
-                                        <RefreshCw size={20} strokeWidth={2.8} />
-                                    </button>
+                                        {/* 2. ปุ่มเริ่มใหม่ (คำเดิม) */}
+                                        <button
+                                            type="button"
+                                            onClick={repeatSameWords}
+                                            className="text-gray-400 hover:text-gray-800 transition-all duration-150 hover:scale-115 active:scale-90 cursor-pointer p-1.5 select-none"
+                                            title="เริ่มใหม่ (คำเดิม)"
+                                        >
+                                            <RefreshCw size={18} strokeWidth={2.8} />
+                                        </button>
+                                    </div>
 
                                     <div className="w-[1px] h-4 bg-gray-200 hidden sm:block mx-0.5"></div>
 
-                                    {/* ⏱️ เวลาวันนี้: สไตล์เดียวกับ Accuracy ด้านขวา (สีดำ ฟอนต์เหมือนกัน) */}
-                                    <div className="flex items-center gap-2 text-sm sm:text-base font-bold text-gray-400" title="เวลาพิมพ์ในโหมดฟาร์มของวันนี้ทั้งหมด">
+                                    {/* ⏱️ เวลาวันนี้: สไตล์เดียวกับ Accuracy ด้านขวา */}
+                                    <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-base font-bold text-gray-400" title="เวลาพิมพ์ในโหมดฟาร์มของวันนี้ทั้งหมด">
                                         <span>เวลาวันนี้:</span>
-                                        <strong className="text-base sm:text-xl font-black text-gray-800 logo-font">
+                                        <strong className="text-sm sm:text-xl font-black text-gray-800 logo-font">
                                             {formatFarmTimeDetailed(todayFarmTimeSeconds)}
                                         </strong>
                                     </div>
                                 </div>
 
-                                {/* Right Area: EXP รอบนี้ (ตัวใหญ่ๆ นับใหม่เมื่อกดรี) + Accuracy */}
-                                <div className="flex items-center gap-4 sm:gap-6 select-none">
+                                {/* Right Area: EXP รอบนี้ + Accuracy */}
+                                <div className="w-full sm:w-auto flex items-center justify-between sm:justify-end gap-3 sm:gap-6 select-none border-t sm:border-t-0 pt-2.5 sm:pt-0 border-gray-100/70">
                                     {/* 🌟 EXP ได้เท่าไหร่รอบนี้ */}
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-1.5 sm:gap-2">
                                         <span className="text-xs sm:text-sm font-bold text-gray-400">EXP รอบนี้:</span>
-                                        <span className="text-base sm:text-xl font-black text-emerald-600 flex items-center gap-1 logo-font">
-                                            <Sparkles size={16} className="text-yellow-500 fill-yellow-500 shrink-0" />
+                                        <span className="text-sm sm:text-xl font-black text-emerald-600 flex items-center gap-1 logo-font">
+                                            <Sparkles size={15} className="text-yellow-500 fill-yellow-500 shrink-0" />
                                             +{roundExpEarned.toLocaleString()} EXP
                                         </span>
                                     </div>
@@ -2430,9 +2545,9 @@ export default function FarmPage() {
                                     <div className="w-[1px] h-4 bg-gray-200 hidden sm:block"></div>
 
                                     {/* Accuracy */}
-                                    <div className="flex items-center gap-2 text-sm sm:text-base font-bold text-gray-400">
+                                    <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-base font-bold text-gray-400">
                                         <span>Accuracy:</span>
-                                        <strong className="text-base sm:text-xl font-black text-gray-800 logo-font">{accuracy}%</strong>
+                                        <strong className="text-sm sm:text-xl font-black text-gray-800 logo-font">{accuracy}%</strong>
                                     </div>
                                 </div>
                             </div>
@@ -2442,11 +2557,11 @@ export default function FarmPage() {
                 </div>
 
                 {/* 🎖️ Lesson Perks Ribbon (ซ่อนอัตโนมัติเมื่อเริ่มพิมพ์ จนกว่าจะขยับเมาส์) */}
-                <div className={`w-full max-w-6xl mt-4 bg-white rounded-3xl p-4 sm:px-6 sm:py-3.5 shadow-lg shadow-blue-500/5 flex flex-wrap items-center justify-between gap-3 text-xs transition-all duration-300 ease-in-out ${isFocusMode
+                <div className={`w-full max-w-6xl mt-4 bg-white rounded-2xl sm:rounded-3xl p-3.5 sm:px-6 sm:py-3.5 shadow-lg shadow-blue-500/5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs transition-all duration-300 ease-in-out ${isFocusMode
                     ? 'opacity-0 pointer-events-none translate-y-4'
                     : 'opacity-100 translate-y-0'
                     }`}>
-                    <div className="flex items-center gap-2 font-bold text-gray-700">
+                    <div className="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-2 font-bold text-gray-700">
                         <span>บัฟติดตัวจากบทเรียน:</span>
                         <button
                             type="button"
@@ -2459,47 +2574,47 @@ export default function FarmPage() {
                         </button>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="grid grid-cols-3 sm:flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
                         {/* 1. Beginner Perk */}
                         <button
                             type="button"
                             onClick={() => setIsPerkModalOpen(true)}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-medium transition-all cursor-pointer hover:scale-[1.02] shadow-xs ${lessonPerks.beginner
+                            className={`flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl font-bold text-[10px] sm:text-xs transition-all cursor-pointer hover:scale-[1.02] shadow-xs ${lessonPerks.beginner
                                 ? 'bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-500 shadow-emerald-600/20'
                                 : 'bg-gray-100/90 text-gray-400 border border-gray-200/60'
                                 }`}
                             title="คลิกเพื่อดูรายละเอียด: เกราะกันพลาด 2 ครั้ง + จบคำถูกต้อง 100% รับ +5 EXP"
                         >
-                            <Shield size={14} className={lessonPerks.beginner ? "fill-white text-white" : "text-gray-400"} />
-                            <span className="font-bold">เกราะกันพลาด</span>
+                            <Shield size={13} className={lessonPerks.beginner ? "fill-white text-white shrink-0" : "text-gray-400 shrink-0"} />
+                            <span className="truncate">เกราะกันพลาด</span>
                         </button>
 
                         {/* 2. Intermediate Perk */}
                         <button
                             type="button"
                             onClick={() => setIsPerkModalOpen(true)}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-medium transition-all cursor-pointer hover:scale-[1.02] shadow-xs ${lessonPerks.intermediate
+                            className={`flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl font-bold text-[10px] sm:text-xs transition-all cursor-pointer hover:scale-[1.02] shadow-xs ${lessonPerks.intermediate
                                 ? 'bg-amber-500 hover:bg-amber-600 text-white border border-amber-400 shadow-amber-500/20'
                                 : 'bg-gray-100/90 text-gray-400 border border-gray-200/60'
                                 }`}
                             title="คลิกเพื่อดูรายละเอียด: โอกาสเจอคำทองคำ 15% + จบคำทองคำรับ +30 EXP"
                         >
-                            <Sparkles size={14} className={lessonPerks.intermediate ? "fill-white text-white" : "text-gray-400"} />
-                            <span className="font-bold">คำทองคำ 15%</span>
+                            <Sparkles size={13} className={lessonPerks.intermediate ? "fill-white text-white shrink-0" : "text-gray-400 shrink-0"} />
+                            <span className="truncate">คำทองคำ 15%</span>
                         </button>
 
                         {/* 3. Advanced Perk */}
                         <button
                             type="button"
                             onClick={() => setIsPerkModalOpen(true)}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-medium transition-all cursor-pointer hover:scale-[1.02] shadow-xs ${lessonPerks.advanced
+                            className={`flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl font-bold text-[10px] sm:text-xs transition-all cursor-pointer hover:scale-[1.02] shadow-xs ${lessonPerks.advanced
                                 ? 'bg-purple-600 hover:bg-purple-700 text-white border border-purple-500 shadow-purple-600/20'
                                 : 'bg-gray-100/90 text-gray-400 border border-gray-200/60'
                                 }`}
                             title="คลิกเพื่อดูรายละเอียด: ตัวคูณ +0.5x ถาวร + ทะลุ Max Cap + ทุก 50 คอมโบเข้า Fever x2 EXP"
                         >
-                            <Zap size={14} className={lessonPerks.advanced ? "fill-white text-white" : "text-gray-400"} />
-                            <span className="font-bold">ตัวคูณ +0.5x</span>
+                            <Zap size={13} className={lessonPerks.advanced ? "fill-white text-white shrink-0" : "text-gray-400 shrink-0"} />
+                            <span className="truncate">ตัวคูณ +0.5x</span>
                         </button>
                     </div>
 
@@ -2507,7 +2622,7 @@ export default function FarmPage() {
                     {(!lessonPerks.beginner || !lessonPerks.intermediate || !lessonPerks.advanced) && (
                         <Link
                             href="/lessons"
-                            className="text-[11px] font-bold text-[#5cb5db] hover:text-[#429ec5] flex items-center gap-0.5 hover:underline transition-all"
+                            className="text-[11px] font-bold text-[#5cb5db] hover:text-[#429ec5] flex items-center justify-end sm:justify-start gap-0.5 hover:underline transition-all w-full sm:w-auto"
                         >
                             <span>เล่นบทเรียนเพื่อปลดล็อกบัฟ</span>
                             <ChevronRight size={13} />

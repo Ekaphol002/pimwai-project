@@ -1070,6 +1070,9 @@ export default function CodeTypingPage() {
 
     // Handle typing events strictly following Farm Mode principle
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        // 🛡️ Anti-Cheat: ปฏิเสธ Synthetic Event / บอทสคริปต์
+        if (!e.isTrusted && !e.nativeEvent?.isTrusted) return;
+
         if (isFinished || !currentToken) return;
 
         // กด Tab เพื่อแอบดูคำใบ้บรรทัดปัจจุบันชั่วคราว (มีประโยชน์มากตอนปิดตัวเขียนตาม)
