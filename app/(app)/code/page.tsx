@@ -21,6 +21,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import { soundManager } from '@/lib/soundEffects';
 import { toDateKey } from '@/lib/streakUtils';
 import { getEnglishCharFromEvent } from '@/lib/englishWords';
+import { resolveThaiKeyWithCapsLock } from '@/lib/keyMaps';
 import QuickAudioModal from '@/components/QuickAudioModal/QuickAudioModal';
 
 interface CodeSnippet {
@@ -406,7 +407,7 @@ const MemoCodeWord = memo(function MemoCodeWord({
         <>
             <span
                 ref={el => registerWordRef(wToken.globalIdx, el)}
-                className="relative inline-flex items-baseline font-mono"
+                className="relative inline items-baseline font-mono"
             >
                 {targetChars.map((char, cIdx) => {
                     let colorClass = untypedClass;
@@ -1086,7 +1087,7 @@ export default function CodeTypingPage() {
         lastTypingTimeRef.current = now;
 
         // Start timer on first printable key
-        if (!startTime && e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        if (!startTime && (e.key.length === 1 || e.key === 'Dead') && !e.ctrlKey && !e.altKey && !e.metaKey) {
             setStartTime(now);
         }
 
@@ -1172,15 +1173,38 @@ export default function CodeTypingPage() {
         }
 
         // 3. พิมพ์ตัวอักษรปกติ (ตรวจจับทีละตัวทันทีที่กด เหมือนโหมดฟาร์ม)
-        if (e.key.length === 1) {
+        if (e.key.length === 1 || e.key === 'Dead') {
+            const nextCharIdx = inputBuffer.length;
+            const targetChar = currentToken.word[nextCharIdx];
+            const isTargetThai = targetChar
+                ? /[\u0E00-\u0E7F]/.test(targetChar)
+                : /[\u0E00-\u0E7F]/.test(currentToken.word);
+
+            let typedChar = '';
+
+            if (isTargetThai || /[\u0E00-\u0E7F]/.test(e.key)) {
+                // ถ้าเป้าหมายเป็นภาษาไทย หรือผู้ใช้กดแป้นพิมพ์ภาษาไทย
+                if (e.code && (e.key.length === 1 || e.key === 'Dead')) {
+                    const { typedChar: resolvedThai } = resolveThaiKeyWithCapsLock(e);
+                    if (resolvedThai) {
+                        typedChar = resolvedThai;
+                    }
+                }
+                if (!typedChar && e.key && e.key.length === 1) {
+                    typedChar = e.key;
+                }
+            } else {
+                // ถ้าเป้าหมายเป็นภาษาอังกฤษ แปลงผ่าน getEnglishCharFromEvent (ช่วยกรณีพิมพ์โค้ดอังกฤษแต่ลืมสลับแป้นไทย)
+                typedChar = getEnglishCharFromEvent(e) || e.key;
+            }
+
+            if (!typedChar || typedChar.length !== 1) return;
+
             e.preventDefault();
             if (isSoundOn) soundManager.playKeySound(undefined, e as any);
 
             setTotalKeystrokes(prev => prev + 1);
 
-            const typedChar = getEnglishCharFromEvent(e) || e.key;
-            const nextCharIdx = inputBuffer.length;
-            const targetChar = currentToken.word[nextCharIdx];
             const isCharCorrect = typedChar === targetChar;
 
             if (isCharCorrect) {
