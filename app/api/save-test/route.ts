@@ -15,43 +15,64 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { duration, wpm, accuracy, mistakes } = body;
 
-    // 🚨 1. Anti-Cheat
-    if (wpm > 300 || accuracy > 100 || accuracy < 0) {
-        return NextResponse.json({ error: "Suspicious activity detected" }, { status: 400 });
+    // 🚨 1. ตรวจสอบ Duration & Anti-Cheat
+    const numDuration = Number(duration);
+    const mins = numDuration < 10 ? numDuration : Math.round(numDuration / 60);
+    if (![1, 3, 5].includes(mins)) {
+      return NextResponse.json({ success: false, error: "Invalid duration" }, { status: 400 });
     }
 
-    const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+    if (typeof wpm !== 'number' || typeof accuracy !== 'number' || wpm > 250 || accuracy > 100 || accuracy < 0) {
+      return NextResponse.json({ success: false, error: "Suspicious activity detected" }, { status: 400 });
+    }
+
+    const cleanEmail = session.user.email?.trim().toLowerCase();
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          ...((session.user as any)?.id ? [{ id: (session.user as any).id }] : []),
+          ...(cleanEmail ? [{ email: cleanEmail }] : [])
+        ]
+      }
+    });
     if (!user) return NextResponse.json({ success: false, error: "User not found" }, { status: 404 });
 
-    // 🧮 2. คำนวณ XP (สูตร Balance ใหม่)
-    
-    // duration ที่ส่งมาหน่วยเป็น "วินาที" (เช่น 60, 180, 300) ต้องแปลงเป็นนาทีก่อน
-    // แต่ถ้า Frontend ส่งมาเป็น 1, 3, 5 อยู่แล้วก็ใช้ได้เลย (เช็ค Frontend ดีๆ นะครับ)
-    // สมมติ Frontend ส่งมาเป็น 60, 180, 300
-    const mins = duration < 10 ? duration : duration / 60;
+    // ⏱️ Rate Limiting: ป้องกันการยิงบันทึกผลถี่ผิดปกติ
+    const lastTest = await prisma.speedTestResult.findFirst({
+      where: { userId: user.id },
+      orderBy: { createdAt: 'desc' }
+    });
+    if (lastTest) {
+      const timeSinceLastMs = Date.now() - new Date(lastTest.createdAt).getTime();
+      if (timeSinceLastMs < 20000) {
+        return NextResponse.json({ success: false, error: "กรุณารอสักครู่ก่อนบันทึกผลการทดสอบถัดไป" }, { status: 429 });
+      }
+    }
 
-    // A. Base XP: คิดจาก WPM * 1.0 * นาที (ปรับขึ้นจาก 0.5 เพื่อให้คุ้มค่าเหนื่อย)
-    // เช่น พิมพ์ 40 WPM นาน 1 นาที = 40 XP
+    // 🧮 2. คำนวณ XP
+    // A. Base XP: คิดจาก WPM * 1.0 * นาที
     let speedXp = Math.round((wpm * 1.0) * mins);
     
-    // B. Accuracy Bonus: แม่นยำต้องได้รางวัล
+    // B. Accuracy Bonus: ต้องพิมพ์จริงจัง (WPM >= 15) ถึงจะได้โบนัสแม่นยำ
     let accuracyBonus = 0;
-    if (accuracy >= 98) accuracyBonus = 10 * mins;       // แม่นเทพ (+10 ต่อนาที)
-    else if (accuracy >= 95) accuracyBonus = 5 * mins;  // แม่นดี (+5 ต่อนาที)
+    if (wpm >= 15) {
+      if (accuracy >= 98) accuracyBonus = 10 * mins;       // แม่นเทพ (+10 ต่อนาที)
+      else if (accuracy >= 95) accuracyBonus = 5 * mins;  // แม่นดี (+5 ต่อนาที)
+    }
     
-    // Penalty: ถ้าแม่นยำต่ำเกินไป ต้องโดนหัก (เพื่อให้คนเน้นแม่น ไม่ใช่เน้นมั่ว)
+    // Penalty: ถ้าแม่นยำต่ำเกินไป หรือ WPM < 10 (AFK / ปั๊มมั่ว) ตัด EXP ทั้งหมด
     let multiplier = 1;
-    if (accuracy < 85) multiplier = 0.5; // หายครึ่ง
-    if (accuracy < 50) multiplier = 0;   // ไม่ได้เลย
+    if (accuracy < 85) multiplier = 0.5;
+    if (accuracy < 50 || wpm < 10) multiplier = 0;
 
-    // รวมคะแนนดิบ
     let totalRawXP = Math.round((speedXp + accuracyBonus) * multiplier);
 
-    // C. Endurance Bonus (รางวัลความอึด)
-    // ยิ่งเล่นนาน ยิ่งได้แถม (กระตุ้นให้คนเล่น 3-5 นาที)
+    // C. Endurance Bonus: ต้องพิมพ์จริง (WPM >= 15)
     let enduranceBonus = 0;
-    if (mins >= 3) enduranceBonus = 20;  // เล่น 3 นาที แจกเพิ่ม 20
-    if (mins >= 5) enduranceBonus = 50;  // เล่น 5 นาที แจกเพิ่ม 50 (เยอะหน่อยเพราะเหนื่อยจริง)
+    if (wpm >= 15) {
+      if (mins >= 3) enduranceBonus = 20;
+      if (mins >= 5) enduranceBonus = 50;
+    }
 
     // XP สุทธิ
     let earnedXP = totalRawXP + enduranceBonus;

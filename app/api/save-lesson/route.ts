@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getRankFromExp } from '@/lib/rankUtils';
-import { getStartOfTodayBangkok } from '@/lib/streakUtils';
+import { getStartOfTodayBangkok, toDateKey } from '@/lib/streakUtils';
 import { evaluateNewlyCompletedQuests } from '@/lib/questUtils';
 
 // Config ค่า EXP และโบนัสต่างๆ ให้สะใจ (150 - 300 XP ต่อด่าน)
@@ -62,13 +62,21 @@ export async function POST(request: Request) {
         const { subLessonId, wpm, accuracy, stars, duration } = body;
 
         // 🚨 1. Validation & Anti-Cheat
-        if (stars < 0 || stars > 3) return NextResponse.json({ error: "Invalid stars" }, { status: 400 });
-        if (accuracy > 100 || accuracy < 0) return NextResponse.json({ error: "Invalid accuracy" }, { status: 400 });
-        if (wpm > 300 || (wpm > 50 && duration < 2)) {
+        if (typeof stars !== 'number' || stars < 0 || stars > 3) return NextResponse.json({ error: "Invalid stars" }, { status: 400 });
+        if (typeof accuracy !== 'number' || accuracy > 100 || accuracy < 0) return NextResponse.json({ error: "Invalid accuracy" }, { status: 400 });
+        if (typeof wpm !== 'number' || wpm > 250 || (wpm > 40 && (!duration || duration < 3))) {
             return NextResponse.json({ error: "Suspicious activity detected" }, { status: 400 });
         }
 
-        const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+        const cleanEmail = session.user.email?.trim().toLowerCase();
+        const user = await prisma.user.findFirst({
+            where: {
+                OR: [
+                    ...((session.user as any)?.id ? [{ id: (session.user as any).id }] : []),
+                    ...(cleanEmail ? [{ email: cleanEmail }] : [])
+                ]
+            }
+        });
         if (!user) return NextResponse.json({ success: false, error: "User not found" }, { status: 404 });
 
         const userId = user.id;
@@ -178,19 +186,21 @@ export async function POST(request: Request) {
                 else if (wpm >= EXP_CONFIG.WPM_MILESTONES.FAST) wpmBonus = EXP_CONFIG.WPM_BONUS.FAST;
             }
 
-            // B. 🏋️ Grinder Bonus (โบนัสคนขยัน)
+            // B. 🏋️ Grinder Bonus (โบนัสคนขยัน: ให้เฉพาะเมื่อนับด่านใหม่ของวันนี้เท่านั้น ป้องกันการเล่นด่านเดิมซ้ำเพื่อปั๊มโบนัส)
             let grinderBonus = 0;
-            if (dailyTotalLessons === EXP_CONFIG.GRINDER_MILESTONES.LEVEL_1) grinderBonus = EXP_CONFIG.GRINDER_BONUS.LEVEL_1;
-            else if (dailyTotalLessons === EXP_CONFIG.GRINDER_MILESTONES.LEVEL_2) grinderBonus = EXP_CONFIG.GRINDER_BONUS.LEVEL_2;
-            else if (dailyTotalLessons === EXP_CONFIG.GRINDER_MILESTONES.LEVEL_3) grinderBonus = EXP_CONFIG.GRINDER_BONUS.LEVEL_3;
+            const wasUpdatedToday = prevLessonProgress?.updatedToday;
+            if (!wasUpdatedToday) {
+                if (dailyTotalLessons === EXP_CONFIG.GRINDER_MILESTONES.LEVEL_1) grinderBonus = EXP_CONFIG.GRINDER_BONUS.LEVEL_1;
+                else if (dailyTotalLessons === EXP_CONFIG.GRINDER_MILESTONES.LEVEL_2) grinderBonus = EXP_CONFIG.GRINDER_BONUS.LEVEL_2;
+                else if (dailyTotalLessons === EXP_CONFIG.GRINDER_MILESTONES.LEVEL_3) grinderBonus = EXP_CONFIG.GRINDER_BONUS.LEVEL_3;
+            }
 
-            // C. 🌅 First Win of the Day
+            // C. 🌅 First Win of the Day (เทียบตามเวลาประเทศไทยป้องกัน Timezone UTC คลาดเคลื่อน)
             let firstWinBonus = 0;
-            const lastPlayed = user.lastPlayedAt ? new Date(user.lastPlayedAt) : null;
-            if (lastPlayed) lastPlayed.setHours(0, 0, 0, 0);
+            const userLastPlayedDateKey = user.lastPlayedAt ? toDateKey(user.lastPlayedAt) : null;
+            const todayDateKey = toDateKey(new Date());
 
-            // ถ้าไม่เคยเล่น หรือ เล่นครั้งล่าสุดคือก่อนวันนี้
-            if (!lastPlayed || lastPlayed.getTime() < today.getTime()) {
+            if (!userLastPlayedDateKey || userLastPlayedDateKey !== todayDateKey) {
                 firstWinBonus = EXP_CONFIG.FIRST_WIN_REWARD;
             }
 

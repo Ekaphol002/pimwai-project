@@ -39,9 +39,9 @@ export async function GET(request: Request) {
                     { accuracy: 'desc' },
                     { createdAt: 'desc' }
                 ],
-                take: 1000,
+                take: 200,
                 include: {
-                    user: { select: { id: true, username: true, name: true, rank: true, currentExp: true, image: true, showInLeaderboard: true } }
+                    user: { select: { id: true, username: true, name: true, rank: true, currentExp: true, showInLeaderboard: true } }
                 }
             });
 
@@ -54,10 +54,24 @@ export async function GET(request: Request) {
                 return true;
             });
 
-            leaderboard = uniqueResults.slice(0, 50).map((result: any, index: number) => {
+            const top50Results = uniqueResults.slice(0, 50);
+            const userIdsToFetchImages = top50Results.map((r: any) => r.userId);
+            if (currentUserId && !userIdsToFetchImages.includes(currentUserId)) {
+                userIdsToFetchImages.push(currentUserId);
+            }
+
+            // ดึงเฉพาะรูปของ 50 คนที่ติดอันดับ ป้องกัน memory เต็มจาก base64 ขนาดใหญ่
+            const userImages = await prisma.user.findMany({
+                where: { id: { in: userIdsToFetchImages } },
+                select: { id: true, image: true }
+            });
+            const imageMap = new Map(userImages.map(u => [u.id, u.image]));
+
+            leaderboard = top50Results.map((result: any, index: number) => {
                 const displayUser = {
                     ...result.user,
-                    username: result.user.username || result.user.name || "User"
+                    username: result.user.username || result.user.name || "User",
+                    image: imageMap.get(result.userId) || null
                 };
 
                 return {
@@ -77,14 +91,17 @@ export async function GET(request: Request) {
                     const myBest = await prisma.speedTestResult.findFirst({
                         where: { userId: currentUserId, duration: duration },
                         orderBy: [{ wpm: 'desc' }, { accuracy: 'desc' }],
-                        include: { user: true }
+                        include: {
+                            user: { select: { id: true, username: true, name: true, rank: true, currentExp: true } }
+                        }
                     });
                     if (myBest) {
                         myData = {
                             ...myBest,
                             user: {
                                 ...myBest.user,
-                                username: myBest.user.username || myBest.user.name || "User"
+                                username: myBest.user.username || myBest.user.name || "User",
+                                image: imageMap.get(myBest.userId) || null
                             },
                             rankOrder: null, // ไม่ติด Top 50
                             displayVal1: myBest.wpm,

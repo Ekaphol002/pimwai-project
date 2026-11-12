@@ -126,7 +126,7 @@ export function buildDailyQuests(stats: DailyQuestStats): DailyQuestItem[] {
       target: 95,
       unit: '%',
       rewardXp: 150,
-      isCompleted: dailyTotalSessions > 0 && dailyAvgAcc >= 95
+      isCompleted: dailyTotalSessions > 0 && dailyAvgWpm >= 15 && dailyAvgAcc >= 95
     }
   ];
 }
@@ -145,7 +145,7 @@ export function computeDailyStatsFromRecords(
   let weightedAccSum = 0;
   let todayWordsCount = 0;
 
-  let activeActivitiesCount = todaysProgress.length + todaysSpeedTests.length;
+  let activeActivitiesCount = 0;
 
   for (const p of todaysProgress) {
     const dur = p.duration || 1;
@@ -154,8 +154,8 @@ export function computeDailyStatsFromRecords(
     totalDurationSeconds += dur;
     weightedWpmSum += wpm * dur;
     weightedAccSum += acc * dur;
-    // ประมาณจำนวนคำจาก WPM และเวลาที่ใช้สำหรับโหมดบทเรียน
-    todayWordsCount += Math.max(1, Math.round((wpm * dur) / 60));
+    todayWordsCount += Math.max(0, Math.round((wpm * dur) / 60));
+    activeActivitiesCount++;
   }
 
   for (const t of todaysSpeedTests) {
@@ -164,26 +164,29 @@ export function computeDailyStatsFromRecords(
     const durSec = rawDur < 10 ? rawDur * 60 : rawDur;
     const wpm = t.wpm || 0;
     const acc = t.accuracy !== undefined ? t.accuracy : 100;
-    totalDurationSeconds += durSec;
-    weightedWpmSum += wpm * durSec;
-    weightedAccSum += acc * durSec;
-    todayWordsCount += Math.max(1, Math.round((wpm * durSec) / 60));
+    // นับเฉพาะรอบที่พิมพ์จริง (wpm >= 10) ป้องกันการ AFK ปั๊มเควส
+    if (wpm >= 10) {
+      totalDurationSeconds += durSec;
+      weightedWpmSum += wpm * durSec;
+      weightedAccSum += acc * durSec;
+      todayWordsCount += Math.max(0, Math.round((wpm * durSec) / 60));
+      activeActivitiesCount++;
+    }
   }
 
   for (const f of todaysFarmSessions) {
     const dur = f.duration || 1;
     const wpm = f.wpm || 0;
     const acc = f.accuracy !== undefined ? f.accuracy : 100;
-    totalDurationSeconds += dur;
-    weightedWpmSum += wpm * dur;
-    weightedAccSum += acc * dur;
-    todayWordsCount += f.wordsCount && f.wordsCount > 0
-      ? f.wordsCount
-      : Math.max(0, Math.round((wpm * dur) / 60));
-  }
-
-  if (todaysFarmSessions.length > 0) {
-    activeActivitiesCount += todaysFarmSessions.length;
+    if (wpm >= 10 || (f.wordsCount && f.wordsCount > 0)) {
+      totalDurationSeconds += dur;
+      weightedWpmSum += wpm * dur;
+      weightedAccSum += acc * dur;
+      todayWordsCount += f.wordsCount && f.wordsCount > 0
+        ? f.wordsCount
+        : Math.max(0, Math.round((wpm * dur) / 60));
+      activeActivitiesCount++;
+    }
   }
 
   const dailyAvgWpm = totalDurationSeconds > 0 ? Math.round(weightedWpmSum / totalDurationSeconds) : 0;

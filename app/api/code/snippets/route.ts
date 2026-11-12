@@ -69,11 +69,23 @@ export async function POST(request: Request) {
         const cleanLanguage = language?.trim() || 'TypeScript';
         const cleanCode = code.replace(/\r\n/g, '\n');
 
+        // ตรวจสอบความเป็นเจ้าของก่อนแก้ไข ป้องกันการเขียนทับ snippet ของผู้อื่น
+        if (id && !id.startsWith('custom-')) {
+            const existing = await prisma.$queryRawUnsafe<any[]>(
+                `SELECT "userId" FROM "CodeSnippet" WHERE id = $1`,
+                id
+            );
+            if (existing.length > 0 && existing[0].userId !== user.id) {
+                return NextResponse.json({ success: false, error: 'Forbidden: You do not own this snippet' }, { status: 403 });
+            }
+        }
+
         await prisma.$executeRawUnsafe(
             `INSERT INTO "CodeSnippet" (id, "userId", title, language, code, "createdAt", "updatedAt")
              VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
              ON CONFLICT (id) DO UPDATE 
-             SET title = EXCLUDED.title, language = EXCLUDED.language, code = EXCLUDED.code, "updatedAt" = NOW()`,
+             SET title = EXCLUDED.title, language = EXCLUDED.language, code = EXCLUDED.code, "updatedAt" = NOW()
+             WHERE "CodeSnippet"."userId" = EXCLUDED."userId"`,
             snippetId,
             user.id,
             title.trim(),

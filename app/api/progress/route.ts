@@ -19,14 +19,17 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    // 2. หา User ตัวจริง (รองรับทั้ง id, email, name/username)
-    const searchConditions = [];
-    if ((session.user as any)?.id) searchConditions.push({ id: (session.user as any).id });
-    if (session.user?.email) searchConditions.push({ email: session.user.email });
-    if (session.user?.name) searchConditions.push({ username: session.user.name }, { name: session.user.name });
+    // 2. หา User ตัวจริง (ค้นหาจาก id หรือ email เท่านั้น ป้องกันการแอบอ้าง)
+    const userIdFromSession = (session.user as any)?.id;
+    const emailFromSession = session.user?.email?.trim().toLowerCase();
 
     const user = await prisma.user.findFirst({
-      where: searchConditions.length > 0 ? { OR: searchConditions } : {},
+      where: {
+        OR: [
+          ...(userIdFromSession ? [{ id: userIdFromSession }] : []),
+          ...(emailFromSession ? [{ email: emailFromSession }] : []),
+        ],
+      },
     });
 
     if (!user) {

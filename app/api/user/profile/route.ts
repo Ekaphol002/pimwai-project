@@ -47,7 +47,7 @@ export async function GET() {
             }
         };
 
-        // ค้นหาอย่างแม่นยำตามลำดับ: id ก่อน -> email -> แล้วค่อย username
+        // ค้นหาอย่างแม่นยำตามลำดับ: id ก่อน -> email (ห้ามค้นด้วย username/name เพื่อป้องกัน Account Takeover - B2 Fix)
         let user: any = null;
         if (userId) {
             user = await prisma.user.findUnique({
@@ -56,19 +56,8 @@ export async function GET() {
             });
         }
         if (!user && userEmail) {
-            user = await prisma.user.findUnique({
-                where: { email: userEmail },
-                select: userSelect
-            });
-        }
-        if (!user && userName) {
             user = await prisma.user.findFirst({
-                where: {
-                    OR: [
-                        { username: userName },
-                        { name: userName }
-                    ]
-                },
+                where: { email: userEmail.trim().toLowerCase() },
                 select: userSelect
             });
         }
@@ -257,14 +246,13 @@ export async function PUT(request: Request) {
         const body = await request.json();
         const { username, showInLeaderboard, keyboardSound } = body;
 
-        const searchConditions = [];
-        if (session.user.id) searchConditions.push({ id: session.user.id });
-        if (session.user.email) searchConditions.push({ email: session.user.email });
-        if (session.user.name) searchConditions.push({ username: session.user.name }, { name: session.user.name });
-
-        const currentUser = await (prisma.user as any).findFirst({
-            where: searchConditions.length > 0 ? { OR: searchConditions } : {}
-        });
+        const userId = session.user.id;
+        let currentUser: any = null;
+        if (userId) {
+            currentUser = await prisma.user.findUnique({ where: { id: userId } });
+        } else if (session.user.email) {
+            currentUser = await prisma.user.findFirst({ where: { email: session.user.email.trim().toLowerCase() } });
+        }
 
         if (!currentUser) {
             return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
@@ -344,7 +332,17 @@ export async function PUT(request: Request) {
 
         const updatedUser = await (prisma.user as any).update({
             where: { id: currentUser.id },
-            data: updateData
+            data: updateData,
+            select: {
+                id: true,
+                username: true,
+                name: true,
+                email: true,
+                image: true,
+                showInLeaderboard: true,
+                keyboardSound: true,
+                lastNameChangedAt: true
+            }
         });
 
         return NextResponse.json({

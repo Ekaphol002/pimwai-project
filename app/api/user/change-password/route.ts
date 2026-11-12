@@ -18,29 +18,33 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: false, error: 'รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 8 ตัวอักษร' }, { status: 400 });
         }
 
-        const searchConditions = [];
-        if (session.user.id) searchConditions.push({ id: session.user.id });
-        if (session.user.email) searchConditions.push({ email: session.user.email });
-        if (session.user.name) searchConditions.push({ username: session.user.name }, { name: session.user.name });
-
-        const user = await prisma.user.findFirst({
-            where: searchConditions.length > 0 ? { OR: searchConditions } : {}
-        });
+        const userId = session.user.id;
+        let user = null;
+        if (userId) {
+            user = await prisma.user.findUnique({ where: { id: userId } });
+        } else if (session.user.email) {
+            user = await prisma.user.findFirst({ where: { email: session.user.email.trim().toLowerCase() } });
+        }
 
         if (!user) {
             return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
         }
 
-        // หากผู้ใช้เคยมีรหัสผ่านเดิม ต้องตรวจสอบก่อน
-        if (user.password) {
-            if (!currentPassword) {
-                return NextResponse.json({ success: false, error: 'กรุณากรอกรหัสผ่านปัจจุบัน' }, { status: 400 });
-            }
+        // 🛡️ Security: บัญชีที่เข้าสู่ระบบผ่าน Google OAuth เท่านั้นและไม่มี Password ห้ามตั้งรหัสผ่านตรงนี้ (B2 Fix)
+        if (!user.password) {
+            return NextResponse.json({
+                success: false,
+                error: 'บัญชีของคุณเข้าสู่ระบบผ่าน Google OAuth จึงไม่มีรหัสผ่านในระบบ'
+            }, { status: 400 });
+        }
 
-            const isMatch = await bcrypt.compare(currentPassword, user.password);
-            if (!isMatch) {
-                return NextResponse.json({ success: false, error: 'รหัสผ่านปัจจุบันไม่ถูกต้อง' }, { status: 400 });
-            }
+        if (!currentPassword) {
+            return NextResponse.json({ success: false, error: 'กรุณากรอกรหัสผ่านปัจจุบัน' }, { status: 400 });
+        }
+
+        const isMatch = await bcrypt.compare(currentPassword, user.password);
+        if (!isMatch) {
+            return NextResponse.json({ success: false, error: 'รหัสผ่านปัจจุบันไม่ถูกต้อง' }, { status: 400 });
         }
 
         // Hash รหัสผ่านใหม่

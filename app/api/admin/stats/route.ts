@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from '@/lib/prisma';
 import { isAdmin } from '@/lib/adminAuth';
+import { getStartOfTodayBangkok } from '@/lib/streakUtils';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,9 +15,8 @@ export async function GET() {
             return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 403 });
         }
 
-        // วันนี้ (00:00:00)
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        // วันนี้เวลาไทย (00:00:00 UTC+7)
+        const today = getStartOfTodayBangkok();
 
         // 1. สถิติผู้ใช้งานรายวัน & ทั้งหมด
         const totalUsers = await prisma.user.count().catch(() => 0);

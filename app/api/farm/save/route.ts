@@ -70,87 +70,100 @@ export async function POST(request: Request) {
         }
 
         const addedDuration = Math.max(0, Math.min(300, Math.round(Number(timeSpentSeconds) || 0)));
-        const newTotalFarmTime = (user.farmTimeSeconds || 0) + addedDuration;
 
-        // บันทึก FarmSession เพื่อเก็บประวัติเวลา และให้ระบบ Streak (ไฟ) นับวันการเล่น
-        let createdFarmSessionId: string | undefined = undefined;
-        if (addedDuration > 0 || safeExp > 0) {
-            const newFarmSession = await prisma.farmSession.create({
-                data: {
-                    userId: user.id,
-                    duration: addedDuration,
-                    expEarned: safeExp,
-                    wpm: numWpm,
-                    accuracy: numAccuracy,
-                    wordsCount: Number(wordsCount) || 0
-                }
-            });
-            createdFarmSessionId = newFarmSession.id;
-        }
-
-        // ตรวจสอบว่ามีเควสรายวันไหนที่เพิ่งสำเร็จในรอบการซิงค์นี้หรือไม่
-        const { newlyCompletedQuests, totalQuestBonusXp } = await evaluateNewlyCompletedQuests({
-            tx: prisma,
-            userId: user.id,
-            currentActivity: {
-                type: 'farm',
-                recordId: createdFarmSessionId
+        // 🛡️ Atomic Transaction: ป้องกัน Race Condition และ EXP สูญหาย (B8 Fix)
+        // 🛡️ ถนอมดาวสะสม: ไม่เขียนทับ User.stars ด้วย rankInfo.stars เพื่อไม่ให้ดาวจากบทเรียนหาย (B7 Fix)
+        const result = await prisma.$transaction(async (tx) => {
+            let createdFarmSessionId: string | undefined = undefined;
+            if (addedDuration > 0 || safeExp > 0) {
+                const newFarmSession = await tx.farmSession.create({
+                    data: {
+                        userId: user.id,
+                        duration: addedDuration,
+                        expEarned: safeExp,
+                        wpm: numWpm,
+                        accuracy: numAccuracy,
+                        wordsCount: Number(wordsCount) || 0
+                    }
+                });
+                createdFarmSessionId = newFarmSession.id;
             }
-        });
 
-        const newTotalExp = (user.currentExp || 0) + safeExp + totalQuestBonusXp;
-        
-        let isTop10 = false;
-        if (newTotalExp >= 234000) {
-            const higherCount = await prisma.user.count({
-                where: {
-                    currentExp: { gt: newTotalExp }
-                }
-            });
-            isTop10 = higherCount < 10;
-        }
-
-        const rankInfo = calculateRankInfo(newTotalExp, isTop10);
-
-        const updatedUser = await prisma.user.update({
-            where: { id: user.id },
-            data: {
-                currentExp: newTotalExp,
-                farmTimeSeconds: newTotalFarmTime,
-                rank: rankInfo.rank,
-                stars: rankInfo.stars,
-                lastPlayedAt: new Date()
-            },
-            select: {
-                id: true,
-                rank: true,
-                currentExp: true,
-                stars: true,
-                farmTimeSeconds: true
-            }
-        });
-
-        const startOfToday = getStartOfTodayBangkok();
-
-        const todayFarm = await prisma.farmSession.aggregate({
-            where: {
+            // ตรวจสอบว่ามีเควสรายวันไหนที่เพิ่งสำเร็จในรอบการซิงค์นี้หรือไม่
+            const { newlyCompletedQuests, totalQuestBonusXp } = await evaluateNewlyCompletedQuests({
+                tx,
                 userId: user.id,
-                createdAt: { gte: startOfToday }
-            },
-            _sum: {
-                duration: true
+                currentActivity: {
+                    type: 'farm',
+                    recordId: createdFarmSessionId
+                }
+            });
+
+            const totalAddedExp = safeExp + totalQuestBonusXp;
+
+            // บันทึกแบบ Atomic Increment
+            const updatedUserRecord = await tx.user.update({
+                where: { id: user.id },
+                data: {
+                    currentExp: { increment: totalAddedExp },
+                    farmTimeSeconds: { increment: addedDuration },
+                    lastPlayedAt: new Date()
+                },
+                select: {
+                    id: true,
+                    rank: true,
+                    currentExp: true,
+                    stars: true,
+                    farmTimeSeconds: true
+                }
+            });
+
+            const currentExpAfterUpdate = updatedUserRecord.currentExp;
+            let isTop10 = false;
+            if (currentExpAfterUpdate >= 234000) {
+                const higherCount = await tx.user.count({
+                    where: {
+                        currentExp: { gt: currentExpAfterUpdate }
+                    }
+                });
+                isTop10 = higherCount < 10;
             }
+
+            const rankInfo = calculateRankInfo(currentExpAfterUpdate, isTop10);
+            if (rankInfo.rank !== updatedUserRecord.rank) {
+                await tx.user.update({
+                    where: { id: user.id },
+                    data: { rank: rankInfo.rank }
+                });
+                updatedUserRecord.rank = rankInfo.rank;
+            }
+
+            const startOfToday = getStartOfTodayBangkok();
+            const todayFarm = await tx.farmSession.aggregate({
+                where: {
+                    userId: user.id,
+                    createdAt: { gte: startOfToday }
+                },
+                _sum: {
+                    duration: true
+                }
+            });
+
+            return {
+                updatedUser: {
+                    ...updatedUserRecord,
+                    todayFarmTimeSeconds: todayFarm._sum.duration || 0
+                },
+                completedQuests: newlyCompletedQuests,
+                questBonusXp: totalQuestBonusXp
+            };
         });
-        const todayFarmTimeSeconds = todayFarm._sum.duration || 0;
 
         return NextResponse.json({
             success: true,
-            completedQuests: newlyCompletedQuests,
-            questBonusXp: totalQuestBonusXp,
-            updatedUser: {
-                ...updatedUser,
-                todayFarmTimeSeconds
-            }
+            completedQuests: result.completedQuests,
+            questBonusXp: result.questBonusXp,
+            updatedUser: result.updatedUser
         });
 
     } catch (error: any) {

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcrypt";
-
 import { checkRateLimit } from "@/lib/rate-limit";
+import { ADMIN_EMAILS } from "@/lib/adminAuth";
 
 export async function POST(req: Request) {
   try {
@@ -18,13 +18,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "กรุณากรอกข้อมูลให้ครบ" }, { status: 400 });
     }
 
+    const cleanUsername = username.trim();
+    const cleanEmail = email.trim().toLowerCase();
+
     // 🛡️ Security: ป้องกัน Large Payload Attack (DoS)
-    if (username.length > 50) return NextResponse.json({ message: "ชื่อผู้ใช้ยาวเกินไป" }, { status: 400 });
-    if (email.length > 255) return NextResponse.json({ message: "อีเมลยาวเกินไป" }, { status: 400 });
+    if (cleanUsername.length > 50) return NextResponse.json({ message: "ชื่อผู้ใช้ยาวเกินไป" }, { status: 400 });
+    if (cleanEmail.length > 255) return NextResponse.json({ message: "อีเมลยาวเกินไป" }, { status: 400 });
     if (password.length > 128) return NextResponse.json({ message: "รหัสผ่านยาวเกินไป" }, { status: 400 });
 
-    if (username.length < 4 || username.length > 30) {
+    if (cleanUsername.length < 4 || cleanUsername.length > 30) {
       return NextResponse.json({ message: "ชื่อต้องยาว 4-30 ตัวอักษร" }, { status: 400 });
+    }
+
+    // 🛡️ Security: ห้ามตั้งชื่อหรืออีเมลแอบอ้างเป็นแอดมิน (B1 Fix)
+    if (ADMIN_EMAILS.includes(cleanEmail)) {
+      const existingAdmin = await prisma.user.findFirst({ where: { email: cleanEmail } });
+      if (existingAdmin) {
+        return NextResponse.json({ message: "อีเมลนี้ถูกใช้งานแล้ว" }, { status: 409 });
+      }
     }
 
     // ✅ เพิ่ม: เช็คความปลอดภัยรหัสผ่าน
@@ -39,17 +50,17 @@ export async function POST(req: Request) {
     const existingUser = await prisma.user.findFirst({
       where: {
         OR: [
-          { email: email },
-          { username: username }
+          { email: cleanEmail },
+          { username: cleanUsername }
         ]
       }
     });
 
     if (existingUser) {
-      if (existingUser.email === email) {
+      if (existingUser.email && existingUser.email.toLowerCase() === cleanEmail) {
         return NextResponse.json({ message: "อีเมลนี้ถูกใช้งานแล้ว" }, { status: 409 });
       }
-      if (existingUser.username === username) {
+      if (existingUser.username === cleanUsername) {
         return NextResponse.json({ message: "ชื่อผู้ใช้นี้ถูกใช้งานแล้ว" }, { status: 409 });
       }
     }
@@ -58,15 +69,31 @@ export async function POST(req: Request) {
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = await prisma.user.create({
       data: {
-        username,
-        email,
+        username: cleanUsername,
+        email: cleanEmail,
         password: hashedPassword,
-        name: username,
+        name: cleanUsername,
         image: null
+      },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        name: true,
+        createdAt: true
       }
     });
 
-    return NextResponse.json({ message: "สมัครสมาชิกสำเร็จ!", user: newUser }, { status: 201 });
+    // 🛡️ Security: ไม่ส่ง password hash กลับไปที่ Client (B5 Fix)
+    return NextResponse.json({
+      message: "สมัครสมาชิกสำเร็จ!",
+      user: {
+        id: newUser.id,
+        username: newUser.username,
+        email: newUser.email,
+        name: newUser.name
+      }
+    }, { status: 201 });
 
   } catch (error) {
     return NextResponse.json({ message: "เกิดข้อผิดพลาดในการสมัครสมาชิก" }, { status: 500 });

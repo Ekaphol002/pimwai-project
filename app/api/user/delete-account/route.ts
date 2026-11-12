@@ -27,6 +27,7 @@ export async function DELETE() {
             prisma.account.deleteMany({ where: { userId: user.id } }),
             prisma.session.deleteMany({ where: { userId: user.id } }),
             prisma.$executeRawUnsafe('DELETE FROM "CodeSnippet" WHERE "userId" = $1', user.id),
+            prisma.$executeRawUnsafe('DELETE FROM "CodeTypingProgress" WHERE "userId" = $1', user.id),
             prisma.user.delete({ where: { id: user.id } })
         ]);
 

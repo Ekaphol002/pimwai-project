@@ -116,6 +116,8 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
   // Stats
   const [totalErrors, setTotalErrors] = useState(0);
   const [correctCharsCount, setCorrectCharsCount] = useState(0);
+  const correctCharsCountRef = useRef(0);
+  const totalErrorsRef = useRef(0);
   const [problemKeys, setProblemKeys] = useState<{ [key: string]: number }>({});
   const [finalWPM, setFinalWPM] = useState(0);
   const [finalAcc, setFinalAcc] = useState(0);
@@ -145,6 +147,8 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
     setCurrentCharIndexInLine(0);
     setCorrectCharsCount(0);
     setTotalErrors(0);
+    correctCharsCountRef.current = 0;
+    totalErrorsRef.current = 0;
     isSubmittingRef.current = false;
 
   }, [timeLimitMinutes]);
@@ -172,10 +176,12 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
     isSubmittingRef.current = true;
     setIsFinished(true);
 
-    const grossWPM = (correctCharsCount / 5) / timeLimitMinutes;
+    const currentCorrect = correctCharsCountRef.current;
+    const currentErrors = totalErrorsRef.current;
+    const grossWPM = (currentCorrect / 5) / timeLimitMinutes;
     const netWPM = Math.max(0, Math.round(grossWPM));
-    const totalKeystrokes = correctCharsCount + totalErrors;
-    const accuracy = totalKeystrokes > 0 ? Math.round((correctCharsCount / totalKeystrokes) * 100) : 0;
+    const totalKeystrokes = currentCorrect + currentErrors;
+    const accuracy = totalKeystrokes > 0 ? Math.round((currentCorrect / totalKeystrokes) * 100) : 0;
 
     setFinalWPM(netWPM);
     setFinalAcc(accuracy);
@@ -278,6 +284,15 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
           return;
         }
 
+        const prevStatus = statuses[newL]?.[newC];
+        if (prevStatus === 'correct') {
+          correctCharsCountRef.current = Math.max(0, correctCharsCountRef.current - 1);
+          setCorrectCharsCount(p => Math.max(0, p - 1));
+        } else if (prevStatus === 'incorrect') {
+          totalErrorsRef.current = Math.max(0, totalErrorsRef.current - 1);
+          setTotalErrors(p => Math.max(0, p - 1));
+        }
+
         const newS = [...statuses];
         if (newS[newL]) {
           const updatedLine = [...newS[newL]];
@@ -309,10 +324,12 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
           newS[currentLineIndex] = newLine;
           setStatuses(newS);
         }
+        correctCharsCountRef.current += 1;
         setCorrectCharsCount(p => p + 1);
         moveCursorForward();
       } else {
         // พิมพ์ผิด: นับ error แต่ไม่สั่น และเดินหน้าได้ทันที
+        totalErrorsRef.current += 1;
         setTotalErrors(p => p + 1);
         setProblemKeys(p => ({ ...p, [expectedChar]: (p[expectedChar] || 0) + 1 }));
 
