@@ -27,9 +27,12 @@ export async function POST(request: Request) {
         const userId = session.user.id || session.user.email;
         const now = Date.now();
 
-        // 🛡️ 1. Rate Limit: ป้องกันบอทสแปมรัวคำขอ (500ms ต่อคำขอ เพื่อรองรับการ Sync ขณะพิมพ์เร็ว)
+        // 🛡️ 1. Rate Limit & Time Velocity Check
         const lastTime = lastRequestTimeMap.get(userId);
-        if (lastTime && (now - lastTime) < 500) {
+        const elapsedSec = lastTime ? (now - lastTime) / 1000 : 999;
+
+        // ป้องกันการสแปมยิง API ถี่ผิดปกติ (ต้องเว้นอย่างน้อย 1.5 วินาที)
+        if (lastTime && (now - lastTime) < 1500) {
             return NextResponse.json({
                 success: false,
                 rateLimited: true,
@@ -53,8 +56,31 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Suspicious typing speed detected" }, { status: 400 });
         }
 
-        // 🛡️ 3. Anti-Cheat: รองรับผู้เล่น Rank สูงที่คูณแต้มเยอะและสะสมคิวมาส่ง (แคปสูงสุดต่อ 1 ครั้งที่ 100,000 EXP)
-        const safeExp = Math.min(numExp, 100000);
+        const addedDuration = Math.max(0, Math.min(300, Math.round(Number(timeSpentSeconds) || 0)));
+        const numWords = Math.max(0, Math.round(Number(wordsCount) || 0));
+
+        // 🛡️ ป้องกันบอทส่งเวลาเล่นปลอมเกินเวลาโลกจริง (เช่น ยิงห่างกัน 3 วิ แต่บอกว่าเล่นไป 60 วิ)
+        if (lastTime && addedDuration > elapsedSec + 5) {
+            return NextResponse.json({
+                success: false,
+                error: "Invalid session duration"
+            }, { status: 400 });
+        }
+
+        // 🛡️ 3. Anti-Cheat: สกัดกั้นบอทพิมพ์ 1 คำแล้วกดยิง API (Farm Loop Exploit)
+        if (numWords < 3 && addedDuration < 6) {
+            return NextResponse.json({
+                success: false,
+                error: "ต้องพิมพ์อย่างน้อย 3 คำ หรือใช้เวลาอย่างน้อย 6 วินาทีเพื่อบันทึก EXP"
+            }, { status: 400 });
+        }
+
+        // 🛡️ 4. EXP Velocity Cap (ขีดจำกัดทางชีวภาพและตัวคูณ):
+        // แม้จะเป็น Rank 7 (ตัวคูณสูงสุด x25 + Fever x2 = x50) ก็มีเพดานสูงสุดตามจำนวนคำและเวลาจริง
+        const maxExpByTime = Math.max(500, (addedDuration || 5) * 800);
+        const maxExpByWords = Math.max(500, numWords * 450);
+        const maxPlausibleExp = Math.min(maxExpByTime, maxExpByWords);
+        const safeExp = Math.min(numExp, maxPlausibleExp, 100000);
 
         const user = await prisma.user.findFirst({
             where: {
@@ -68,8 +94,6 @@ export async function POST(request: Request) {
         if (!user) {
             return NextResponse.json({ success: false, error: "User not found" }, { status: 404 });
         }
-
-        const addedDuration = Math.max(0, Math.min(300, Math.round(Number(timeSpentSeconds) || 0)));
 
         // 🛡️ Atomic Transaction: ป้องกัน Race Condition และ EXP สูญหาย (B8 Fix)
         // 🛡️ ถนอมดาวสะสม: ไม่เขียนทับ User.stars ด้วย rankInfo.stars เพื่อไม่ให้ดาวจากบทเรียนหาย (B7 Fix)

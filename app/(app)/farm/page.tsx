@@ -336,6 +336,10 @@ export default function FarmPage() {
     const [startTime, setStartTime] = useState<number | null>(null);
     const [timeLeft, setTimeLeft] = useState<number>(30);
     const [isFinished, setIsFinished] = useState<boolean>(false);
+    const isFinishedRef = useRef<boolean>(false);
+    const isRepeatPracticeRef = useRef<boolean>(false);
+    const [isRepeatPractice, setIsRepeatPractice] = useState<boolean>(false);
+    const roundExpEarnedRef = useRef<number>(0);
     const [endTime, setEndTime] = useState<number | null>(null);
 
     // แปลงเวลาเป็นข้อความภาษาไทย (เช่น "1 ชม. 25 นาที" หรือ "45 นาที 10 วิ" หรือ "15 วิ")
@@ -614,6 +618,23 @@ export default function FarmPage() {
 
     // 2. เริ่มต้นหรือเริ่มรอบคำต่อไป (คำต่อไป / Next Words)
     const nextNewWords = useCallback((overrideLang?: 'thai' | 'english' | unknown) => {
+        // 🛡️ หากกดข้าม/เริ่มใหม่กลางคัน (ยังไม่จบรอบ) ให้ยกเลิก EXP ที่ได้จากรอบที่ถูกทิ้งทั้งหมด กันการพิมพ์ 1 คำแล้วกดรี
+        if (!isFinishedRef.current && (roundExpEarnedRef.current > 0 || pendingSyncExpRef.current > 0)) {
+            const expToCancel = roundExpEarnedRef.current;
+            if (expToCancel > 0) {
+                setUserTotalExp(prev => Math.max(0, prev - expToCancel));
+                userTotalExpRef.current = Math.max(0, userTotalExpRef.current - expToCancel);
+                setSessionExpEarned(prev => Math.max(0, prev - expToCancel));
+            }
+            pendingSyncExpRef.current = 0;
+            unsyncedWordsCountRef.current = 0;
+            unsyncedPlayTimeSecondsRef.current = 0;
+        }
+
+        // รีเซ็ตสถานะโหมดฝึกซ้ำ เพื่อให้รอบคำใหม่ได้รับ EXP ปกติ
+        isRepeatPracticeRef.current = false;
+        setIsRepeatPractice(false);
+
         const activeLang = (overrideLang === 'thai' || overrideLang === 'english') ? overrideLang : language;
         let newWords: { word: string; isGolden: boolean }[] = [];
 
@@ -638,6 +659,7 @@ export default function FarmPage() {
         currentRoundStartingWordsRef.current = newWords;
         setWordList(newWords);
         setActiveWordIdx(0);
+        activeWordIdxRef.current = 0;
         setInputBuffer("");
         maxExpCharIdxRef.current = 0;
         wordExpEarnedRef.current = 0;
@@ -664,10 +686,13 @@ export default function FarmPage() {
         setMultiplier(initialMul);
 
         setCurrentWpm(0);
+        currentWpmRef.current = 0;
         setAccuracy(100);
+        accuracyRef.current = 100;
         setCorrectKeystrokes(0);
         setTotalKeystrokes(0);
         setRoundExpEarned(0);
+        roundExpEarnedRef.current = 0;
         setSessionPlayTimeSeconds(0);
         sessionPlayTimeSecondsRef.current = 0;
         lastTypingTimeRef.current = 0;
@@ -681,6 +706,7 @@ export default function FarmPage() {
         startTimeRef.current = null;
         setTimeLeft(timeLimit);
         setIsFinished(false);
+        isFinishedRef.current = false;
         setEndTime(null);
     }, [mode, zenType, wordLimit, timeLimit, includePunctuation, includeNumbers, language, quoteLength]);
 
@@ -695,11 +721,34 @@ export default function FarmPage() {
 
     // เล่นซ้ำคำเดิม (คำเดิม / Repeat Same Words)
     const repeatSameWords = useCallback(() => {
+        // 🛡️ หากกดรีสตาร์ทกลางคัน (ยังไม่จบรอบ) ให้ยกเลิก EXP ที่ได้จากรอบที่ถูกทิ้งทั้งหมด กันการพิมพ์ 1 คำแล้วกดรี
+        if (!isFinishedRef.current && (roundExpEarnedRef.current > 0 || pendingSyncExpRef.current > 0)) {
+            const expToCancel = roundExpEarnedRef.current;
+            if (expToCancel > 0) {
+                setUserTotalExp(prev => Math.max(0, prev - expToCancel));
+                userTotalExpRef.current = Math.max(0, userTotalExpRef.current - expToCancel);
+                setSessionExpEarned(prev => Math.max(0, prev - expToCancel));
+            }
+            pendingSyncExpRef.current = 0;
+            unsyncedWordsCountRef.current = 0;
+            unsyncedPlayTimeSecondsRef.current = 0;
+        }
+
+        // 🛡️ ทำเครื่องหมายว่ารอบนี้คือการ "เริ่มใหม่ (คำเดิม)" -> ครั้งที่สองคะแนนจะไม่ขึ้น เพื่อป้องกันการปั๊มแต้ม
+        isRepeatPracticeRef.current = true;
+        setIsRepeatPractice(true);
+        toast("โหมดเริ่มใหม่ (คำเดิม): รอบฝึกซ้ำนี้คะแนนจะไม่ขึ้น", {
+            id: 'repeat-practice-notice',
+            icon: <RefreshCw size={18} className="text-amber-500 shrink-0" />,
+            duration: 3000
+        });
+
         const wordsToRepeat = currentRoundStartingWordsRef.current.length > 0
             ? currentRoundStartingWordsRef.current
             : wordList;
         setWordList([...wordsToRepeat]);
         setActiveWordIdx(0);
+        activeWordIdxRef.current = 0;
         setInputBuffer("");
         maxExpCharIdxRef.current = 0;
         wordExpEarnedRef.current = 0;
@@ -723,10 +772,13 @@ export default function FarmPage() {
         setMultiplier(initialMul);
 
         setCurrentWpm(0);
+        currentWpmRef.current = 0;
         setAccuracy(100);
+        accuracyRef.current = 100;
         setCorrectKeystrokes(0);
         setTotalKeystrokes(0);
         setRoundExpEarned(0);
+        roundExpEarnedRef.current = 0;
         setSessionPlayTimeSeconds(0);
         sessionPlayTimeSecondsRef.current = 0;
         lastTypingTimeRef.current = 0;
@@ -740,6 +792,7 @@ export default function FarmPage() {
         startTimeRef.current = null;
         setTimeLeft(timeLimit);
         setIsFinished(false);
+        isFinishedRef.current = false;
         setEndTime(null);
     }, [timeLimit, wordList]);
 
@@ -795,6 +848,7 @@ export default function FarmPage() {
             if (remaining === 0) {
                 setEndTime(Date.now());
                 setIsFinished(true);
+                isFinishedRef.current = true;
                 clearInterval(interval);
             }
         }, 1000);
@@ -920,6 +974,12 @@ export default function FarmPage() {
         if (!session?.user) return;
         if (isSyncingRef.current) return;
 
+        // 🛡️ หากอยู่ในโหมดเริ่มใหม่ (คำเดิม) ครั้งสองคะแนนจะไม่ขึ้น ไม่ต้องซิงค์แต้ม
+        if (isRepeatPracticeRef.current) return;
+
+        // 🛡️ หากยังไม่จบรอบ และเพิ่งพิมพ์ไปไม่ถึง 3 คำ อย่าเพิ่งซิงค์เด็ดขาด กันการพิมพ์ 1 คำแล้วรีบส่งแต้ม
+        if (!isFinishedRef.current && activeWordIdxRef.current < 3) return;
+
         // ดึงแต้มที่จะส่งออกจากคิว (ถ้าไม่ระบุ forcedExp ให้ดึงแต้มทั้งหมดที่ค้างอยู่ในคิว)
         const expToSync = typeof forcedExp === 'number' && forcedExp > 0
             ? forcedExp
@@ -984,6 +1044,7 @@ export default function FarmPage() {
                     const questBonus = Number(data.questBonusXp) || 0;
                     if (questBonus > 0) {
                         setRoundExpEarned(prev => prev + questBonus);
+                        roundExpEarnedRef.current += questBonus;
                         setSessionExpEarned(prev => prev + questBonus);
                         setUserTotalExp(prev => {
                             const nextTotal = Math.max(prev + questBonus, Number(data?.updatedUser?.currentExp) || 0);
@@ -1014,7 +1075,12 @@ export default function FarmPage() {
     // ซิงค์แต้มที่ค้างอยู่ในคิวเป็นระยะ (ทุกๆ 2.5 วินาที) ป้องกันการยิงถี่ยิบและกันข้อมูลหาย
     useEffect(() => {
         const interval = setInterval(() => {
-            if ((pendingSyncExpRef.current > 0 || unsyncedPlayTimeSecondsRef.current > 0) && !isSyncingRef.current) {
+            if (
+                !isRepeatPracticeRef.current &&
+                (isFinishedRef.current || activeWordIdxRef.current >= 3) &&
+                (pendingSyncExpRef.current > 0 || unsyncedPlayTimeSecondsRef.current > 0) &&
+                !isSyncingRef.current
+            ) {
                 syncExpToDatabase();
             }
         }, 2500);
@@ -1024,7 +1090,12 @@ export default function FarmPage() {
     // ซิงค์แต้มเมื่อผู้ใช้จะปิดหน้าต่างเว็บ หรือสลับหน้า
     useEffect(() => {
         const handleBeforeUnload = () => {
-            if ((pendingSyncExpRef.current > 0 || unsyncedPlayTimeSecondsRef.current > 0) && session?.user) {
+            if (
+                !isRepeatPracticeRef.current &&
+                (isFinishedRef.current || activeWordIdxRef.current >= 3) &&
+                (pendingSyncExpRef.current > 0 || unsyncedPlayTimeSecondsRef.current > 0) &&
+                session?.user
+            ) {
                 const payload = JSON.stringify({
                     expEarned: pendingSyncExpRef.current,
                     wpm: currentWpmRef.current,
@@ -1038,7 +1109,7 @@ export default function FarmPage() {
         window.addEventListener('beforeunload', handleBeforeUnload);
         return () => {
             window.removeEventListener('beforeunload', handleBeforeUnload);
-            if (pendingSyncExpRef.current > 0 || unsyncedPlayTimeSecondsRef.current > 0) {
+            if (!isRepeatPracticeRef.current && (isFinishedRef.current || activeWordIdxRef.current >= 3) && (pendingSyncExpRef.current > 0 || unsyncedPlayTimeSecondsRef.current > 0)) {
                 syncExpToDatabase();
             }
         };
@@ -1047,7 +1118,10 @@ export default function FarmPage() {
     // ซิงค์แต้มและเวลาทันทีเมื่อจบรอบในทุกโหมด
     useEffect(() => {
         if (isFinished) {
-            syncExpToDatabase();
+            isFinishedRef.current = true;
+            if (!isRepeatPracticeRef.current) {
+                syncExpToDatabase();
+            }
         }
     }, [isFinished, syncExpToDatabase]);
 
@@ -1140,8 +1214,9 @@ export default function FarmPage() {
                     }
                 }
 
-                if (bountyExp > 0) {
+                if (!isRepeatPracticeRef.current && bountyExp > 0) {
                     setRoundExpEarned(prev => prev + bountyExp);
+                    roundExpEarnedRef.current += bountyExp;
                     setSessionExpEarned(prev => prev + bountyExp);
                     setUserTotalExp(prev => {
                         const nextTotal = prev + bountyExp;
@@ -1154,13 +1229,9 @@ export default function FarmPage() {
                         return nextTotal;
                     });
                     pendingSyncExpRef.current += bountyExp;
-
-                    if (pendingSyncExpRef.current >= 150) {
-                        syncExpToDatabase();
-                    }
                 }
 
-                const totalWordExp = wordExpEarnedRef.current + bountyExp;
+                const totalWordExp = isRepeatPracticeRef.current ? 0 : (wordExpEarnedRef.current + bountyExp);
                 if (totalWordExp > 0) {
                     const floaterType = isFeverActiveRef.current
                         ? 'fever_bounty'
@@ -1202,8 +1273,11 @@ export default function FarmPage() {
         if ((mode === 'words' && activeWordIdx + 1 >= wordLimit) || (mode === 'quote' && activeWordIdx + 1 >= wordList.length)) {
             setEndTime(Date.now());
             setIsFinished(true);
+            isFinishedRef.current = true;
             setIsTyping(false);
-            syncExpToDatabase();
+            if (!isRepeatPracticeRef.current) {
+                syncExpToDatabase();
+            }
             return;
         }
 
@@ -1338,8 +1412,10 @@ export default function FarmPage() {
                 // จะตัดเฉพาะบอทสคริปต์ที่ WPM เกิน 250 ขึ้นไปเท่านั้น
                 const isOverHumanSpeed = currentWpmRef.current > 250;
 
-                if (!isOverHumanSpeed) {
+                // 🛡️ หากอยู่ในโหมดเริ่มใหม่ (คำเดิม) ครั้งสองคะแนนจะไม่ขึ้น
+                if (!isRepeatPracticeRef.current && !isOverHumanSpeed) {
                     setRoundExpEarned(prev => prev + charExpGain);
+                    roundExpEarnedRef.current += charExpGain;
                     setSessionExpEarned(prev => prev + charExpGain);
                     wordExpEarnedRef.current += charExpGain;
                     setUserTotalExp(prev => {
@@ -1353,10 +1429,6 @@ export default function FarmPage() {
                         return nextTotal;
                     });
                     pendingSyncExpRef.current += charExpGain;
-
-                    if (pendingSyncExpRef.current >= 150) {
-                        syncExpToDatabase();
-                    }
                 }
             }
         } else {
@@ -1395,9 +1467,10 @@ export default function FarmPage() {
                 } else if (lessonPerksRef.current.beginner) {
                     bountyExp = 5;
                 }
-                if (bountyExp > 0) {
+                if (!isRepeatPracticeRef.current && bountyExp > 0) {
                     if (isFeverActiveRef.current) bountyExp *= 2;
                     setRoundExpEarned(prev => prev + bountyExp);
+                    roundExpEarnedRef.current += bountyExp;
                     setSessionExpEarned(prev => prev + bountyExp);
                     setUserTotalExp(prev => prev + bountyExp);
                     pendingSyncExpRef.current += bountyExp;
@@ -1407,8 +1480,11 @@ export default function FarmPage() {
 
             setEndTime(Date.now());
             setIsFinished(true);
+            isFinishedRef.current = true;
             setIsTyping(false);
-            syncExpToDatabase();
+            if (!isRepeatPracticeRef.current) {
+                syncExpToDatabase();
+            }
             return;
         }
 
@@ -2144,7 +2220,12 @@ export default function FarmPage() {
                                             </div>
 
                                             {/* EXP Multiplier Badge */}
-                                            {isFeverActive ? (
+                                            {isRepeatPractice ? (
+                                                <div className="bg-amber-500 border border-amber-400 text-white px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-1 shadow-xs shrink-0" title="เริ่มใหม่ (คำเดิม) - รอบฝึกซ้ำนี้คะแนนจะไม่ขึ้น">
+                                                    <RefreshCw size={11} className="text-white" />
+                                                    <span className="font-black text-[10px] sm:text-xs logo-font">ซ้อมคำเดิม (ไม่มี EXP)</span>
+                                                </div>
+                                            ) : isFeverActive ? (
                                                 <div className="bg-purple-600 border border-purple-500 text-white px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-1 shadow-xs shrink-0">
                                                     <Flame size={11} className="fill-white text-white" />
                                                     <span className="font-black text-[10px] sm:text-xs logo-font">FEVER x{multiplier.toFixed(2)}</span>
