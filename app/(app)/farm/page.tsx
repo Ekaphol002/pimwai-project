@@ -2220,12 +2220,7 @@ export default function FarmPage() {
                                             </div>
 
                                             {/* EXP Multiplier Badge */}
-                                            {isRepeatPractice ? (
-                                                <div className="bg-amber-500 border border-amber-400 text-white px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-1 shadow-xs shrink-0" title="เริ่มใหม่ (คำเดิม) - รอบฝึกซ้ำนี้คะแนนจะไม่ขึ้น">
-                                                    <RefreshCw size={11} className="text-white" />
-                                                    <span className="font-black text-[10px] sm:text-xs logo-font">ซ้อมคำเดิม (ไม่มี EXP)</span>
-                                                </div>
-                                            ) : isFeverActive ? (
+                                            {isFeverActive ? (
                                                 <div className="bg-purple-600 border border-purple-500 text-white px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-1 shadow-xs shrink-0">
                                                     <Flame size={11} className="fill-white text-white" />
                                                     <span className="font-black text-[10px] sm:text-xs logo-font">FEVER x{multiplier.toFixed(2)}</span>
