@@ -22,9 +22,15 @@ export default async function TestMenuPage() {
     userId = user?.id || null;
   }
 
-  // 2. ดึงผลสอบ Speed Test (ถ้าล็อกอิน) หรือส่ง array ว่างสำหรับ Guest
+  // 2. ดึงผลสอบ Speed Test ย้อนหลัง 30 วันล่าสุด (ให้ตรงตามหัวข้อ "ล่าสุด 30 วัน")
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
   const allResults = userId ? await prisma.speedTestResult.findMany({
-    where: { userId },
+    where: {
+      userId,
+      createdAt: { gte: thirtyDaysAgo }
+    },
     orderBy: { createdAt: 'desc' }
   }) : [];
 
