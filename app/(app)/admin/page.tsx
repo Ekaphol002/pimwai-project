@@ -8,7 +8,7 @@ import {
     ShieldAlert, MessageSquare, AlertTriangle, UserX, CheckCircle,
     RotateCcw, Lock, Unlock, Loader2, ArrowLeft, Trash2, Check, X,
     Calendar, User as UserIcon, Mail, Flag, Users, Flame, BookOpen,
-    Zap, Trophy, TrendingUp, Clock, Activity, Sparkles
+    Zap, Trophy, TrendingUp, Clock, Activity, Sparkles, Database, RefreshCw
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { isAdmin } from '@/lib/adminAuth';
@@ -17,12 +17,14 @@ export default function AdminDashboardPage() {
     const { data: session, status } = useSession();
     const router = useRouter();
 
-    const [activeTab, setActiveTab] = useState<'overview' | 'reports' | 'feedbacks'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'reports' | 'feedbacks' | 'database'>('overview');
     const [stats, setStats] = useState<any>(null);
     const [reports, setReports] = useState<any[]>([]);
     const [feedbacks, setFeedbacks] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+    const [cleanupLoading, setCleanupLoading] = useState(false);
+    const [cleanupResult, setCleanupResult] = useState<any>(null);
 
     const userIsAdmin = isAdmin(session?.user?.email);
 
@@ -171,6 +173,27 @@ export default function AdminDashboardPage() {
         }
     };
 
+    // 6. ทำความสะอาดฐานข้อมูล (Database Cleanup)
+    const handleRunCleanup = async () => {
+        if (!confirm('ยืนยันทำความสะอาดฐานข้อมูล? ระบบจะเคลียร์ตัวพิมพ์ผิด (mistakes) และยุบ FarmSession ที่เก่ากว่า 30 วันเป็น 1 แถวสรุป/วัน (Streak และเวลาย้อนหลังของทุกคนอยู่ครบ 100%)')) return;
+
+        setCleanupLoading(true);
+        try {
+            const res = await fetch('/api/admin/maintenance/cleanup', { method: 'POST' });
+            const data = await res.json();
+            if (data.success) {
+                setCleanupResult(data.summary);
+                toast.success('ทำความสะอาดฐานข้อมูลสำเร็จ!');
+            } else {
+                toast.error(data.error || 'เกิดข้อผิดพลาดในการทำความสะอาด');
+            }
+        } catch (e: any) {
+            toast.error('ไม่สามารถเชื่อมต่อ API ได้: ' + e.message);
+        } finally {
+            setCleanupLoading(false);
+        }
+    };
+
     if (isLoading || !userIsAdmin) {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center text-gray-400 bg-[#f4f7fb]">
@@ -250,6 +273,17 @@ export default function AdminDashboardPage() {
                     >
                         <MessageSquare size={16} />
                         <span>ข้อเสนอแนะ (Feedbacks) {feedbacks.length > 0 && <span className="bg-white/20 text-white px-2 py-0.5 rounded-full text-xs">{feedbacks.length}</span>}</span>
+                    </button>
+
+                    <button
+                        onClick={() => setActiveTab('database')}
+                        className={`px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer ${activeTab === 'database'
+                            ? 'bg-emerald-600 text-white shadow-md'
+                            : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200/80'
+                            }`}
+                    >
+                        <Database size={16} />
+                        <span>จัดการฐานข้อมูล (Database)</span>
                     </button>
                 </div>
 
@@ -610,6 +644,92 @@ export default function AdminDashboardPage() {
                                 );
                             })
                         )}
+                    </div>
+                )}
+
+                {/* --- TAB 3: จัดการฐานข้อมูล (Database Maintenance) --- */}
+                {activeTab === 'database' && (
+                    <div className="flex flex-col gap-6">
+                        <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-200/80">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl">
+                                    <Database size={24} />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-black text-gray-800 logo-font">ทำความสะอาดและลดขนาดฐานข้อมูล</h2>
+                                    <p className="text-xs sm:text-sm text-gray-500 font-medium">จัดการข้อมูลเก่าเกิน 30 วัน เพื่อให้ฐานข้อมูลเบาและใช้งานได้ยาวนานโดยไม่เต็มโควตาฟรี</p>
+                                </div>
+                            </div>
+
+                            {/* Features Safeguard Checklist */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 my-6">
+                                <div className="bg-emerald-50/60 border border-emerald-200/80 rounded-2xl p-4.5">
+                                    <div className="flex items-center gap-2 text-emerald-700 font-bold text-sm mb-1.5">
+                                        <Flame size={16} />
+                                        <span>Streak & ไฟ อยู่ครบ 100%</span>
+                                    </div>
+                                    <p className="text-xs text-emerald-900/80 leading-relaxed">
+                                        ใช้วิธีรวม FarmSession เก่าเป็น 1 แถวสรุปต่อวันต่อคน ไฟ Streak และปฏิทินกิจกรรมไม่หาย
+                                    </p>
+                                </div>
+
+                                <div className="bg-blue-50/60 border border-blue-200/80 rounded-2xl p-4.5">
+                                    <div className="flex items-center gap-2 text-blue-700 font-bold text-sm mb-1.5">
+                                        <Clock size={16} />
+                                        <span>เวลาย้อนหลังตรงเป๊ะ</span>
+                                    </div>
+                                    <p className="text-xs text-blue-900/80 leading-relaxed">
+                                        รวมเวลาที่ผู้ใช้พิมพ์ในวันนั้นทั้งหมดไว้ครบถ้วน กดดูย้อนหลังยังเห็นนาทีและวินาทีตามจริง
+                                    </p>
+                                </div>
+
+                                <div className="bg-purple-50/60 border border-purple-200/80 rounded-2xl p-4.5">
+                                    <div className="flex items-center gap-2 text-purple-700 font-bold text-sm mb-1.5">
+                                        <Trophy size={16} />
+                                        <span>Leaderboard ปลอดภัย</span>
+                                    </div>
+                                    <p className="text-xs text-purple-900/80 leading-relaxed">
+                                        คะแนนสถิติสูงสุด (Best Score) และ EXP ของผู้ใช้ทุกคนถูกเก็บถาวร อันดับไม่เปลี่ยนแปลง
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Action Button */}
+                            <div className="pt-2">
+                                <button
+                                    onClick={handleRunCleanup}
+                                    disabled={cleanupLoading}
+                                    className="px-6 py-3.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-2xl text-sm font-bold transition flex items-center justify-center gap-2 shadow-md cursor-pointer"
+                                >
+                                    {cleanupLoading ? (
+                                        <>
+                                            <Loader2 size={18} className="animate-spin" />
+                                            <span>กำลังประมวลผลทำความสะอาดฐานข้อมูล...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <RefreshCw size={18} />
+                                            <span>กดสั่งทำความสะอาดฐานข้อมูลทันที (Clean Up Database)</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+
+                            {/* Result Display */}
+                            {cleanupResult && (
+                                <div className="mt-6 bg-gray-50 border border-gray-200 rounded-2xl p-5 animate-fadeIn">
+                                    <div className="flex items-center gap-2 text-green-600 font-bold text-sm mb-3">
+                                        <CheckCircle size={18} />
+                                        <span>ผลลัพธ์การทำความสะอาดฐานข้อมูล:</span>
+                                    </div>
+                                    <ul className="text-xs sm:text-sm text-gray-700 space-y-2 font-medium">
+                                        <li>• เคลียร์ตัวพิมพ์ผิด (mistakes) ใน SpeedTestResult: <strong className="text-emerald-600">{cleanupResult.speedMistakesCleared?.toLocaleString()}</strong> รายการ</li>
+                                        <li>• รวมประวัติฟาร์มเก่า: <strong className="text-emerald-600">{cleanupResult.farmSessionsConsolidatedDays?.toLocaleString()}</strong> วันกิจกรรม</li>
+                                        <li>• ลดจำนวนแถวซ้ำซ้อนใน FarmSession ออก: <strong className="text-emerald-600">{cleanupResult.farmSessionsDeletedRows?.toLocaleString()}</strong> แถว</li>
+                                    </ul>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 )}
 
