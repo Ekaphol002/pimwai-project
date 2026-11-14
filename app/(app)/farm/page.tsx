@@ -650,17 +650,22 @@ export default function FarmPage() {
 
     // 2. เริ่มต้นหรือเริ่มรอบคำต่อไป (คำต่อไป / Next Words)
     const nextNewWords = useCallback((overrideLang?: 'thai' | 'english' | unknown) => {
-        // 🛡️ หากกดข้าม/เริ่มใหม่กลางคัน (ยังไม่จบรอบ) ให้ยกเลิก EXP ที่ได้จากรอบที่ถูกทิ้งทั้งหมด กันการพิมพ์ 1 คำแล้วกดรี
+        // 🛡️ หากกดข้าม/เริ่มใหม่กลางคัน
         if (!isFinishedRef.current && (roundExpEarnedRef.current > 0 || pendingSyncExpRef.current > 0)) {
-            const expToCancel = roundExpEarnedRef.current;
-            if (expToCancel > 0) {
-                setUserTotalExp(prev => Math.max(0, prev - expToCancel));
-                userTotalExpRef.current = Math.max(0, userTotalExpRef.current - expToCancel);
-                setSessionExpEarned(prev => Math.max(0, prev - expToCancel));
+            if (activeWordIdxRef.current >= 3 || roundExpEarnedRef.current >= 50) {
+                // ถ้าพิมพ์ไปได้น้ำได้เนื้อแล้ว (เช่น Zen mode หรือเล่นไปยาวๆ แล้วกดคำถัดไป) ให้ซิงค์แต้มขึ้นฐานข้อมูลทันที ไม่ทิ้งแต้มเด็ดขาด
+                syncExpToDatabase(undefined, true);
+            } else {
+                const expToCancel = roundExpEarnedRef.current;
+                if (expToCancel > 0) {
+                    setUserTotalExp(prev => Math.max(0, prev - expToCancel));
+                    userTotalExpRef.current = Math.max(0, userTotalExpRef.current - expToCancel);
+                    setSessionExpEarned(prev => Math.max(0, prev - expToCancel));
+                }
+                pendingSyncExpRef.current = 0;
+                unsyncedWordsCountRef.current = 0;
+                unsyncedPlayTimeSecondsRef.current = 0;
             }
-            pendingSyncExpRef.current = 0;
-            unsyncedWordsCountRef.current = 0;
-            unsyncedPlayTimeSecondsRef.current = 0;
         }
 
         // รีเซ็ตสถานะโหมดฝึกซ้ำ เพื่อให้รอบคำใหม่ได้รับ EXP ปกติ
@@ -753,17 +758,22 @@ export default function FarmPage() {
 
     // เล่นซ้ำคำเดิม (คำเดิม / Repeat Same Words)
     const repeatSameWords = useCallback(() => {
-        // 🛡️ หากกดรีสตาร์ทกลางคัน (ยังไม่จบรอบ) ให้ยกเลิก EXP ที่ได้จากรอบที่ถูกทิ้งทั้งหมด กันการพิมพ์ 1 คำแล้วกดรี
+        // 🛡️ หากกดรีสตาร์ทกลางคัน
         if (!isFinishedRef.current && (roundExpEarnedRef.current > 0 || pendingSyncExpRef.current > 0)) {
-            const expToCancel = roundExpEarnedRef.current;
-            if (expToCancel > 0) {
-                setUserTotalExp(prev => Math.max(0, prev - expToCancel));
-                userTotalExpRef.current = Math.max(0, userTotalExpRef.current - expToCancel);
-                setSessionExpEarned(prev => Math.max(0, prev - expToCancel));
+            if (activeWordIdxRef.current >= 3 || roundExpEarnedRef.current >= 50) {
+                // ซิงค์แต้มที่พิมพ์ไปแล้วขึ้นฐานข้อมูล
+                syncExpToDatabase(undefined, true);
+            } else {
+                const expToCancel = roundExpEarnedRef.current;
+                if (expToCancel > 0) {
+                    setUserTotalExp(prev => Math.max(0, prev - expToCancel));
+                    userTotalExpRef.current = Math.max(0, userTotalExpRef.current - expToCancel);
+                    setSessionExpEarned(prev => Math.max(0, prev - expToCancel));
+                }
+                pendingSyncExpRef.current = 0;
+                unsyncedWordsCountRef.current = 0;
+                unsyncedPlayTimeSecondsRef.current = 0;
             }
-            pendingSyncExpRef.current = 0;
-            unsyncedWordsCountRef.current = 0;
-            unsyncedPlayTimeSecondsRef.current = 0;
         }
 
         // 🛡️ ทำเครื่องหมายว่ารอบนี้คือการ "เริ่มใหม่ (คำเดิม)" -> ครั้งที่สองคะแนนจะไม่ขึ้น เพื่อป้องกันการปั๊มแต้ม
@@ -1002,16 +1012,11 @@ export default function FarmPage() {
             try {
                 localStorage.setItem('pimwai_guest_exp', String(userTotalExpRef.current));
             } catch (e) { }
+            return;
         }
-
-        if (!session?.user) return;
-        if (isSyncingRef.current) return;
 
         // 🛡️ หากอยู่ในโหมดเริ่มใหม่ (คำเดิม) ครั้งสองคะแนนจะไม่ขึ้น ไม่ต้องซิงค์แต้ม
         if (isRepeatPracticeRef.current) return;
-
-        // 🛡️ หากยังไม่จบรอบ และเพิ่งพิมพ์ไปไม่ถึง 3 คำ อย่าเพิ่งซิงค์เด็ดขาด กันการพิมพ์ 1 คำแล้วรีบส่งแต้ม
-        if (!isFinishedRef.current && !isFinal && activeWordIdxRef.current < 3) return;
 
         // ดึงแต้มที่จะส่งออกจากคิว (ถ้าไม่ระบุ forcedExp ให้ดึงแต้มทั้งหมดที่ค้างอยู่ในคิว)
         const expToSync = typeof forcedExp === 'number' && forcedExp > 0
@@ -1020,16 +1025,16 @@ export default function FarmPage() {
 
         const activeSecondsToSync = unsyncedPlayTimeSecondsRef.current;
         const wordsToSync = unsyncedWordsCountRef.current;
+        const isSessionFinished = isFinal || isFinishedRef.current;
 
         // ถ้าไม่มีทั้ง EXP ที่ค้าง และไม่มีเวลาที่ต้องซิงค์ และไม่ได้เป็นการปิดรอบ ให้ข้ามได้เลย
-        if (expToSync <= 0 && activeSecondsToSync <= 0 && !isFinal && !isFinishedRef.current) return;
+        if (expToSync <= 0 && activeSecondsToSync <= 0 && !isSessionFinished) return;
+
+        // ถ้ากำลังซิงค์อยู่ แต่ไม่ใช่รอบจบ ให้รอรอบถัดไป แต่ถ้ารอบนี้คือรอบจบ (isSessionFinished) ให้ยอมให้ส่งได้
+        if (isSyncingRef.current && !isSessionFinished && typeof forcedExp !== 'number') return;
 
         // หักแต้มออกจากคิวทันทีก่อนเริ่มยิง API เพื่อป้องกันการส่งซ้ำ
-        if (typeof forcedExp !== 'number') {
-            pendingSyncExpRef.current = Math.max(0, pendingSyncExpRef.current - expToSync);
-        } else {
-            pendingSyncExpRef.current = Math.max(0, pendingSyncExpRef.current - expToSync);
-        }
+        pendingSyncExpRef.current = Math.max(0, pendingSyncExpRef.current - expToSync);
 
         isSyncingRef.current = true;
         unsyncedPlayTimeSecondsRef.current = 0;
@@ -1040,23 +1045,30 @@ export default function FarmPage() {
         const roundDurationMin = Math.max(0.05, sessionPlayTimeSecondsRef.current / 60);
         const avgRoundWpm = Math.round((totalCorrectKeystrokesCountRef.current / 4) / roundDurationMin);
         const wpmToSync = currentWpmRef.current > 0 ? currentWpmRef.current : Math.max(0, avgRoundWpm);
-        const isSessionFinished = isFinal || isFinishedRef.current;
+
+        const payload = JSON.stringify({
+            expEarned: expToSync,
+            wpm: wpmToSync,
+            accuracy: accuracyRef.current,
+            wordsCount: wordsToSync,
+            timeSpentSeconds: activeSecondsToSync,
+            isFinalSession: isSessionFinished,
+            sessionDuration: sessionPlayTimeSecondsRef.current,
+            sessionWords: activeWordIdxRef.current,
+            sessionExp: roundExpEarnedRef.current
+        });
+
+        // 🌟 Backup ลง LocalStorage เผื่อเน็ตหลุดหรือออกจากหน้ากะทันหัน
+        try {
+            localStorage.setItem('pimwai_pending_farm_payload', payload);
+        } catch (e) { }
 
         try {
             const res = await fetch('/api/farm/save', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    expEarned: expToSync,
-                    wpm: wpmToSync,
-                    accuracy: accuracyRef.current,
-                    wordsCount: wordsToSync,
-                    timeSpentSeconds: activeSecondsToSync,
-                    isFinalSession: isSessionFinished,
-                    sessionDuration: sessionPlayTimeSecondsRef.current,
-                    sessionWords: activeWordIdxRef.current,
-                    sessionExp: roundExpEarnedRef.current
-                })
+                body: payload,
+                keepalive: true // 🌟 สำคัญที่สุด: รับประกันว่าบราวเซอร์จะส่งข้อมูลเสร็จแม้จะเปลี่ยนหน้าหรือสลับเมนู
             });
 
             const data = await res.json().catch(() => null);
@@ -1067,6 +1079,10 @@ export default function FarmPage() {
                 unsyncedWordsCountRef.current += wordsToSync;
                 console.warn("Farm EXP save deferred, returned to queue:", data);
             } else {
+                try {
+                    localStorage.removeItem('pimwai_pending_farm_payload');
+                } catch (e) { }
+
                 if (data?.updatedUser?.rank === 7) {
                     setIsTop10User(true);
                     isTop10UserRef.current = true;
@@ -1125,37 +1141,97 @@ export default function FarmPage() {
         return () => clearInterval(interval);
     }, [syncExpToDatabase]);
 
-    // ซิงค์แต้มเมื่อผู้ใช้จะปิดหน้าต่างเว็บ หรือสลับหน้า
+    // 🌟 กู้คืนแต้มที่ค้างอยู่ใน LocalStorage อัตโนมัติเมื่อเปิดหน้า Farm
     useEffect(() => {
-        const handleBeforeUnload = () => {
-            if (
-                !isRepeatPracticeRef.current &&
-                (isFinishedRef.current || activeWordIdxRef.current >= 3) &&
-                (pendingSyncExpRef.current > 0 || unsyncedPlayTimeSecondsRef.current > 0) &&
-                session?.user
-            ) {
+        if (!session?.user) return;
+        try {
+            const pendingPayload = localStorage.getItem('pimwai_pending_farm_payload');
+            if (pendingPayload) {
+                fetch('/api/farm/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: pendingPayload,
+                    keepalive: true
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data?.success) {
+                        localStorage.removeItem('pimwai_pending_farm_payload');
+                        if (typeof data?.updatedUser?.currentExp === 'number') {
+                            setUserTotalExp(data.updatedUser.currentExp);
+                            userTotalExpRef.current = data.updatedUser.currentExp;
+                        }
+                    }
+                })
+                .catch(() => {});
+            }
+        } catch (e) { }
+    }, [session?.user]);
+
+    // 🌟 ซิงค์แต้มเมื่อผู้ใช้สลับเมนู (Route Change / Unmount) หรือปิดหน้าต่างเว็บ
+    useEffect(() => {
+        const flushFarmData = () => {
+            if (isRepeatPracticeRef.current) return;
+            if (!session?.user) return;
+
+            const remainingExp = pendingSyncExpRef.current;
+            const remainingSeconds = unsyncedPlayTimeSecondsRef.current;
+            const remainingWords = unsyncedWordsCountRef.current;
+            const isDone = isFinishedRef.current;
+
+            if (remainingExp > 0 || remainingSeconds > 0 || isDone || roundExpEarnedRef.current > 0) {
+                const roundDurationMin = Math.max(0.05, sessionPlayTimeSecondsRef.current / 60);
+                const avgRoundWpm = Math.round((totalCorrectKeystrokesCountRef.current / 4) / roundDurationMin);
+                const wpmToSync = currentWpmRef.current > 0 ? currentWpmRef.current : Math.max(0, avgRoundWpm);
+
                 const payload = JSON.stringify({
-                    expEarned: pendingSyncExpRef.current,
-                    wpm: currentWpmRef.current,
+                    expEarned: remainingExp,
+                    wpm: wpmToSync,
                     accuracy: accuracyRef.current,
-                    wordsCount: unsyncedWordsCountRef.current,
-                    timeSpentSeconds: unsyncedPlayTimeSecondsRef.current || 5,
+                    wordsCount: remainingWords,
+                    timeSpentSeconds: remainingSeconds || 1,
                     isFinalSession: true,
                     sessionDuration: sessionPlayTimeSecondsRef.current,
                     sessionWords: activeWordIdxRef.current,
                     sessionExp: roundExpEarnedRef.current
                 });
-                navigator.sendBeacon?.('/api/farm/save', new Blob([payload], { type: 'application/json' }));
+
+                // สำรองลง LocalStorage ทันที
+                try {
+                    localStorage.setItem('pimwai_pending_farm_payload', payload);
+                } catch (e) { }
+
+                // ส่งด้วย fetch keepalive: true (ทำงานได้ทั้งบน desktop/mobile และ SPA route changes)
+                try {
+                    fetch('/api/farm/save', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: payload,
+                        keepalive: true
+                    }).then(r => {
+                        if (r.ok) {
+                            try { localStorage.removeItem('pimwai_pending_farm_payload'); } catch (e) { }
+                        }
+                    }).catch(() => {});
+                } catch (e) { }
+
+                // ส่งด้วย sendBeacon เสริมสำหรับกรณีปิดแท็บ/เบราว์เซอร์
+                if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+                    navigator.sendBeacon('/api/farm/save', new Blob([payload], { type: 'application/json' }));
+                }
+
+                pendingSyncExpRef.current = 0;
+                unsyncedPlayTimeSecondsRef.current = 0;
+                unsyncedWordsCountRef.current = 0;
             }
         };
-        window.addEventListener('beforeunload', handleBeforeUnload);
+
+        window.addEventListener('beforeunload', flushFarmData);
         return () => {
-            window.removeEventListener('beforeunload', handleBeforeUnload);
-            if (!isRepeatPracticeRef.current && (isFinishedRef.current || activeWordIdxRef.current >= 3) && (pendingSyncExpRef.current > 0 || unsyncedPlayTimeSecondsRef.current > 0)) {
-                syncExpToDatabase(undefined, true);
-            }
+            window.removeEventListener('beforeunload', flushFarmData);
+            flushFarmData(); // 🌟 จะถูกเรียกทันทีเมื่อ Next.js เปลี่ยนหน้าหรือสลับเมนู!
         };
-    }, [session?.user, syncExpToDatabase]);
+    }, [session?.user]);
 
     // ซิงค์แต้มและเวลาทันทีเมื่อจบรอบในทุกโหมด (บันทึก FarmSession เป็น 1 แถวสรุปจบรอบ)
     useEffect(() => {

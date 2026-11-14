@@ -39,7 +39,7 @@ export default function Navbar() {
       } else {
         setHasUnreadNews(false);
       }
-    } catch (e) {}
+    } catch (e) { }
 
     const handleNewsReadEvent = () => {
       setHasUnreadNews(false);
@@ -52,7 +52,7 @@ export default function Navbar() {
   const handleNewsClick = () => {
     try {
       localStorage.setItem('pimwai_last_read_news_id', LATEST_NEWS_ID);
-    } catch (e) {}
+    } catch (e) { }
     setHasUnreadNews(false);
   };
 
@@ -71,7 +71,7 @@ export default function Navbar() {
             return;
           }
         }
-      } catch (e) {}
+      } catch (e) { }
 
       fetch('/api/progress?summary=1')
         .then(res => res.json())
@@ -84,7 +84,7 @@ export default function Navbar() {
                 `pimwai_streak_${userKey}`,
                 JSON.stringify({ streak: current, ts: Date.now() })
               );
-            } catch (e) {}
+            } catch (e) { }
           }
         })
         .catch(err => console.error("Failed to load streak:", err));
@@ -92,6 +92,27 @@ export default function Navbar() {
 
     loadStreak(false);
   }, [userKey]);
+
+  // 🌟 ฟลัชแต้มฟาร์มที่ค้างอยู่ใน LocalStorage ทันทีเมื่อผู้ใช้เปลี่ยนเมนูหรือย้ายหน้า
+  useEffect(() => {
+    try {
+      const pendingPayload = localStorage.getItem('pimwai_pending_farm_payload');
+      if (pendingPayload) {
+        fetch('/api/farm/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: pendingPayload,
+          keepalive: true
+        })
+        .then(r => {
+          if (r.ok) {
+            try { localStorage.removeItem('pimwai_pending_farm_payload'); } catch (e) { }
+          }
+        })
+        .catch(() => {});
+      }
+    } catch (e) { }
+  }, [pathname]);
 
   const isFarm = pathname === '/' || pathname === '/farm' || pathname?.startsWith('/farm') || pathname === '/code' || pathname?.startsWith('/code');
   const [isFarmNavOpen, setIsFarmNavOpen] = useState(false);

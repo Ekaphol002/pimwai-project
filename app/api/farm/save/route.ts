@@ -30,68 +30,23 @@ export async function POST(request: Request) {
         } = body;
 
         const numExp = Number(expEarned) || 0;
-        // อนุญาตให้บันทึก FarmSession รอบสุดท้ายได้ แม้ EXP สะสมรอบย่อยจะถูกส่งไปหมดแล้ว
-        if (numExp <= 0 && !isFinalSession) {
-            return NextResponse.json({ success: true, message: "No EXP to update" });
-        }
-
-        const userId = session.user.id || session.user.email;
-        const now = Date.now();
-
-        // 🛡️ 1. Rate Limit & Time Velocity Check
-        const lastTime = lastRequestTimeMap.get(userId);
-        const elapsedSec = lastTime ? (now - lastTime) / 1000 : 999;
-
-        // ป้องกันการสแปมยิง API ถี่ผิดปกติ (ต้องเว้นอย่างน้อย 1.5 วินาที)
-        if (lastTime && (now - lastTime) < 1500) {
-            return NextResponse.json({
-                success: false,
-                rateLimited: true,
-                error: "Too many requests. Please slow down."
-            }, { status: 429 });
-        }
-        lastRequestTimeMap.set(userId, now);
-
-        // ทำความสะอาด map ไม่ให้ล้น memory (เก็บไม่เกิน 1,000 users)
-        if (lastRequestTimeMap.size > 1000) {
-            const cutoff = now - 60000;
-            for (const [k, v] of lastRequestTimeMap.entries()) {
-                if (v < cutoff) lastRequestTimeMap.delete(k);
-            }
-        }
-
-        // 🛡️ 2. Anti-Cheat: ความเร็ว & ความแม่นยำต้องสมจริง
         const numWpm = Math.min(300, Math.max(0, Math.round(Number(wpm) || 0)));
         const numAccuracy = Math.min(100, Math.max(0, Math.round(Number(accuracy) || 100)));
+        const addedDuration = Math.max(0, Math.min(7200, Math.round(Number(timeSpentSeconds) || 0)));
+        const numWords = Math.max(0, Math.round(Number(wordsCount) || 0));
+
+        // ถ้าไม่มีทั้ง EXP, ไม่มีเวลาสะสม, ไม่มีคำ และไม่ได้จบรอบ ให้ผ่านโดยไม่ต้องอัปเดต DB
+        if (numExp <= 0 && addedDuration <= 0 && !isFinalSession && Number(sessionExp) <= 0) {
+            return NextResponse.json({ success: true, message: "No data to update" });
+        }
+
+        // 🛡️ 1. Anti-Cheat: ป้องกัน WPM เกินระดับมนุษย์ (> 250 WPM)
         if (numWpm > 250) {
             return NextResponse.json({ error: "Suspicious typing speed detected" }, { status: 400 });
         }
 
-        const addedDuration = Math.max(0, Math.min(300, Math.round(Number(timeSpentSeconds) || 0)));
-        const numWords = Math.max(0, Math.round(Number(wordsCount) || 0));
-
-        // 🛡️ ป้องกันบอทส่งเวลาเล่นปลอมเกินเวลาโลกจริง (เช่น ยิงห่างกัน 3 วิ แต่บอกว่าเล่นไป 60 วิ)
-        if (lastTime && addedDuration > elapsedSec + 5) {
-            return NextResponse.json({
-                success: false,
-                error: "Invalid session duration"
-            }, { status: 400 });
-        }
-
-        // 🛡️ 3. Anti-Cheat: สกัดกั้นบอทพิมพ์ 1 คำแล้วกดยิง API (Farm Loop Exploit)
-        if (numWords < 3 && addedDuration < 6) {
-            return NextResponse.json({
-                success: false,
-                error: "ต้องพิมพ์อย่างน้อย 3 คำ หรือใช้เวลาอย่างน้อย 6 วินาทีเพื่อบันทึก EXP"
-            }, { status: 400 });
-        }
-
-        // 🛡️ 4. EXP Velocity Cap (ขีดจำกัดทางชีวภาพและตัวคูณ):
-        // แม้จะเป็น Rank 7 (ตัวคูณสูงสุด x25 + Fever x2 = x50) ก็มีเพดานสูงสุดตามจำนวนคำและเวลาจริง
-        const maxExpByTime = Math.max(500, (addedDuration || 5) * 800);
-        const maxExpByWords = Math.max(500, numWords * 450);
-        const maxPlausibleExp = Math.min(maxExpByTime, maxExpByWords);
-        const safeExp = Math.min(numExp, maxPlausibleExp, 100000);
+        // 🛡️ 2. ปลอดภัยและรองรับตัวคูณ EXP สูงสุดทุก Rank (อนุญาตให้รับ EXP ได้เต็มจำนวนสูงสุดถึง 1,000,000 EXP ต่อเซสชัน)
+        const safeExp = Math.min(Math.max(0, numExp), 1000000);
 
         const user = await prisma.user.findFirst({
             where: {
@@ -113,8 +68,8 @@ export async function POST(request: Request) {
             // 🛡️ ปรับการบันทึก FarmSession แบบใหม่:
             // สร้างแถว FarmSession เพียง 1 แถวต่อเมื่อ "จบรอบ" หรือ "ออกจากหน้า" (isFinalSession === true)
             // ระหว่างกำลังพิมพ์ (Periodic Sync) จะอัปเดตเฉพาะ EXP และเวลาสะสมใน User โดยไม่สร้างแถวซ้ำซ้อนใน FarmSession
-            if (isFinalSession === true && (Number(sessionDuration) > 0 || addedDuration > 0 || numWords >= 3 || safeExp > 0)) {
-                const finalDuration = Math.min(3600, Math.max(1, Number(sessionDuration) || addedDuration));
+            if (isFinalSession === true && (Number(sessionDuration) > 0 || addedDuration > 0 || numWords >= 1 || safeExp > 0 || Number(sessionExp) > 0)) {
+                const finalDuration = Math.min(7200, Math.max(1, Number(sessionDuration) || addedDuration));
                 const finalWords = Math.max(0, Number(sessionWords) || numWords);
                 const finalExp = Math.max(0, Number(sessionExp) || safeExp);
 
