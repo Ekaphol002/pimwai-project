@@ -359,7 +359,29 @@ export default function FarmPage() {
 
     // ⏱️ Farm Playtime Tracking States (เวลาฟาร์มสะสม, เวลาฟาร์มวันนี้, และ เวลาเซสชันปัจจุบัน)
     const [totalFarmTimeSeconds, setTotalFarmTimeSeconds] = useState<number>(0);
-    const [todayFarmTimeSeconds, setTodayFarmTimeSeconds] = useState<number>(0);
+    const [todayFarmTimeSeconds, setTodayFarmTimeSeconds] = useState<number>(() => {
+        if (typeof window !== 'undefined') {
+            try {
+                const todayKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+                const cached = localStorage.getItem(`pimwai_today_farm_time_${todayKey}`);
+                return cached ? Math.max(0, parseInt(cached, 10)) : 0;
+            } catch (e) { }
+        }
+        return 0;
+    });
+    const todayFarmTimeSecondsRef = useRef<number>(todayFarmTimeSeconds);
+    useEffect(() => {
+        todayFarmTimeSecondsRef.current = todayFarmTimeSeconds;
+        if (typeof window !== 'undefined' && todayFarmTimeSeconds > 0) {
+            try {
+                const todayKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+                const prev = parseInt(localStorage.getItem(`pimwai_today_farm_time_${todayKey}`) || '0', 10);
+                if (todayFarmTimeSeconds > prev) {
+                    localStorage.setItem(`pimwai_today_farm_time_${todayKey}`, String(todayFarmTimeSeconds));
+                }
+            } catch (e) { }
+        }
+    }, [todayFarmTimeSeconds]);
     const [sessionPlayTimeSeconds, setSessionPlayTimeSeconds] = useState<number>(0);
 
     // Counters for Stats
@@ -585,7 +607,7 @@ export default function FarmPage() {
                         setTotalFarmTimeSeconds(data.user.farmTimeSeconds);
                     }
                     if (typeof data.user?.todayFarmTimeSeconds === 'number') {
-                        setTodayFarmTimeSeconds(data.user.todayFarmTimeSeconds);
+                        setTodayFarmTimeSeconds(prev => Math.max(prev, data.user.todayFarmTimeSeconds));
                     }
 
                     const isTop10 = Boolean(data.isTop10 || data.user?.isTop10 || data.user?.rank === 7);
@@ -1160,6 +1182,12 @@ export default function FarmPage() {
                         if (typeof data?.updatedUser?.currentExp === 'number') {
                             setUserTotalExp(data.updatedUser.currentExp);
                             userTotalExpRef.current = data.updatedUser.currentExp;
+                        }
+                        if (typeof data?.updatedUser?.farmTimeSeconds === 'number') {
+                            setTotalFarmTimeSeconds(prev => Math.max(prev, data.updatedUser.farmTimeSeconds));
+                        }
+                        if (typeof data?.updatedUser?.todayFarmTimeSeconds === 'number') {
+                            setTodayFarmTimeSeconds(prev => Math.max(prev, data.updatedUser.todayFarmTimeSeconds));
                         }
                     }
                 })
