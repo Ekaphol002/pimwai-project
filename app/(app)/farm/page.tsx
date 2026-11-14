@@ -995,7 +995,8 @@ export default function FarmPage() {
     useEffect(() => { activeWordIdxRef.current = activeWordIdx; }, [activeWordIdx]);
 
     // 6. ซิงค์ EXP สะสมขึ้นฐานข้อมูลอัตโนมัติ (Atomic Queue & Periodic Sync ป้องกัน EXP ตกหล่น)
-    const syncExpToDatabase = useCallback(async (forcedExp?: number) => {
+    // 🛡️ ปรับใหม่: บันทึกแถว FarmSession เพียง 1 แถวต่อเมื่อจบรอบ/ออกจากหน้า (isFinal = true)
+    const syncExpToDatabase = useCallback(async (forcedExp?: number, isFinal: boolean = false) => {
         // 🌟 บันทึกลง LocalStorage เฉพาะเมื่อไม่ได้ล็อกอิน (Guest Mode) เท่านั้น ป้องกันแต้มรั่วไปบัญชีอื่น
         if (!session?.user) {
             try {
@@ -1010,7 +1011,7 @@ export default function FarmPage() {
         if (isRepeatPracticeRef.current) return;
 
         // 🛡️ หากยังไม่จบรอบ และเพิ่งพิมพ์ไปไม่ถึง 3 คำ อย่าเพิ่งซิงค์เด็ดขาด กันการพิมพ์ 1 คำแล้วรีบส่งแต้ม
-        if (!isFinishedRef.current && activeWordIdxRef.current < 3) return;
+        if (!isFinishedRef.current && !isFinal && activeWordIdxRef.current < 3) return;
 
         // ดึงแต้มที่จะส่งออกจากคิว (ถ้าไม่ระบุ forcedExp ให้ดึงแต้มทั้งหมดที่ค้างอยู่ในคิว)
         const expToSync = typeof forcedExp === 'number' && forcedExp > 0
@@ -1020,8 +1021,8 @@ export default function FarmPage() {
         const activeSecondsToSync = unsyncedPlayTimeSecondsRef.current;
         const wordsToSync = unsyncedWordsCountRef.current;
 
-        // ถ้าไม่มีทั้ง EXP ที่ค้าง และไม่มีเวลาที่ต้องซิงค์ ให้ข้ามได้เลย
-        if (expToSync <= 0 && activeSecondsToSync <= 0) return;
+        // ถ้าไม่มีทั้ง EXP ที่ค้าง และไม่มีเวลาที่ต้องซิงค์ และไม่ได้เป็นการปิดรอบ ให้ข้ามได้เลย
+        if (expToSync <= 0 && activeSecondsToSync <= 0 && !isFinal && !isFinishedRef.current) return;
 
         // หักแต้มออกจากคิวทันทีก่อนเริ่มยิง API เพื่อป้องกันการส่งซ้ำ
         if (typeof forcedExp !== 'number') {
@@ -1039,6 +1040,7 @@ export default function FarmPage() {
         const roundDurationMin = Math.max(0.05, sessionPlayTimeSecondsRef.current / 60);
         const avgRoundWpm = Math.round((totalCorrectKeystrokesCountRef.current / 4) / roundDurationMin);
         const wpmToSync = currentWpmRef.current > 0 ? currentWpmRef.current : Math.max(0, avgRoundWpm);
+        const isSessionFinished = isFinal || isFinishedRef.current;
 
         try {
             const res = await fetch('/api/farm/save', {
@@ -1049,7 +1051,11 @@ export default function FarmPage() {
                     wpm: wpmToSync,
                     accuracy: accuracyRef.current,
                     wordsCount: wordsToSync,
-                    timeSpentSeconds: activeSecondsToSync
+                    timeSpentSeconds: activeSecondsToSync,
+                    isFinalSession: isSessionFinished,
+                    sessionDuration: sessionPlayTimeSecondsRef.current,
+                    sessionWords: activeWordIdxRef.current,
+                    sessionExp: roundExpEarnedRef.current
                 })
             });
 
@@ -1132,8 +1138,12 @@ export default function FarmPage() {
                     expEarned: pendingSyncExpRef.current,
                     wpm: currentWpmRef.current,
                     accuracy: accuracyRef.current,
-                    wordsCount: activeWordIdxRef.current,
-                    timeSpentSeconds: unsyncedPlayTimeSecondsRef.current || 5
+                    wordsCount: unsyncedWordsCountRef.current,
+                    timeSpentSeconds: unsyncedPlayTimeSecondsRef.current || 5,
+                    isFinalSession: true,
+                    sessionDuration: sessionPlayTimeSecondsRef.current,
+                    sessionWords: activeWordIdxRef.current,
+                    sessionExp: roundExpEarnedRef.current
                 });
                 navigator.sendBeacon?.('/api/farm/save', new Blob([payload], { type: 'application/json' }));
             }
@@ -1142,17 +1152,17 @@ export default function FarmPage() {
         return () => {
             window.removeEventListener('beforeunload', handleBeforeUnload);
             if (!isRepeatPracticeRef.current && (isFinishedRef.current || activeWordIdxRef.current >= 3) && (pendingSyncExpRef.current > 0 || unsyncedPlayTimeSecondsRef.current > 0)) {
-                syncExpToDatabase();
+                syncExpToDatabase(undefined, true);
             }
         };
     }, [session?.user, syncExpToDatabase]);
 
-    // ซิงค์แต้มและเวลาทันทีเมื่อจบรอบในทุกโหมด
+    // ซิงค์แต้มและเวลาทันทีเมื่อจบรอบในทุกโหมด (บันทึก FarmSession เป็น 1 แถวสรุปจบรอบ)
     useEffect(() => {
         if (isFinished) {
             isFinishedRef.current = true;
             if (!isRepeatPracticeRef.current) {
-                syncExpToDatabase();
+                syncExpToDatabase(undefined, true);
             }
         }
     }, [isFinished, syncExpToDatabase]);
@@ -1308,7 +1318,7 @@ export default function FarmPage() {
             isFinishedRef.current = true;
             setIsTyping(false);
             if (!isRepeatPracticeRef.current) {
-                syncExpToDatabase();
+                syncExpToDatabase(undefined, true);
             }
             return;
         }
@@ -1515,7 +1525,7 @@ export default function FarmPage() {
             isFinishedRef.current = true;
             setIsTyping(false);
             if (!isRepeatPracticeRef.current) {
-                syncExpToDatabase();
+                syncExpToDatabase(undefined, true);
             }
             return;
         }

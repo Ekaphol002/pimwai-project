@@ -17,10 +17,21 @@ export async function POST(request: Request) {
         }
 
         const body = await request.json();
-        const { expEarned, wpm, accuracy, wordsCount, timeSpentSeconds } = body;
+        const {
+            expEarned,
+            wpm,
+            accuracy,
+            wordsCount,
+            timeSpentSeconds,
+            isFinalSession,
+            sessionDuration,
+            sessionWords,
+            sessionExp
+        } = body;
 
         const numExp = Number(expEarned) || 0;
-        if (numExp <= 0) {
+        // อนุญาตให้บันทึก FarmSession รอบสุดท้ายได้ แม้ EXP สะสมรอบย่อยจะถูกส่งไปหมดแล้ว
+        if (numExp <= 0 && !isFinalSession) {
             return NextResponse.json({ success: true, message: "No EXP to update" });
         }
 
@@ -99,15 +110,22 @@ export async function POST(request: Request) {
         // 🛡️ ถนอมดาวสะสม: ไม่เขียนทับ User.stars ด้วย rankInfo.stars เพื่อไม่ให้ดาวจากบทเรียนหาย (B7 Fix)
         const result = await prisma.$transaction(async (tx) => {
             let createdFarmSessionId: string | undefined = undefined;
-            if (addedDuration > 0 || safeExp > 0) {
+            // 🛡️ ปรับการบันทึก FarmSession แบบใหม่:
+            // สร้างแถว FarmSession เพียง 1 แถวต่อเมื่อ "จบรอบ" หรือ "ออกจากหน้า" (isFinalSession === true)
+            // ระหว่างกำลังพิมพ์ (Periodic Sync) จะอัปเดตเฉพาะ EXP และเวลาสะสมใน User โดยไม่สร้างแถวซ้ำซ้อนใน FarmSession
+            if (isFinalSession === true && (Number(sessionDuration) > 0 || addedDuration > 0 || numWords >= 3 || safeExp > 0)) {
+                const finalDuration = Math.min(3600, Math.max(1, Number(sessionDuration) || addedDuration));
+                const finalWords = Math.max(0, Number(sessionWords) || numWords);
+                const finalExp = Math.max(0, Number(sessionExp) || safeExp);
+
                 const newFarmSession = await tx.farmSession.create({
                     data: {
                         userId: user.id,
-                        duration: addedDuration,
-                        expEarned: safeExp,
+                        duration: finalDuration,
+                        expEarned: finalExp,
                         wpm: numWpm,
                         accuracy: numAccuracy,
-                        wordsCount: Number(wordsCount) || 0
+                        wordsCount: finalWords
                     }
                 });
                 createdFarmSessionId = newFarmSession.id;
