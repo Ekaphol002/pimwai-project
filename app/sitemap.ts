@@ -12,6 +12,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
             priority: 1.0,
         },
         {
+            url: `${baseUrl}/farm`,
+            lastModified: now,
+            changeFrequency: 'daily',
+            priority: 0.95,
+        },
+        {
             url: `${baseUrl}/lessons`,
             lastModified: now,
             changeFrequency: 'daily',
@@ -24,16 +30,40 @@ export default function sitemap(): MetadataRoute.Sitemap {
             priority: 0.9,
         },
         {
+            url: `${baseUrl}/typing-test/1`,
+            lastModified: now,
+            changeFrequency: 'daily',
+            priority: 0.9,
+        },
+        {
+            url: `${baseUrl}/typing-test/3`,
+            lastModified: now,
+            changeFrequency: 'daily',
+            priority: 0.85,
+        },
+        {
+            url: `${baseUrl}/typing-test/5`,
+            lastModified: now,
+            changeFrequency: 'daily',
+            priority: 0.85,
+        },
+        {
             url: `${baseUrl}/rankings`,
             lastModified: now,
             changeFrequency: 'daily',
             priority: 0.85,
         },
         {
-            url: `${baseUrl}/news`,
+            url: `${baseUrl}/progress`,
             lastModified: now,
             changeFrequency: 'weekly',
             priority: 0.8,
+        },
+        {
+            url: `${baseUrl}/news`,
+            lastModified: now,
+            changeFrequency: 'weekly',
+            priority: 0.75,
         },
     ]
 }

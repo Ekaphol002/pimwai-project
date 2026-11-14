@@ -63,6 +63,37 @@ export function toStandardDisplayOrder(text: string): string {
     return text.replace(/(\u0E33)([\u0E48-\u0E4B])/g, '$2$1');
 }
 
+// ฟังก์ชันสุ่มคำโดยเน้นคำง่าย/คำที่ใช้บ่อยมากกว่าคำยาก เพื่อความลื่นไหลในการพิมพ์ (75% คำง่าย, 20% คำกลาง, 5% คำยาก)
+function pickWeightedWord(pool: string[], isThai: boolean): string {
+    if (!pool || pool.length === 0) return '';
+    const roll = Math.random();
+    if (isThai) {
+        if (roll < 0.75) {
+            // 75% คำง่ายระดับพื้นฐานในชีวิตประจำวัน (Top 600 คำความถี่สูงสุด)
+            const maxIdx = Math.min(600, pool.length);
+            return pool[Math.floor(Math.random() * maxIdx)];
+        } else if (roll < 0.95) {
+            // 20% คำระดับกลาง (อันดับ 600 - 1,800)
+            const minIdx = Math.min(600, pool.length);
+            const maxIdx = Math.min(1800, pool.length);
+            return pool[minIdx + Math.floor(Math.random() * (maxIdx - minIdx))];
+        } else {
+            // 5% คำระดับสูง/คำเฉพาะ (อันดับ 1,800 ขึ้นไป)
+            const minIdx = Math.min(1800, pool.length - 1);
+            return pool[minIdx + Math.floor(Math.random() * (pool.length - minIdx))];
+        }
+    } else {
+        // ภาษาอังกฤษ: 75% คำง่าย Top 200, 25% คำระดับกลาง/คลังคำรวม
+        if (roll < 0.75) {
+            const maxIdx = Math.min(200, pool.length);
+            return pool[Math.floor(Math.random() * maxIdx)];
+        } else {
+            const minIdx = Math.min(200, pool.length);
+            return pool[minIdx + Math.floor(Math.random() * (pool.length - minIdx))];
+        }
+    }
+}
+
 // ฟังก์ชันสุ่มชุดคำ (รองรับทั้งภาษาไทยและอังกฤษ พร้อมบัฟ Golden Rush: เพิ่มโอกาสเจอคำสีทองเป็น 15%)
 function generateWordList(
     count: number,
@@ -73,15 +104,16 @@ function generateWordList(
 ): { word: string; isGolden: boolean }[] {
     const list: { word: string; isGolden: boolean }[] = [];
     const goldenChance = hasIntermediatePerk ? 0.15 : 0.08;
+    const isThai = currentLanguage === 'thai';
     const pool = currentLanguage === 'english' ? MONKEYTYPE_ENGLISH_WORDS : BASE_THAI_WORDS;
     const usedWords = new Set<string>();
 
     for (let i = 0; i < count; i++) {
-        // ป้องกันคำซ้ำในรอบเดียวกัน (Deduplication)
-        let base = pool[Math.floor(Math.random() * pool.length)];
+        // ป้องกันคำซ้ำในรอบเดียวกัน (Deduplication) พร้อมเลือกคำง่ายเป็นหลัก
+        let base = pickWeightedWord(pool, isThai);
         let attempts = 0;
         while (usedWords.has(base) && attempts < 10 && usedWords.size < pool.length) {
-            base = pool[Math.floor(Math.random() * pool.length)];
+            base = pickWeightedWord(pool, isThai);
             attempts++;
         }
         usedWords.add(base);
