@@ -25,15 +25,11 @@ export async function POST(request: Request) {
         });
         const protectedBestScoreIds = allBestScores.map(b => b.id);
 
-        // 1. จัดการ SpeedTestResult: เคลียร์ mistakes ที่เก่าเกิน 30 วันเป็น {} (ยกเว้น Best Scores ห้ามแตะต้อง)
-        const speedUpdateResult = await prisma.speedTestResult.updateMany({
+        // 1. จัดการ SpeedTestResult: ลบแถวเก่าเกิน 30 วันออก (ยกเว้น Best Scores ห้ามลบเด็ดขาด)
+        const speedDeleteResult = await prisma.speedTestResult.deleteMany({
             where: {
                 createdAt: { lt: cutoff30Days },
-                id: { notIn: protectedBestScoreIds },
-                NOT: { mistakes: { equals: {} } }
-            },
-            data: {
-                mistakes: {}
+                id: { notIn: protectedBestScoreIds }
             }
         });
 
@@ -110,7 +106,8 @@ export async function POST(request: Request) {
         return NextResponse.json({
             success: true,
             summary: {
-                speedMistakesCleared: speedUpdateResult.count,
+                speedTestsDeleted: speedDeleteResult.count,
+                speedMistakesCleared: speedDeleteResult.count,
                 farmSessionsBeforeCount: oldSessions.length,
                 farmSessionsConsolidatedDays,
                 farmSessionsDeletedRows: farmSessionsDeleted

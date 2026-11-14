@@ -36,17 +36,13 @@ async function cleanup() {
         const protectedBestScoreIds = allBestScores.map(b => b.id);
         console.log(`🛡️ พบสถิติดีที่สุด (Best Scores) ที่ได้รับการปกป้อง: ${protectedBestScoreIds.length} รายการ`);
 
-        const updateResult = await prisma.speedTestResult.updateMany({
+        const deleteResult = await prisma.speedTestResult.deleteMany({
             where: {
                 createdAt: { lt: cutoff30Days },
-                id: { notIn: protectedBestScoreIds },
-                NOT: { mistakes: { equals: {} } }
-            },
-            data: {
-                mistakes: {}
+                id: { notIn: protectedBestScoreIds }
             }
         });
-        console.log(`✅ เคลียร์ฟิลด์ mistakes เก่าเกิน 30 วันสำเร็จ: ${updateResult.count.toLocaleString()} แถว`);
+        console.log(`✅ ลบประวัติ SpeedTestResult เก่าเกิน 30 วันสำเร็จ: ${deleteResult.count.toLocaleString()} แถว (คงเหลือ Best Scores ไว้อย่างปลอดภัย)`);
     } catch (err) {
         console.error('❌ ข้อผิดพลาดใน SpeedTestResult:', err.message);
     }

@@ -127,6 +127,34 @@ export async function POST(request: Request) {
           }
         });
       }
+
+      // 3.3 Auto-cleanup: ลบประวัติ speed test เก่าเกิน 30 วันอัตโนมัติ (ยกเว้น Best Scores ของแต่ละ duration)
+      try {
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        const bestScores = await tx.speedTestResult.findMany({
+          where: { userId: user.id },
+          orderBy: [
+            { wpm: 'desc' },
+            { accuracy: 'desc' },
+            { createdAt: 'desc' }
+          ],
+          distinct: ['duration'],
+          select: { id: true }
+        });
+        const keepIds = bestScores.map(b => b.id);
+        if (keepIds.length > 0) {
+          await tx.speedTestResult.deleteMany({
+            where: {
+              userId: user.id,
+              createdAt: { lt: thirtyDaysAgo },
+              id: { notIn: keepIds }
+            }
+          });
+        }
+      } catch (cleanupErr) {
+        console.error("Auto cleanup speed test in save-test error:", cleanupErr);
+      }
+
       return { newTestResult, updatedUser, newlyCompletedQuests, totalQuestBonusXp, finalEarnedXP };
     });
 

@@ -723,7 +723,7 @@ export default function AdminDashboardPage() {
                                         <span>ผลลัพธ์การทำความสะอาดฐานข้อมูล:</span>
                                     </div>
                                     <ul className="text-xs sm:text-sm text-gray-700 space-y-2 font-medium">
-                                        <li>• เคลียร์ตัวพิมพ์ผิด (mistakes) ใน SpeedTestResult: <strong className="text-emerald-600">{cleanupResult.speedMistakesCleared?.toLocaleString()}</strong> รายการ</li>
+                                        <li>• ลบประวัติ SpeedTestResult เก่าเกิน 30 วัน (เก็บ Best Scores ไว้): <strong className="text-emerald-600">{cleanupResult.speedTestsDeleted?.toLocaleString() || cleanupResult.speedMistakesCleared?.toLocaleString()}</strong> รายการ</li>
                                         <li>• รวมประวัติฟาร์มเก่า: <strong className="text-emerald-600">{cleanupResult.farmSessionsConsolidatedDays?.toLocaleString()}</strong> วันกิจกรรม</li>
                                         <li>• ลดจำนวนแถวซ้ำซ้อนใน FarmSession ออก: <strong className="text-emerald-600">{cleanupResult.farmSessionsDeletedRows?.toLocaleString()}</strong> แถว</li>
                                     </ul>

@@ -32,30 +32,53 @@ export async function GET(request: Request) {
         // CASE A: จัดอันดับตามความเร็ว (Speed) -> ดึงจาก SpeedTestResult
         // ---------------------------------------------------------
         if (mode === 'speed') {
-            const rawResults = await prisma.speedTestResult.findMany({
-                where: { duration: duration },
-                orderBy: [
-                    { wpm: 'desc' },
-                    { accuracy: 'desc' },
-                    { createdAt: 'desc' }
-                ],
-                take: 200,
-                include: {
-                    user: { select: { id: true, username: true, name: true, rank: true, currentExp: true, showInLeaderboard: true } }
-                }
-            });
+            // ใช้ DISTINCT ON (userId) เพื่อคัดเฉพาะผลสอบที่ดีที่สุดของแต่ละ User ออกมาตั้งแต่ระดับฐานข้อมูล
+            // ป้องกันปัญหา User ที่เล่นเยอะกินโควตาจนแสดงผลไม่ครบ Top 50
+            interface BestSpeedRow {
+                id: string;
+                userId: string;
+                duration: number;
+                wpm: number;
+                accuracy: number;
+                createdAt: Date;
+                username: string | null;
+                name: string | null;
+                rank: number;
+                currentExp: number;
+            }
 
-            // กรอง User ซ้ำ (เอาคะแนนดีสุดของแต่ละคน) และกรองคนที่ปิด showInLeaderboard
-            const seenUserIds = new Set<string>();
-            const uniqueResults = rawResults.filter((result: any) => {
-                if (!result.user || result.user.showInLeaderboard === false) return false;
-                if (seenUserIds.has(result.userId)) return false;
-                seenUserIds.add(result.userId);
-                return true;
-            });
+            const top50Results = await prisma.$queryRaw<BestSpeedRow[]>`
+                SELECT 
+                    ub.id,
+                    ub."userId",
+                    ub.duration,
+                    ub.wpm,
+                    ub.accuracy,
+                    ub."createdAt",
+                    u.username,
+                    u.name,
+                    u.rank,
+                    u."currentExp"
+                FROM (
+                    SELECT DISTINCT ON (s."userId")
+                        s.id,
+                        s."userId",
+                        s.duration,
+                        s.wpm,
+                        s.accuracy,
+                        s."createdAt"
+                    FROM "SpeedTestResult" s
+                    JOIN "User" u ON s."userId" = u.id
+                    WHERE s.duration = ${duration}
+                      AND (u."showInLeaderboard" IS NOT FALSE)
+                    ORDER BY s."userId", s.wpm DESC, s.accuracy DESC, s."createdAt" DESC
+                ) ub
+                JOIN "User" u ON ub."userId" = u.id
+                ORDER BY ub.wpm DESC, ub.accuracy DESC, ub."createdAt" DESC
+                LIMIT 50;
+            `;
 
-            const top50Results = uniqueResults.slice(0, 50);
-            const userIdsToFetchImages = top50Results.map((r: any) => r.userId);
+            const userIdsToFetchImages = top50Results.map((r) => r.userId);
             if (currentUserId && !userIdsToFetchImages.includes(currentUserId)) {
                 userIdsToFetchImages.push(currentUserId);
             }
@@ -67,15 +90,23 @@ export async function GET(request: Request) {
             });
             const imageMap = new Map(userImages.map(u => [u.id, u.image]));
 
-            leaderboard = top50Results.map((result: any, index: number) => {
+            leaderboard = top50Results.map((result, index: number) => {
                 const displayUser = {
-                    ...result.user,
-                    username: result.user.username || result.user.name || "User",
+                    id: result.userId,
+                    username: result.username || result.name || "User",
+                    name: result.name,
+                    rank: result.rank,
+                    currentExp: result.currentExp,
                     image: imageMap.get(result.userId) || null
                 };
 
                 return {
-                    ...result,
+                    id: result.id,
+                    userId: result.userId,
+                    duration: result.duration,
+                    wpm: result.wpm,
+                    accuracy: result.accuracy,
+                    createdAt: result.createdAt,
                     user: displayUser,
                     rankOrder: index + 1,        // ลำดับที่ 1, 2, 3...
                     displayVal1: result.wpm,     // ช่อง WPM

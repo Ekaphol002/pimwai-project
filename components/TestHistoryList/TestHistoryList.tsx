@@ -104,7 +104,7 @@ export default function TestHistoryList({ history }: TestHistoryListProps) {
       {/* Header + ปุ่มเปลี่ยนหน้า */}
       <div className="flex justify-between items-end mb-4 px-2">
         <h3 className="text-white font-bold text-2sm uppercase opacity-90 tracking-wide flex items-center gap-2">
-           ประวัติการพิมพ์ (ล่าสุด 30 วัน)
+           ประวัติการพิมพ์
         </h3>
         
         {/* แสดงปุ่มเปลี่ยนหน้าเฉพาะตอนมีมากกว่า 1 หน้า */}
