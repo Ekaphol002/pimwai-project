@@ -24,13 +24,22 @@ async function cleanup() {
     console.log(`📅 เกณฑ์เวลา 30 วันย้อนหลัง: ${cutoff30Days.toISOString()}`);
 
     // =========================================================
-    // 1. จัดการ SpeedTestResult: เคลียร์ mistakes ที่เก่าเกิน 30 วัน
+    // 1. จัดการ SpeedTestResult: เคลียร์ mistakes ที่เก่าเกิน 30 วัน (ยกเว้น Best Scores ห้ามแตะต้อง)
     // =========================================================
     console.log('\n--- [1/2] จัดการ SpeedTestResult ---');
     try {
+        const allBestScores = await prisma.speedTestResult.findMany({
+            orderBy: [{ wpm: 'desc' }, { accuracy: 'desc' }],
+            distinct: ['userId', 'duration'],
+            select: { id: true }
+        });
+        const protectedBestScoreIds = allBestScores.map(b => b.id);
+        console.log(`🛡️ พบสถิติดีที่สุด (Best Scores) ที่ได้รับการปกป้อง: ${protectedBestScoreIds.length} รายการ`);
+
         const updateResult = await prisma.speedTestResult.updateMany({
             where: {
                 createdAt: { lt: cutoff30Days },
+                id: { notIn: protectedBestScoreIds },
                 NOT: { mistakes: { equals: {} } }
             },
             data: {

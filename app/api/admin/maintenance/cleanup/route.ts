@@ -17,10 +17,19 @@ export async function POST(request: Request) {
         const now = new Date();
         const cutoff30Days = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
 
-        // 1. จัดการ SpeedTestResult: เคลียร์ mistakes ที่เก่าเกิน 30 วันเป็น {}
+        // 🛡️ ป้องกันสถิติดีที่สุด (Best Scores): ค้นหาคะแนนสูงสุดของทุกคนในทุกโหมดเวลา เพื่อล็อกไว้ไม่แตะต้องเด็ดขาด
+        const allBestScores = await prisma.speedTestResult.findMany({
+            orderBy: [{ wpm: 'desc' }, { accuracy: 'desc' }],
+            distinct: ['userId', 'duration'],
+            select: { id: true }
+        });
+        const protectedBestScoreIds = allBestScores.map(b => b.id);
+
+        // 1. จัดการ SpeedTestResult: เคลียร์ mistakes ที่เก่าเกิน 30 วันเป็น {} (ยกเว้น Best Scores ห้ามแตะต้อง)
         const speedUpdateResult = await prisma.speedTestResult.updateMany({
             where: {
                 createdAt: { lt: cutoff30Days },
+                id: { notIn: protectedBestScoreIds },
                 NOT: { mistakes: { equals: {} } }
             },
             data: {
