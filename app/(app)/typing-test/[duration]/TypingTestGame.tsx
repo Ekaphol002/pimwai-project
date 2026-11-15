@@ -288,10 +288,8 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
         if (prevStatus === 'correct') {
           correctCharsCountRef.current = Math.max(0, correctCharsCountRef.current - 1);
           setCorrectCharsCount(p => Math.max(0, p - 1));
-        } else if (prevStatus === 'incorrect') {
-          totalErrorsRef.current = Math.max(0, totalErrorsRef.current - 1);
-          setTotalErrors(p => Math.max(0, p - 1));
         }
+        // 🛡️ พิมพ์ผิดแล้วกด Backspace: คงค่า totalErrors ไว้ตามจริง (ไม่ลบ Error ทิ้ง) เพื่อให้คำนวณ Accuracy ได้แม่นยำ ไม่เป็น 100% ปลอม
 
         const newS = [...statuses];
         if (newS[newL]) {

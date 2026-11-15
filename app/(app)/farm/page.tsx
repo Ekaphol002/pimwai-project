@@ -383,6 +383,7 @@ export default function FarmPage() {
         }
     }, [todayFarmTimeSeconds]);
     const [sessionPlayTimeSeconds, setSessionPlayTimeSeconds] = useState<number>(0);
+    const roundIdRef = useRef<string>(`rnd_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`);
 
     // Counters for Stats
     const [correctKeystrokes, setCorrectKeystrokes] = useState<number>(0);
@@ -766,6 +767,7 @@ export default function FarmPage() {
         setTimeLeft(timeLimit);
         setIsFinished(false);
         isFinishedRef.current = false;
+        roundIdRef.current = `rnd_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
         setEndTime(null);
     }, [mode, zenType, wordLimit, timeLimit, includePunctuation, includeNumbers, language, quoteLength]);
 
@@ -857,6 +859,7 @@ export default function FarmPage() {
         setTimeLeft(timeLimit);
         setIsFinished(false);
         isFinishedRef.current = false;
+        roundIdRef.current = `rnd_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
         setEndTime(null);
     }, [timeLimit, wordList]);
 
@@ -1077,7 +1080,8 @@ export default function FarmPage() {
             isFinalSession: isSessionFinished,
             sessionDuration: sessionPlayTimeSecondsRef.current,
             sessionWords: activeWordIdxRef.current,
-            sessionExp: roundExpEarnedRef.current
+            sessionExp: roundExpEarnedRef.current,
+            roundId: roundIdRef.current
         });
 
         // 🌟 Backup ลง LocalStorage เผื่อเน็ตหลุดหรือออกจากหน้ากะทันหัน
@@ -1169,6 +1173,7 @@ export default function FarmPage() {
         try {
             const pendingPayload = localStorage.getItem('pimwai_pending_farm_payload');
             if (pendingPayload) {
+                localStorage.removeItem('pimwai_pending_farm_payload');
                 fetch('/api/farm/save', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1178,7 +1183,6 @@ export default function FarmPage() {
                 .then(r => r.json())
                 .then(data => {
                     if (data?.success) {
-                        localStorage.removeItem('pimwai_pending_farm_payload');
                         if (typeof data?.updatedUser?.currentExp === 'number') {
                             setUserTotalExp(data.updatedUser.currentExp);
                             userTotalExpRef.current = data.updatedUser.currentExp;
@@ -1221,7 +1225,8 @@ export default function FarmPage() {
                     isFinalSession: true,
                     sessionDuration: sessionPlayTimeSecondsRef.current,
                     sessionWords: activeWordIdxRef.current,
-                    sessionExp: roundExpEarnedRef.current
+                    sessionExp: roundExpEarnedRef.current,
+                    roundId: roundIdRef.current
                 });
 
                 // สำรองลง LocalStorage ทันที
@@ -1242,11 +1247,6 @@ export default function FarmPage() {
                         }
                     }).catch(() => {});
                 } catch (e) { }
-
-                // ส่งด้วย sendBeacon เสริมสำหรับกรณีปิดแท็บ/เบราว์เซอร์
-                if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
-                    navigator.sendBeacon('/api/farm/save', new Blob([payload], { type: 'application/json' }));
-                }
 
                 pendingSyncExpRef.current = 0;
                 unsyncedPlayTimeSecondsRef.current = 0;

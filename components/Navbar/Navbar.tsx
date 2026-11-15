@@ -98,18 +98,14 @@ export default function Navbar() {
     try {
       const pendingPayload = localStorage.getItem('pimwai_pending_farm_payload');
       if (pendingPayload) {
+        // ลบออกจาก localStorage ทันทีเพื่อป้องกัน event ถัดไปมายิงซ้ำ
+        localStorage.removeItem('pimwai_pending_farm_payload');
         fetch('/api/farm/save', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: pendingPayload,
           keepalive: true
-        })
-        .then(r => {
-          if (r.ok) {
-            try { localStorage.removeItem('pimwai_pending_farm_payload'); } catch (e) { }
-          }
-        })
-        .catch(() => {});
+        }).catch(() => {});
       }
     } catch (e) { }
   }, [pathname]);

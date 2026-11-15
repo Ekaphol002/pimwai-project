@@ -9,6 +9,9 @@ import { evaluateNewlyCompletedQuests } from '@/lib/questUtils';
 // 🛡️ In-memory rate limiting map (userId -> timestamp of last request)
 const lastRequestTimeMap = new Map<string, number>();
 
+// 🛡️ In-memory map เพื่อป้องกัน Duplicate Session Creation (sessionId -> timestamp)
+const processedSessionsMap = new Map<string, number>();
+
 export async function POST(request: Request) {
     try {
         const session = await getServerSession(authOptions);
@@ -26,7 +29,8 @@ export async function POST(request: Request) {
             isFinalSession,
             sessionDuration,
             sessionWords,
-            sessionExp
+            sessionExp,
+            roundId
         } = body;
 
         const numExp = Number(expEarned) || 0;
@@ -61,14 +65,28 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: false, error: "User not found" }, { status: 404 });
         }
 
+        // 🛡️ ป้องกัน Duplicate FarmSession (Idempotency Check)
+        // หากมี roundId ส่งมา และ roundId นั้นเพิ่งถูกบันทึก FarmSession ไปแล้วภายใน 15 วินาที ให้ข้ามการสร้างแถวซ้ำ
+        const isDuplicateRound = roundId && processedSessionsMap.has(roundId);
+        if (roundId && isFinalSession === true && !isDuplicateRound) {
+            processedSessionsMap.set(roundId, Date.now());
+            // ทำความสะอาด map ไม่ให้ล้นหน่วยความจำ
+            if (processedSessionsMap.size > 2000) {
+                const cutoff = Date.now() - 60000;
+                for (const [k, v] of processedSessionsMap.entries()) {
+                    if (v < cutoff) processedSessionsMap.delete(k);
+                }
+            }
+        }
+
         // 🛡️ Atomic Transaction: ป้องกัน Race Condition และ EXP สูญหาย (B8 Fix)
         // 🛡️ ถนอมดาวสะสม: ไม่เขียนทับ User.stars ด้วย rankInfo.stars เพื่อไม่ให้ดาวจากบทเรียนหาย (B7 Fix)
         const result = await prisma.$transaction(async (tx) => {
             let createdFarmSessionId: string | undefined = undefined;
             // 🛡️ ปรับการบันทึก FarmSession แบบใหม่:
             // สร้างแถว FarmSession เพียง 1 แถวต่อเมื่อ "จบรอบ" หรือ "ออกจากหน้า" (isFinalSession === true)
-            // ระหว่างกำลังพิมพ์ (Periodic Sync) จะอัปเดตเฉพาะ EXP และเวลาสะสมใน User โดยไม่สร้างแถวซ้ำซ้อนใน FarmSession
-            if (isFinalSession === true && (Number(sessionDuration) > 0 || addedDuration > 0 || numWords >= 1 || safeExp > 0 || Number(sessionExp) > 0)) {
+            // และต้องไม่ใช่การส่งซ้ำของ round เดิม
+            if (isFinalSession === true && !isDuplicateRound && (Number(sessionDuration) > 0 || addedDuration > 0 || numWords >= 1 || safeExp > 0 || Number(sessionExp) > 0)) {
                 const finalDuration = Math.min(7200, Math.max(1, Number(sessionDuration) || addedDuration));
                 const finalWords = Math.max(0, Number(sessionWords) || numWords);
                 const finalExp = Math.max(0, Number(sessionExp) || safeExp);
