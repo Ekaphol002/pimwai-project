@@ -315,6 +315,10 @@ const getTodayTimeStorageKey = (email?: string | null) => {
 const getProgressStorageKey = (email?: string | null) =>
     email ? `pimwai_code_progress_${email}` : 'pimwai_code_progress_guest';
 
+// Storage Key สำหรับเซฟร่างข้อความในกล่อง "ใส่โค้ดของคุณ" ป้องกันข้อมูลหายตอนปิดแท็บ/รีเฟรช
+const getDraftSnippetStorageKey = (email?: string | null) =>
+    email ? `pimwai_code_draft_${email}` : 'pimwai_code_draft_guest';
+
 // แปลงเวลาเป็นข้อความภาษาไทยตามสูตร Farm Mode (เช่น "1 ชม. 25 นาที" หรือ "45 นาที 10 วิ" หรือ "15 วิ")
 const formatFarmTimeDetailed = (totalSec: number) => {
     if (!totalSec || totalSec <= 0) return "0 วิ";
@@ -535,10 +539,49 @@ export default function CodeTypingPage() {
         }, 2200);
     }, []);
 
-    // Form state for creating custom snippet
+    // Form state for creating custom snippet (พร้อมกู้คืนข้อความร่างอัตโนมัติ)
     const [customTitle, setCustomTitle] = useState('');
     const [customLanguage, setCustomLanguage] = useState('TypeScript');
     const [customCode, setCustomCode] = useState('');
+
+    // โหลดร่างโค้ดที่กรอกค้างไว้ในกล่อง (Auto-restore draft snippet)
+    useEffect(() => {
+        try {
+            const draftKey = getDraftSnippetStorageKey(session?.user?.email);
+            const savedDraft = localStorage.getItem(draftKey);
+            if (savedDraft) {
+                const parsed = JSON.parse(savedDraft);
+                if (parsed.title) setCustomTitle(parsed.title);
+                if (parsed.language) setCustomLanguage(parsed.language);
+                if (parsed.code) setCustomCode(parsed.code);
+            }
+        } catch { }
+    }, [session?.user?.email]);
+
+    // เซฟร่างโค้ดลง localStorage อัตโนมัติทุกครั้งที่มีการพิมพ์ (Auto-save draft snippet)
+    const handleCustomTitleChange = (val: string) => {
+        setCustomTitle(val);
+        try {
+            const draftKey = getDraftSnippetStorageKey(session?.user?.email);
+            localStorage.setItem(draftKey, JSON.stringify({ title: val, language: customLanguage, code: customCode }));
+        } catch { }
+    };
+
+    const handleCustomLanguageChange = (val: string) => {
+        setCustomLanguage(val);
+        try {
+            const draftKey = getDraftSnippetStorageKey(session?.user?.email);
+            localStorage.setItem(draftKey, JSON.stringify({ title: customTitle, language: val, code: customCode }));
+        } catch { }
+    };
+
+    const handleCustomCodeChange = (val: string) => {
+        setCustomCode(val);
+        try {
+            const draftKey = getDraftSnippetStorageKey(session?.user?.email);
+            localStorage.setItem(draftKey, JSON.stringify({ title: customTitle, language: customLanguage, code: val }));
+        } catch { }
+    };
 
     // Farm Mode Typing Engine States
     const [activeWordIdx, setActiveWordIdx] = useState<number>(0);
@@ -956,6 +999,17 @@ export default function CodeTypingPage() {
         }, 50);
     }, [saveProgressToLocalStorage, syncProgressToServer]);
 
+    // ฟังก์ชันข้ามไปยังชุดโค้ดถัดไป (Skip to next code snippet)
+    const handleSkipNextSnippet = useCallback(() => {
+        const currentIndex = snippets.findIndex(s => s.id === selectedSnippetIdRef.current);
+        const nextIndex = (currentIndex + 1) % snippets.length;
+        const nextSnippet = snippets[nextIndex];
+        if (nextSnippet) {
+            resetPractice(nextSnippet.id);
+            toast(`ข้ามไป: ${nextSnippet.title}`, { icon: '⏭️' });
+        }
+    }, [snippets, resetPractice]);
+
     // ⏱️ นับเวลาเล่นเฉพาะขณะกำลังพิมพ์อยู่จริง (สูตร Farm Mode เป๊ะ + ประหยัด CPU สำหรับคอมสเปคต่ำ)
     useEffect(() => {
         if (!startTime || isFinished) return;
@@ -1016,7 +1070,7 @@ export default function CodeTypingPage() {
         }, 4000);
 
         const handleBeforeUnload = () => {
-            if ((isDirtyProgressRef.current || unsyncedSecondsRef.current > 0) && session?.user?.email) {
+            if (session?.user?.email) {
                 const payload = JSON.stringify({
                     selectedSnippetId: selectedSnippetIdRef.current,
                     activeWordIdx: activeWordIdxRef.current,
@@ -1025,7 +1079,17 @@ export default function CodeTypingPage() {
                     todayTimeSeconds: todayCodeTimeSecondsRef.current,
                     addedSeconds: unsyncedSecondsRef.current
                 });
-                navigator.sendBeacon?.('/api/code/progress', new Blob([payload], { type: 'application/json' }));
+                try {
+                    fetch('/api/code/progress', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: payload,
+                        keepalive: true
+                    }).catch(() => {});
+                } catch { }
+                if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+                    navigator.sendBeacon('/api/code/progress', new Blob([payload], { type: 'application/json' }));
+                }
             }
         };
 
@@ -1033,9 +1097,7 @@ export default function CodeTypingPage() {
         return () => {
             clearInterval(syncInterval);
             window.removeEventListener('beforeunload', handleBeforeUnload);
-            if (isDirtyProgressRef.current || unsyncedSecondsRef.current > 0) {
-                syncProgressToServer(true);
-            }
+            handleBeforeUnload();
         };
     }, [session?.user?.email, syncProgressToServer]);
 
@@ -1253,6 +1315,12 @@ export default function CodeTypingPage() {
         setCustomTitle('');
         setCustomCode('');
         setIsCustomModalOpen(false);
+
+        // ล้างร่างข้อความที่เซฟค้างไว้หลังบันทึกสำเร็จ
+        try {
+            const draftKey = getDraftSnippetStorageKey(session?.user?.email);
+            localStorage.removeItem(draftKey);
+        } catch { }
 
         // เซฟลง localStorage ตามบัญชี
         const storageKey = getCodeStorageKey(session?.user?.email);
@@ -1569,6 +1637,16 @@ export default function CodeTypingPage() {
 
                                     <div className="w-[1px] h-4 bg-gray-200 hidden sm:block"></div>
 
+                                    {/* ปุ่มข้ามไปยังชุดโค้ดถัดไป (Skip to next snippet) */}
+                                    <button
+                                        type="button"
+                                        onClick={handleSkipNextSnippet}
+                                        className="text-gray-400 hover:text-[#5cb5db] hover:scale-110 active:scale-95 transition-transform cursor-pointer p-1.5"
+                                        title="ข้ามไปโค้ดถัดไป (Skip)"
+                                    >
+                                        <ChevronRight size={20} strokeWidth={2.6} />
+                                    </button>
+
                                     <button
                                         type="button"
                                         onClick={() => resetPractice()}
@@ -1698,7 +1776,7 @@ export default function CodeTypingPage() {
                                 <input
                                     type="text"
                                     value={customTitle}
-                                    onChange={(e) => setCustomTitle(e.target.value)}
+                                    onChange={(e) => handleCustomTitleChange(e.target.value)}
                                     placeholder="เช่น My Algorithm, Auth Middleware..."
                                     className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-[#5cb5db] focus:bg-white transition"
                                     maxLength={40}
@@ -1712,7 +1790,7 @@ export default function CodeTypingPage() {
                                 </label>
                                 <select
                                     value={customLanguage}
-                                    onChange={(e) => setCustomLanguage(e.target.value)}
+                                    onChange={(e) => handleCustomLanguageChange(e.target.value)}
                                     className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm text-gray-800 focus:outline-none focus:border-[#5cb5db] focus:bg-white transition cursor-pointer"
                                 >
                                     <option value="TypeScript">TypeScript</option>
@@ -1734,7 +1812,7 @@ export default function CodeTypingPage() {
                                 </label>
                                 <textarea
                                     value={customCode}
-                                    onChange={(e) => setCustomCode(e.target.value)}
+                                    onChange={(e) => handleCustomCodeChange(e.target.value)}
                                     rows={8}
                                     placeholder="// Paste your code here..."
                                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl font-mono text-xs sm:text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-[#5cb5db] focus:bg-white transition"
