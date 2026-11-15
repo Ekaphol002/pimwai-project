@@ -11,6 +11,7 @@ import {
     X,
     Save,
     ChevronRight,
+    CornerDownLeft,
     RefreshCw,
     Plus,
     Trash2,
@@ -999,16 +1000,56 @@ export default function CodeTypingPage() {
         }, 50);
     }, [saveProgressToLocalStorage, syncProgressToServer]);
 
-    // ฟังก์ชันข้ามไปยังชุดโค้ดถัดไป (Skip to next code snippet)
-    const handleSkipNextSnippet = useCallback(() => {
-        const currentIndex = snippets.findIndex(s => s.id === selectedSnippetIdRef.current);
-        const nextIndex = (currentIndex + 1) % snippets.length;
-        const nextSnippet = snippets[nextIndex];
-        if (nextSnippet) {
-            resetPractice(nextSnippet.id);
-            toast(`ข้ามไป: ${nextSnippet.title}`, { icon: '⏭️' });
+    // ⏩ ฟังก์ชันข้ามบรรทัดปัจจุบัน: เติมคำที่เหลือในบรรทัดนี้ให้โดยอัตโนมัติ แล้วข้ามไปบรรทัดถัดไปทันที
+    const handleSkipCurrentLine = useCallback(() => {
+        if (isFinished) return;
+        const currentToken = allTokens[activeWordIdxRef.current];
+        if (!currentToken) return;
+
+        const currentLineNum = currentToken.lineNum;
+        const tokensInLine = allTokens.filter(t => t.lineNum === currentLineNum && t.globalIdx >= activeWordIdxRef.current);
+        if (tokensInLine.length === 0) return;
+
+        const nextHistory = { ...typedWordsHistoryRef.current };
+        let wordsAddedCount = 0;
+        let keystrokesAdded = 0;
+
+        for (const token of tokensInLine) {
+            nextHistory[token.globalIdx] = token.word;
+            keystrokesAdded += token.word.length + 1;
+            wordsAddedCount++;
         }
-    }, [snippets, resetPractice]);
+
+        const nextActiveIdx = tokensInLine[tokensInLine.length - 1].globalIdx + 1;
+
+        setTypedWordsHistory(nextHistory);
+        typedWordsHistoryRef.current = nextHistory;
+        setTotalKeystrokes(prev => prev + keystrokesAdded);
+        setCorrectKeystrokes(prev => prev + keystrokesAdded);
+
+        // ถ้าข้ามจนจบโค้ดชุดนี้
+        if (nextActiveIdx >= allTokens.length) {
+            setIsFinished(true);
+            saveProgressToLocalStorage(selectedSnippetIdRef.current, 0, '', {});
+            activeWordIdxRef.current = 0;
+            inputBufferRef.current = '';
+            typedWordsHistoryRef.current = {};
+            isDirtyProgressRef.current = true;
+            syncProgressToServer(true);
+            toast.success('🎉 พิมพ์โค้ดเสร็จสมบูรณ์!');
+            return;
+        }
+
+        setActiveWordIdx(nextActiveIdx);
+        activeWordIdxRef.current = nextActiveIdx;
+        setInputBuffer('');
+        inputBufferRef.current = '';
+
+        saveProgressToLocalStorage(selectedSnippetIdRef.current, nextActiveIdx, '', nextHistory);
+        isDirtyProgressRef.current = true;
+        inputRef.current?.focus();
+        toast('ข้ามบรรทัดเรียบร้อย ⏭️', { duration: 1500 });
+    }, [isFinished, allTokens, saveProgressToLocalStorage, syncProgressToServer]);
 
     // ⏱️ นับเวลาเล่นเฉพาะขณะกำลังพิมพ์อยู่จริง (สูตร Farm Mode เป๊ะ + ประหยัด CPU สำหรับคอมสเปคต่ำ)
     useEffect(() => {
@@ -1637,14 +1678,15 @@ export default function CodeTypingPage() {
 
                                     <div className="w-[1px] h-4 bg-gray-200 hidden sm:block"></div>
 
-                                    {/* ปุ่มข้ามไปยังชุดโค้ดถัดไป (Skip to next snippet) */}
+                                    {/* ปุ่มข้ามบรรทัดนี้: เติมโค้ดบรรทัดปัจจุบันให้และข้ามไปบรรทัดถัดไป */}
                                     <button
                                         type="button"
-                                        onClick={handleSkipNextSnippet}
-                                        className="text-gray-400 hover:text-[#5cb5db] hover:scale-110 active:scale-95 transition-transform cursor-pointer p-1.5"
-                                        title="ข้ามไปโค้ดถัดไป (Skip)"
+                                        onClick={handleSkipCurrentLine}
+                                        className="flex items-center gap-1 px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 hover:text-amber-900 border border-amber-200 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
+                                        title="ข้ามบรรทัดนี้ (ระบบจะเติมโค้ดบรรทัดนี้ให้โดยอัตโนมัติ)"
                                     >
-                                        <ChevronRight size={20} strokeWidth={2.6} />
+                                        <CornerDownLeft size={13} className="shrink-0" />
+                                        <span>ข้ามบรรทัด</span>
                                     </button>
 
                                     <button
@@ -1731,11 +1773,20 @@ export default function CodeTypingPage() {
 
                             {/* Bottom Helper Bar */}
                             <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-400">
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
                                     <span className="w-2 h-2 rounded-full bg-[#5cb5db]" />
                                     <span>เคาะ <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded font-bold border border-gray-200">Spacebar</kbd> เพื่อจบคำ หรือ <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded font-bold border border-gray-200">Enter</kbd> เมื่อจบบรรทัด (เซฟจุดที่พิมพ์อัตโนมัติ)</span>
                                 </div>
-                                <div className="flex items-center gap-3 font-mono">
+                                <div className="flex items-center gap-3 font-mono shrink-0">
+                                    <button
+                                        type="button"
+                                        onClick={handleSkipCurrentLine}
+                                        className="text-amber-600 hover:text-amber-700 hover:underline font-sans font-bold cursor-pointer inline-flex items-center gap-1"
+                                        title="ข้ามบรรทัดนี้"
+                                    >
+                                        <CornerDownLeft size={12} />
+                                        <span>ข้ามบรรทัด</span>
+                                    </button>
                                     <span>คำ: {activeWordIdx} / {allTokens.length}</span>
                                 </div>
                             </div>
