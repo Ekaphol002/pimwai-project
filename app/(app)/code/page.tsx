@@ -1048,7 +1048,6 @@ export default function CodeTypingPage() {
         saveProgressToLocalStorage(selectedSnippetIdRef.current, nextActiveIdx, '', nextHistory);
         isDirtyProgressRef.current = true;
         inputRef.current?.focus();
-        toast('ข้ามบรรทัดเรียบร้อย ⏭️', { duration: 1500 });
     }, [isFinished, allTokens, saveProgressToLocalStorage, syncProgressToServer]);
 
     // ⏱️ นับเวลาเล่นเฉพาะขณะกำลังพิมพ์อยู่จริง (สูตร Farm Mode เป๊ะ + ประหยัด CPU สำหรับคอมสเปคต่ำ)
