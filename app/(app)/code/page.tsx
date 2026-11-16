@@ -11,7 +11,8 @@ import {
     X,
     Save,
     ChevronRight,
-    CornerDownLeft,
+    Pencil,
+    SkipForward,
     RefreshCw,
     Plus,
     Trash2,
@@ -475,48 +476,6 @@ const MemoCodeWord = memo(function MemoCodeWord({
     );
 });
 
-// สร้างคำใบ้ขั้นตอนของบรรทัดปัจจุบัน เพื่อช่วยให้จำโครงสร้างโค้ดได้โดยไม่ต้องเปิดดูตัวเขียนตาม
-function getLineStepHint(words: CodeWordToken[]): string {
-    if (!words || words.length === 0) return '';
-    const lineStr = words.map(w => w.word).join(' ');
-
-    if (lineStr === '<?php' || lineStr === '?>') return 'เปิด/ปิดแท็ก PHP';
-    if (lineStr.includes("require_once 'auth.php'")) return 'ดึงไฟล์เช็กการล็อกอิน (auth.php)';
-    if (lineStr.includes("require_once 'config.php'")) return 'ดึงไฟล์เชื่อมต่อฐานข้อมูล (config.php)';
-    if (lineStr.includes('new PDO(')) return 'เชื่อมต่อฐานข้อมูล MySQL ด้วย PDO (localhost, competition_db, root)';
-    if (lineStr.includes('ATTR_ERRMODE')) return 'ตั้งค่า PDO ให้แจ้งเตือนข้อผิดพลาดแบบ Exception';
-    if (lineStr.includes('ATTR_DEFAULT_FETCH_MODE')) return 'ตั้งค่า PDO ให้ดึงข้อมูลเป็น Array ชื่อคอลัมน์ (FETCH_ASSOC)';
-    if (lineStr.includes('catch (PDOException')) return 'ดักจับข้อผิดพลาดกรณีต่อฐานข้อมูลไม่สำเร็จ';
-    if (lineStr.includes('die(')) return 'หยุดทำงานและแสดงข้อความเมื่อเชื่อมต่อล้มเหลว';
-    if (lineStr.includes('SELECT * FROM users WHERE id = ?')) return 'เตรียมคำสั่ง SQL ดึงข้อมูลผู้ใช้ปัจจุบันจาก id';
-    if (lineStr.includes('->execute([$_SESSION') || lineStr.includes('->execute([$uid])')) return 'ส่งค่า id ของผู้ใช้ที่ล็อกอินเข้าไปรันคำสั่ง SQL';
-    if (lineStr.includes('$user = $stmt->fetch()')) return 'ดึงข้อมูลผู้ใช้เก็บลงตัวแปร $user';
-    if (lineStr.includes("role'] !== 'admin'")) return 'เช็กสิทธิ์: ถ้าไม่ใช่ admin ให้ดีดกลับหน้า dashboard.php';
-    if (lineStr.includes("$_GET['delete']")) return 'เช็กการกดปุ่มลบสมาชิก (และห้ามลบตัวเอง)';
-    if (lineStr.includes('DELETE FROM users WHERE id = ?')) return 'สั่งลบสมาชิกออกจากตาราง users ตาม id ที่ส่งมา';
-    if (lineStr.includes("$_GET['toggle_role']")) return 'เช็กการกดปุ่มสลับสิทธิ์ (และห้ามสลับสิทธิ์ตัวเอง)';
-    if (lineStr.includes("UPDATE users SET role = IF(")) return 'สลับค่า role ระหว่าง admin กับ user ในคำสั่ง SQL เดียว';
-    if (lineStr.includes('SELECT * FROM users ORDER BY id ASC')) return 'ดึงรายชื่อสมาชิกทั้งหมดเรียงตาม id จากน้อยไปมาก';
-    if (lineStr.includes("action === 'update_profile'")) return 'ส่วนบันทึกการแก้ไขชื่อจริง-นามสกุล';
-    if (lineStr.includes('UPDATE users SET firstname = ?, lastname = ?')) return 'อัปเดตชื่อและนามสกุลลงฐานข้อมูลตาม id';
-    if (lineStr.includes("$_SESSION['firstname']")) return 'อัปเดตชื่อใน SESSION ให้เปลี่ยนทันที';
-    if (lineStr.includes("$_SESSION['lastname']")) return 'อัปเดตนามสกุลใน SESSION ให้เปลี่ยนทันที';
-    if (lineStr.includes("action === 'change_password'")) return 'ส่วนตรวจสอบและเปลี่ยนรหัสผ่านใหม่';
-    if (lineStr.includes('password_verify(')) return 'ตรวจสอบว่ารหัสผ่านเดิมตรงกับในฐานข้อมูลหรือไม่';
-    if (lineStr.includes('strlen($new) < 6')) return 'ตรวจสอบความยาวรหัสผ่านใหม่ต้องไม่ต่ำกว่า 6 ตัวอักษร';
-    if (lineStr.includes('$new !== $con')) return 'ตรวจสอบว่ารหัสผ่านใหม่และยืนยันรหัสผ่านตรงกันหรือไม่';
-    if (lineStr.includes('password_hash(')) return 'เข้ารหัสรหัสผ่านใหม่ด้วย PASSWORD_BCRYPT';
-    if (lineStr.includes('UPDATE users SET password = ?')) return 'บันทึกรหัสผ่านใหม่ที่เข้ารหัสแล้วลงฐานข้อมูล';
-    if (lineStr.includes('<link rel="stylesheet"')) return 'ดึงไฟล์ CSS ของ Bootstrap (css/bootstrap.min.css)';
-    if (lineStr.includes('<nav class="navbar')) return 'แถบเมนูด้านบน (Bootstrap Navbar)';
-    if (lineStr.includes('<table class="table')) return 'ตารางแสดงข้อมูลสมาชิก (Bootstrap Table)';
-    if (lineStr.includes('foreach ($all_users as $u)')) return 'วนลูปแสดงข้อมูลสมาชิกทีละคน ($u)';
-    if (lineStr.includes('?toggle_role=')) return 'ปุ่มกดสลับสิทธิ์พร้อม confirm ยืนยัน';
-    if (lineStr.includes('?delete=')) return 'ปุ่มกดลบสมาชิกพร้อม confirm ยืนยัน';
-    if (lineStr.includes('onclick="p1.type')) return 'ติ๊กถูกเพื่อสลับแสดง/ซ่อนรหัสผ่าน (text / password)';
-    return '';
-}
-
 export default function CodeTypingPage() {
     const { data: session } = useSession();
 
@@ -524,6 +483,7 @@ export default function CodeTypingPage() {
     const [snippets, setSnippets] = useState<CodeSnippet[]>(PRESET_SNIPPETS);
     const [selectedSnippetId, setSelectedSnippetId] = useState<string>(PRESET_SNIPPETS[0].id);
     const [isCustomModalOpen, setIsCustomModalOpen] = useState(false);
+    const [editingSnippetId, setEditingSnippetId] = useState<string | null>(null);
     const [isSavingToServer, setIsSavingToServer] = useState(false);
     const [isSyncingProgress, setIsSyncingProgress] = useState(false);
 
@@ -535,9 +495,7 @@ export default function CodeTypingPage() {
     const triggerLinePeek = useCallback(() => {
         setIsPeekingLine(true);
         if (peekTimeoutRef.current) clearTimeout(peekTimeoutRef.current);
-        peekTimeoutRef.current = setTimeout(() => {
-            setIsPeekingLine(false);
-        }, 2200);
+        peekTimeoutRef.current = setTimeout(() => setIsPeekingLine(false), 2200);
     }, []);
 
     // Form state for creating custom snippet (พร้อมกู้คืนข้อความร่างอัตโนมัติ)
@@ -1036,7 +994,7 @@ export default function CodeTypingPage() {
             typedWordsHistoryRef.current = {};
             isDirtyProgressRef.current = true;
             syncProgressToServer(true);
-            toast.success('🎉 พิมพ์โค้ดเสร็จสมบูรณ์!');
+            toast.success('พิมพ์โค้ดเสร็จสมบูรณ์!');
             return;
         }
 
@@ -1048,6 +1006,7 @@ export default function CodeTypingPage() {
         saveProgressToLocalStorage(selectedSnippetIdRef.current, nextActiveIdx, '', nextHistory);
         isDirtyProgressRef.current = true;
         inputRef.current?.focus();
+        toast('ข้ามบรรทัดเรียบร้อย ⏭', { duration: 1500 });
     }, [isFinished, allTokens, saveProgressToLocalStorage, syncProgressToServer]);
 
     // ⏱️ นับเวลาเล่นเฉพาะขณะกำลังพิมพ์อยู่จริง (สูตร Farm Mode เป๊ะ + ประหยัด CPU สำหรับคอมสเปคต่ำ)
@@ -1161,16 +1120,6 @@ export default function CodeTypingPage() {
     }, [totalKeystrokes, correctKeystrokes]);
 
     const currentToken = allTokens[activeWordIdx];
-    const activeLineObj = useMemo(() => {
-        if (!currentToken) return null;
-        return lines.find(l => l.lineNum === currentToken.lineNum) || null;
-    }, [lines, currentToken]);
-
-    const activeLineHint = useMemo(() => {
-        if (currentSnippet.isCustom || !activeLineObj) return '';
-        return getLineStepHint(activeLineObj.words);
-    }, [currentSnippet.isCustom, activeLineObj]);
-
     // Handle typing events strictly following Farm Mode principle
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         // 🛡️ Anti-Cheat: ปฏิเสธ Synthetic Event / บอทสคริปต์
@@ -1178,7 +1127,6 @@ export default function CodeTypingPage() {
 
         if (isFinished || !currentToken) return;
 
-        // กด Tab เพื่อแอบดูคำใบ้บรรทัดปัจจุบันชั่วคราว (มีประโยชน์มากตอนปิดตัวเขียนตาม)
         if (e.key === 'Tab') {
             e.preventDefault();
             triggerLinePeek();
@@ -1336,7 +1284,7 @@ export default function CodeTypingPage() {
         const cleanLanguage = customLanguage;
         const cleanCode = customCode.replace(/\r\n/g, '\n');
 
-        const tempId = `custom-${Date.now()}`;
+        const tempId = editingSnippetId || `custom-${Date.now()}`;
         const newSnippet: CodeSnippet = {
             id: tempId,
             title: cleanTitle,
@@ -1347,13 +1295,16 @@ export default function CodeTypingPage() {
 
         // แสดงผลทันทีในเครื่อง (Optimistic update)
         const existingCustom = snippets.filter(s => s.isCustom);
-        const updatedCustom = [newSnippet, ...existingCustom];
+        const updatedCustom = editingSnippetId
+            ? existingCustom.map(s => s.id === editingSnippetId ? newSnippet : s)
+            : [newSnippet, ...existingCustom];
         setSnippets([...PRESET_SNIPPETS, ...updatedCustom]);
         setSelectedSnippetId(newSnippet.id);
         resetPractice(newSnippet.id);
 
         setCustomTitle('');
         setCustomCode('');
+        setEditingSnippetId(null);
         setIsCustomModalOpen(false);
 
         // ล้างร่างข้อความที่เซฟค้างไว้หลังบันทึกสำเร็จ
@@ -1378,6 +1329,7 @@ export default function CodeTypingPage() {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
+                        id: editingSnippetId && !editingSnippetId.startsWith('custom-') ? editingSnippetId : undefined,
                         title: cleanTitle,
                         language: cleanLanguage,
                         code: cleanCode
@@ -1386,7 +1338,9 @@ export default function CodeTypingPage() {
                 const data = await res.json();
                 if (data.success && data.snippet) {
                     const serverSnippet = data.snippet;
-                    const finalCustom = [serverSnippet, ...existingCustom.filter(s => s.id !== tempId)];
+                    const finalCustom = editingSnippetId
+                        ? existingCustom.map(s => s.id === editingSnippetId ? serverSnippet : s)
+                        : [serverSnippet, ...existingCustom.filter(s => s.id !== tempId)];
                     setSnippets([...PRESET_SNIPPETS, ...finalCustom]);
                     setSelectedSnippetId(serverSnippet.id);
                     selectedSnippetIdRef.current = serverSnippet.id;
@@ -1486,7 +1440,10 @@ export default function CodeTypingPage() {
                         {/* Button: Add Custom Code */}
                         <button
                             type="button"
-                            onClick={() => setIsCustomModalOpen(true)}
+                            onClick={() => {
+                                setEditingSnippetId(null);
+                                setIsCustomModalOpen(true);
+                            }}
                             className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition-colors cursor-pointer font-bold text-xs sm:text-sm ml-1"
                         >
                             <Plus size={15} />
@@ -1649,19 +1606,31 @@ export default function CodeTypingPage() {
                                     <span className="px-2.5 py-0.5 bg-gray-100 border border-gray-200 text-gray-600 font-bold text-[11px] rounded-full">
                                         {currentSnippet.language}
                                     </span>
-                                    {!currentSnippet.isCustom && activeLineHint && (
-                                        <span className="px-3 py-1 bg-gray-800 text-white font-bold text-xs rounded-full shadow-xs">
-                                            คำใบ้: {activeLineHint}
-                                        </span>
-                                    )}
                                     {!currentSnippet.isCustom && contrastLevel === 'hidden' && (
                                         <button
                                             type="button"
                                             onClick={triggerLinePeek}
                                             className="px-3 py-1 bg-[#0c648b] hover:bg-[#094b69] text-white font-bold text-xs rounded-full shadow-xs cursor-pointer transition-colors"
-                                            title="กดปุ่ม Tab บนคีย์บอร์ดเพื่อแอบดูบรรทัดปัจจุบันชั่วคราว 2 วินาที"
+                                            title="แสดงบรรทัดปัจจุบันชั่วคราว"
                                         >
                                             แอบดูบรรทัดนี้ (กด Tab)
+                                        </button>
+                                    )}
+                                    {currentSnippet.isCustom && (
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setEditingSnippetId(currentSnippet.id);
+                                                setCustomTitle(currentSnippet.title);
+                                                setCustomLanguage(currentSnippet.language);
+                                                setCustomCode(currentSnippet.code);
+                                                setIsCustomModalOpen(true);
+                                            }}
+                                            className="text-gray-400 hover:text-gray-700 hover:scale-110 active:scale-95 transition-transform cursor-pointer p-1.5"
+                                            title="แก้ไขชุดโค้ดนี้"
+                                            aria-label="แก้ไขชุดโค้ดนี้"
+                                        >
+                                            <Pencil size={18} />
                                         </button>
                                     )}
                                 </div>
@@ -1681,11 +1650,11 @@ export default function CodeTypingPage() {
                                     <button
                                         type="button"
                                         onClick={handleSkipCurrentLine}
-                                        className="flex items-center gap-1 px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 hover:text-amber-900 border border-amber-200 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
-                                        title="ข้ามบรรทัดนี้ (ระบบจะเติมโค้ดบรรทัดนี้ให้โดยอัตโนมัติ)"
+                                        className="text-gray-400 hover:text-gray-700 hover:scale-110 active:scale-95 transition-transform cursor-pointer p-1.5"
+                                        title="ข้ามบรรทัดนี้"
+                                        aria-label="ข้ามบรรทัดนี้"
                                     >
-                                        <CornerDownLeft size={13} className="shrink-0" />
-                                        <span>ข้ามบรรทัด</span>
+                                        <SkipForward size={18} />
                                     </button>
 
                                     <button
@@ -1747,10 +1716,9 @@ export default function CodeTypingPage() {
                                                 {line.words.map((wToken) => {
                                                     const isCompleted = wToken.globalIdx < activeWordIdx;
                                                     const isActive = wToken.globalIdx === activeWordIdx;
-                                                    const effectiveUntypedClass = (contrastLevel === 'hidden' && isPeekingLine && currentToken?.lineNum === line.lineNum)
+                                                    const effectiveUntypedClass = contrastLevel === 'hidden' && isPeekingLine && currentToken?.lineNum === line.lineNum
                                                         ? 'text-gray-400'
                                                         : untypedClass;
-
                                                     return (
                                                         <MemoCodeWord
                                                             key={wToken.globalIdx}
@@ -1780,11 +1748,11 @@ export default function CodeTypingPage() {
                                     <button
                                         type="button"
                                         onClick={handleSkipCurrentLine}
-                                        className="text-amber-600 hover:text-amber-700 hover:underline font-sans font-bold cursor-pointer inline-flex items-center gap-1"
+                                        className="text-gray-400 hover:text-gray-700 hover:scale-110 active:scale-95 transition-transform cursor-pointer p-1"
                                         title="ข้ามบรรทัดนี้"
+                                        aria-label="ข้ามบรรทัดนี้"
                                     >
-                                        <CornerDownLeft size={12} />
-                                        <span>ข้ามบรรทัด</span>
+                                        <SkipForward size={16} />
                                     </button>
                                     <span>คำ: {activeWordIdx} / {allTokens.length}</span>
                                 </div>
@@ -1801,11 +1769,11 @@ export default function CodeTypingPage() {
                     <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-blue-50">
                         <div className="flex items-center justify-between pb-4 border-b border-gray-100 mb-5">
                             <div className="flex items-center gap-2.5">
-                                <div className="p-2 bg-blue-50 text-[#5cb5db] rounded-2xl">
-                                    <FileCode size={20} />
+                                <div className="text-[#5cb5db] rounded-2xl">
+                                    <FileCode size={25} />
                                 </div>
                                 <div>
-                                    <h3 className="font-bold text-gray-800 text-base">ใส่โค้ดที่คุณต้องการฝึก</h3>
+                                    <h3 className="font-bold text-gray-800 text-base">{editingSnippetId ? 'แก้ไขชุดโค้ด' : 'ใส่โค้ดที่คุณต้องการฝึก'}</h3>
                                     <p className="text-xs text-gray-400">บันทึกเชื่อมกับรหัสบัญชีของคุณ ใช้ได้ทุกเครื่องรวมถึงคอมวิทยาลัย</p>
                                 </div>
                             </div>
@@ -1884,7 +1852,7 @@ export default function CodeTypingPage() {
                                     className="px-5 py-2.5 bg-[#5cb5db] hover:bg-[#4ba3c7] text-white text-sm font-bold rounded-2xl shadow-md hover:shadow-lg transition cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
                                 >
                                     <Save size={16} />
-                                    <span>{isSavingToServer ? 'กำลังบันทึกลงบัญชี...' : 'บันทึกลงบัญชี'}</span>
+                                    <span>{isSavingToServer ? 'กำลังบันทึก...' : editingSnippetId ? 'บันทึกการแก้ไข' : 'บันทึกลงบัญชี'}</span>
                                 </button>
                             </div>
                         </form>
