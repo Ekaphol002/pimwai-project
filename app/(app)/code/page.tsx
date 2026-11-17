@@ -25,6 +25,7 @@ import { toDateKey } from '@/lib/streakUtils';
 import { getEnglishCharFromEvent } from '@/lib/englishWords';
 import { resolveThaiKeyWithCapsLock } from '@/lib/keyMaps';
 import QuickAudioModal from '@/components/QuickAudioModal/QuickAudioModal';
+import starterCodeFiles from '@/data/code-starters.json';
 
 interface CodeSnippet {
     id: string;
@@ -32,6 +33,7 @@ interface CodeSnippet {
     language: string;
     code: string;
     isCustom?: boolean;
+    localOnly?: boolean;
 }
 
 interface CodeWordToken {
@@ -59,250 +61,12 @@ const CONTRAST_CONFIG: Record<ContrastLevel, { label: string; textClass: string;
     solid: { label: 'เข้มชัดเจน', textClass: 'text-gray-700', desc: '90%' },
 };
 
-const PRESET_SNIPPETS: CodeSnippet[] = [
-    {
-        id: 'php-config',
-        title: '1. config.php',
-        language: 'PHP',
-        code: `<?php
-try {
-    $conn = new PDO("mysql:host=localhost;dbname=competition_db;charset=utf8", "root", "");
-} catch (PDOException $e) {
-    die("Connection failed: " . $e->getMessage());
-}
-?>`
-    },
-    {
-        id: 'php-dashboard',
-        title: '2. dashboard.php',
-        language: 'PHP',
-        code: `<?php
-require_once 'auth.php';
-require_once 'config.php';
-
-$stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
-$stmt->execute([$_SESSION['user_id']]);
-$user = $stmt->fetch();
-?>
-<!DOCTYPE html>
-<html lang="th">
-<head>
-    <meta charset="UTF-8">
-    <title>แดชบอร์ด</title>
-    <link rel="stylesheet" href="css/bootstrap.min.css">
-</head>
-<body class="bg-light">
-<nav class="navbar navbar-dark bg-primary shadow-sm">
-    <div class="container">
-        <a class="navbar-brand fw-bold" href="dashboard.php">ระบบสมาชิก</a>
-        <div class="d-flex align-items-center gap-2 text-white">
-            <span><?= $user['firstname'] . ' ' . $user['lastname'] ?></span>
-            <a href="logout.php" class="btn btn-sm btn-light">ออกจากระบบ</a>
-        </div>
-    </div>
-</nav>
-<div class="container col-md-8 mt-4">
-    <div class="card shadow-sm p-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h4>สวัสดีคุณ <?= $user['firstname'] . ' ' . $user['lastname'] ?></h4>
-            <span class="badge <?= $user['role'] === 'admin' ? 'bg-danger' : 'bg-secondary' ?>">สถานะ: <?= $user['role'] ?></span>
-        </div>
-        <hr>
-        <p><b>รหัสสมาชิก (ID):</b> #<?= $user['id'] ?></p>
-        <p><b>อีเมล:</b> <?= $user['email'] ?></p>
-        <p><b>วันที่สมัครสมาชิก:</b> <?= $user['created_at'] ?></p>
-        <div class="d-flex gap-2 mt-3">
-            <?php if ($user['role'] === 'admin'): ?>
-                <a href="admin_dashboard.php" class="btn btn-dark">จัดการระบบ (Admin)</a>
-            <?php endif; ?>
-            <a href="profile.php" class="btn btn-primary">แก้ไขข้อมูลส่วนตัว</a>
-            <a href="logout.php" class="btn btn-outline-danger ms-auto">ออกจากระบบ</a>
-        </div>
-    </div>
-</div>
-</body>
-</html>`
-    },
-    {
-        id: 'php-admin-dashboard',
-        title: '3. admin_dashboard.php',
-        language: 'PHP',
-        code: `<?php
-require_once 'auth.php';
-require_once 'config.php';
-
-if ($_SESSION['role'] !== 'admin') {
-    header("Location: dashboard.php");
-    exit();
-}
-
-if (isset($_GET['delete']) && $_GET['delete'] != $_SESSION['user_id']) {
-    $conn->prepare("DELETE FROM users WHERE id = ?")->execute([$_GET['delete']]);
-    header("Location: admin_dashboard.php");
-    exit();
-}
-
-if (isset($_GET['toggle_role']) && $_GET['toggle_role'] != $_SESSION['user_id']) {
-    $conn->prepare("UPDATE users SET role = IF(role='admin','user','admin') WHERE id = ?")->execute([$_GET['toggle_role']]);
-    header("Location: admin_dashboard.php");
-    exit();
-}
-
-$all_users = $conn->query("SELECT * FROM users ORDER BY id ASC")->fetchAll();
-?>
-<!DOCTYPE html>
-<html lang="th">
-<head>
-    <meta charset="UTF-8">
-    <title>จัดการระบบ (Admin)</title>
-    <link rel="stylesheet" href="css/bootstrap.min.css">
-</head>
-<body class="bg-light">
-<nav class="navbar navbar-dark bg-dark shadow-sm">
-    <div class="container">
-        <a class="navbar-brand fw-bold" href="admin_dashboard.php">ระบบจัดการผู้ใช้งาน (Admin)</a>
-        <div class="d-flex gap-2">
-            <a href="dashboard.php" class="btn btn-sm btn-outline-light">หน้าแดชบอร์ด</a>
-            <a href="logout.php" class="btn btn-sm btn-danger">ออกจากระบบ</a>
-        </div>
-    </div>
-</nav>
-<div class="container mt-4">
-    <div class="card shadow-sm p-4">
-        <h5 class="fw-bold mb-3">รายชื่อสมาชิกทั้งหมด (<?= count($all_users) ?> คน)</h5>
-        <table class="table table-hover align-middle">
-            <thead class="table-light">
-                <tr><th>ID</th><th>ชื่อ - นามสกุล</th><th>อีเมล</th><th>สิทธิ์</th><th>วันที่สมัคร</th><th class="text-center">จัดการ</th></tr>
-            </thead>
-            <tbody>
-                <?php foreach ($all_users as $u): ?>
-                <tr>
-                    <td>#<?= $u['id'] ?></td>
-                    <td><?= $u['firstname'] . ' ' . $u['lastname'] ?></td>
-                    <td><?= $u['email'] ?></td>
-                    <td><span class="badge <?= $u['role'] === 'admin' ? 'bg-danger' : 'bg-secondary' ?>"><?= $u['role'] ?></span></td>
-                    <td><?= $u['created_at'] ?></td>
-                    <td class="text-center">
-                        <?php if ($u['id'] != $_SESSION['user_id']): ?>
-                            <a href="?toggle_role=<?= $u['id'] ?>" class="btn btn-sm btn-outline-dark" onclick="return confirm('เปลี่ยนสิทธิ์ผู้ใช้นี้?')">สลับสิทธิ์</a>
-                            <a href="?delete=<?= $u['id'] ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('ยืนยันการลบสมาชิก?')">ลบ</a>
-                        <?php else: ?>
-                            <span class="text-muted small">บัญชีของคุณ</span>
-                        <?php endif; ?>
-                    </td>
-                </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-    </div>
-</div>
-</body>
-</html>`
-    },
-    {
-        id: 'php-profile',
-        title: '4. profile.php',
-        language: 'PHP',
-        code: `<?php
-require_once 'auth.php';
-require_once 'config.php';
-
-$uid = $_SESSION['user_id'];
-$error = $success = '';
-
-$stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
-$stmt->execute([$uid]);
-$user = $stmt->fetch();
-
-if ($_POST) {
-    $action = $_POST['action'] ?? '';
-
-    if ($action === 'update_profile') {
-        $fn = trim($_POST['firstname']);
-        $ln = trim($_POST['lastname']);
-        if (!$fn || !$ln) {
-            $error = "กรุณากรอกชื่อและนามสกุลให้ครบ";
-        } else {
-            $conn->prepare("UPDATE users SET firstname = ?, lastname = ? WHERE id = ?")->execute([$fn, $ln, $uid]);
-            $_SESSION['firstname'] = $user['firstname'] = $fn;
-            $_SESSION['lastname']  = $user['lastname']  = $ln;
-            $success = "บันทึกข้อมูลส่วนตัวเรียบร้อยแล้ว";
-        }
-    } elseif ($action === 'change_password') {
-        $old = $_POST['old_password'];
-        $new = $_POST['new_password'];
-        $con = $_POST['confirm_password'];
-
-        if (!password_verify($old, $user['password'])) $error = "รหัสผ่านเดิมไม่ถูกต้อง";
-        elseif (strlen($new) < 6)                      $error = "รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร";
-        elseif ($new !== $con)                         $error = "รหัสผ่านใหม่และการยืนยันไม่ตรงกัน";
-        else {
-            $hash = password_hash($new, PASSWORD_BCRYPT);
-            $conn->prepare("UPDATE users SET password = ? WHERE id = ?")->execute([$hash, $uid]);
-            $user['password'] = $hash;
-            $success = "เปลี่ยนรหัสผ่านสำเร็จเรียบร้อยแล้ว";
-        }
-    }
-}
-?>
-<!DOCTYPE html>
-<html lang="th">
-<head>
-    <meta charset="UTF-8">
-    <title>แก้ไขข้อมูลส่วนตัว</title>
-    <link rel="stylesheet" href="css/bootstrap.min.css">
-</head>
-<body class="bg-light">
-<nav class="navbar navbar-dark bg-primary shadow-sm">
-    <div class="container">
-        <a class="navbar-brand fw-bold" href="dashboard.php">ระบบสมาชิก</a>
-        <div class="d-flex gap-2">
-            <a href="dashboard.php" class="btn btn-sm btn-outline-light">กลับหน้าแดชบอร์ด</a>
-            <a href="logout.php" class="btn btn-sm btn-light">ออกจากระบบ</a>
-        </div>
-    </div>
-</nav>
-<div class="container col-md-7 mt-4 pb-5">
-    <?php if ($success): ?><div class="alert alert-success"><?= $success ?></div><?php endif; ?>
-    <?php if ($error): ?><div class="alert alert-danger"><?= $error ?></div><?php endif; ?>
-
-    <div class="card shadow-sm p-4 mb-4">
-        <h5 class="fw-bold mb-3">แก้ไขข้อมูลส่วนตัว</h5>
-        <form method="POST">
-            <input type="hidden" name="action" value="update_profile">
-            <div class="row mb-3">
-                <div class="col"><label>ชื่อจริง</label><input name="firstname" class="form-control" value="<?= $user['firstname'] ?>" required></div>
-                <div class="col"><label>นามสกุล</label><input name="lastname" class="form-control" value="<?= $user['lastname'] ?>" required></div>
-            </div>
-            <div class="mb-3"><label>อีเมล (ไม่สามารถแก้ไขได้)</label><input class="form-control bg-light" value="<?= $user['email'] ?>" disabled></div>
-            <button class="btn btn-primary">บันทึกข้อมูล</button>
-        </form>
-    </div>
-
-    <div class="card shadow-sm p-4">
-        <h5 class="fw-bold mb-3">เปลี่ยนรหัสผ่าน</h5>
-        <form method="POST">
-            <input type="hidden" name="action" value="change_password">
-            <div class="mb-3"><label>รหัสผ่านเดิม</label><input type="password" name="old_password" id="p1" class="form-control" required></div>
-            <div class="row mb-3">
-                <div class="col"><label>รหัสผ่านใหม่</label><input type="password" name="new_password" id="p2" class="form-control" minlength="6" required></div>
-                <div class="col"><label>ยืนยันรหัสผ่านใหม่</label><input type="password" name="confirm_password" id="p3" class="form-control" minlength="6" required></div>
-            </div>
-            <div class="mb-3">
-                <input type="checkbox" id="show" onclick="p1.type = p2.type = p3.type = this.checked ? 'text' : 'password'">
-                <label for="show">แสดงรหัสผ่าน</label>
-            </div>
-            <button class="btn btn-warning fw-bold">เปลี่ยนรหัสผ่าน</button>
-        </form>
-    </div>
-</div>
-</body>
-</html>`
-    }
-];
+const PRESET_SNIPPETS: CodeSnippet[] = starterCodeFiles as CodeSnippet[];
 
 const getCodeStorageKey = (email?: string | null) =>
     email ? `pimwai_custom_code_${email}` : 'pimwai_custom_code_guest';
+const getLocalStarterOverridesKey = (email?: string | null) =>
+    email ? `pimwai_code_starter_overrides_${email}` : 'pimwai_code_starter_overrides_guest';
 const LOCAL_STORAGE_CONTRAST_KEY = 'pimwai_code_contrast';
 
 // สร้าง Storage Key สำหรับจำเวลาพิมพ์โค้ดของวันนี้ (ตัดรอบเที่ยงคืนเวลาไทย)
@@ -729,7 +493,19 @@ export default function CodeTypingPage() {
                     }
                 }
 
-                let allAvailableSnippets = [...PRESET_SNIPPETS, ...localCustom];
+                let starterOverrides: Record<string, Partial<CodeSnippet>> = {};
+                try {
+                    const rawOverrides = localStorage.getItem(getLocalStarterOverridesKey(email));
+                    if (rawOverrides) starterOverrides = JSON.parse(rawOverrides);
+                } catch {
+                    starterOverrides = {};
+                }
+                const localStarters = PRESET_SNIPPETS.map(snippet => ({
+                    ...snippet,
+                    ...(starterOverrides[snippet.id] || {}),
+                    localOnly: true
+                }));
+                let allAvailableSnippets = [...localStarters, ...localCustom];
 
                 // 3. โหลดความคืบหน้าล่าสุดจาก LocalStorage
                 let localProgress: any = null;
@@ -762,7 +538,7 @@ export default function CodeTypingPage() {
                                     combined.push(loc);
                                 }
                             }
-                            allAvailableSnippets = [...PRESET_SNIPPETS, ...combined];
+                            allAvailableSnippets = [...localStarters, ...combined];
                             try {
                                 localStorage.setItem(storageKey, JSON.stringify(combined));
                             } catch {
@@ -1300,6 +1076,30 @@ export default function CodeTypingPage() {
         const cleanLanguage = customLanguage;
         const cleanCode = customCode.replace(/\r\n/g, '\n');
 
+        const editedSnippet = snippets.find(s => s.id === editingSnippetId);
+        if (editedSnippet?.localOnly) {
+            const updatedStarter: CodeSnippet = { ...editedSnippet, title: cleanTitle, language: cleanLanguage, code: cleanCode };
+            setSnippets(current => current.map(s => s.id === editedSnippet.id ? updatedStarter : s));
+            try {
+                const key = getLocalStarterOverridesKey(session?.user?.email);
+                const overrides = JSON.parse(localStorage.getItem(key) || '{}');
+                localStorage.setItem(key, JSON.stringify({
+                    ...overrides,
+                    [editedSnippet.id]: { title: cleanTitle, language: cleanLanguage, code: cleanCode }
+                }));
+            } catch {
+                toast.error('Could not save to localStorage.');
+                return;
+            }
+            setCustomTitle('');
+            setCustomCode('');
+            setEditingSnippetId(null);
+            setIsCustomModalOpen(false);
+            resetPractice(updatedStarter.id);
+            toast.success('Saved on this device.');
+            return;
+        }
+
         const tempId = editingSnippetId || `custom-${Date.now()}`;
         const newSnippet: CodeSnippet = {
             id: tempId,
@@ -1314,7 +1114,7 @@ export default function CodeTypingPage() {
         const updatedCustom = editingSnippetId
             ? existingCustom.map(s => s.id === editingSnippetId ? newSnippet : s)
             : [newSnippet, ...existingCustom];
-        setSnippets([...PRESET_SNIPPETS, ...updatedCustom]);
+        setSnippets([...snippets.filter(s => !s.isCustom), ...updatedCustom]);
         setSelectedSnippetId(newSnippet.id);
         resetPractice(newSnippet.id);
 
@@ -1357,7 +1157,7 @@ export default function CodeTypingPage() {
                     const finalCustom = editingSnippetId
                         ? existingCustom.map(s => s.id === editingSnippetId ? serverSnippet : s)
                         : [serverSnippet, ...existingCustom.filter(s => s.id !== tempId)];
-                    setSnippets([...PRESET_SNIPPETS, ...finalCustom]);
+                    setSnippets(current => [...current.filter(s => !s.isCustom), ...finalCustom]);
                     setSelectedSnippetId(serverSnippet.id);
                     selectedSnippetIdRef.current = serverSnippet.id;
                     localStorage.setItem(storageKey, JSON.stringify(finalCustom));
@@ -1387,10 +1187,10 @@ export default function CodeTypingPage() {
         } catch {
             // ignore
         }
-        setSnippets([...PRESET_SNIPPETS, ...updatedCustom]);
+        setSnippets([...snippets.filter(s => !s.isCustom), ...updatedCustom]);
 
         if (selectedSnippetId === id) {
-            resetPractice(PRESET_SNIPPETS[0].id);
+            resetPractice(snippets.find(s => s.localOnly)?.id || PRESET_SNIPPETS[0].id);
         }
 
         if (session?.user?.email && !id.startsWith('custom-')) {
@@ -1435,6 +1235,22 @@ export default function CodeTypingPage() {
                                         }`}
                                 >
                                     <span>{s.title}</span>
+                                    {s.localOnly && (
+                                        <span
+                                                title="Edit starter file"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setEditingSnippetId(s.id);
+                                                    setCustomTitle(s.title);
+                                                    setCustomLanguage(s.language);
+                                                    setCustomCode(s.code);
+                                                    setIsCustomModalOpen(true);
+                                                }}
+                                                className={`ml-0.5 inline-flex cursor-pointer items-center transition-colors ${isSelected ? 'text-white' : 'text-gray-400 hover:text-gray-700'}`}
+                                            >
+                                                <Pencil size={11} />
+                                        </span>
+                                    )}
                                     {s.isCustom && (
                                         <>
                                             <span title="บันทึกในรหัสบัญชีแล้ว">
@@ -1646,7 +1462,7 @@ export default function CodeTypingPage() {
                                             แอบดูบรรทัดนี้ (กด Tab)
                                         </button>
                                     )}
-                                    {currentSnippet.isCustom && (
+                                    {(currentSnippet.isCustom || currentSnippet.localOnly) && (
                                         <button
                                             type="button"
                                             onClick={() => {
@@ -1804,7 +1620,7 @@ export default function CodeTypingPage() {
                                 </div>
                                 <div>
                                     <h3 className="font-bold text-gray-800 text-base">{editingSnippetId ? 'แก้ไขชุดโค้ด' : 'ใส่โค้ดที่คุณต้องการฝึก'}</h3>
-                                    <p className="text-xs text-gray-400">บันทึกเชื่อมกับรหัสบัญชีของคุณ ใช้ได้ทุกเครื่องรวมถึงคอมวิทยาลัย</p>
+                                    <p className="text-xs text-gray-400">{snippets.find(s => s.id === editingSnippetId)?.localOnly ? 'Saved only in this device localStorage' : 'Saved to your account and available on other devices'}</p>
                                 </div>
                             </div>
                             <button
@@ -1882,7 +1698,7 @@ export default function CodeTypingPage() {
                                     className="px-5 py-2.5 bg-[#5cb5db] hover:bg-[#4ba3c7] text-white text-sm font-bold rounded-2xl shadow-md hover:shadow-lg transition cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
                                 >
                                     <Save size={16} />
-                                    <span>{isSavingToServer ? 'กำลังบันทึก...' : editingSnippetId ? 'บันทึกการแก้ไข' : 'บันทึกลงบัญชี'}</span>
+                                    <span>{isSavingToServer ? 'Saving...' : snippets.find(s => s.id === editingSnippetId)?.localOnly ? 'Save on this device' : editingSnippetId ? 'Save changes' : 'Save to account'}</span>
                                 </button>
                             </div>
                         </form>
