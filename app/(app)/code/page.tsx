@@ -16,7 +16,6 @@ import {
     RefreshCw,
     Plus,
     Trash2,
-    Cloud,
     SunMedium
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
@@ -248,8 +247,6 @@ export default function CodeTypingPage() {
     const [selectedSnippetId, setSelectedSnippetId] = useState<string>(PRESET_SNIPPETS[0].id);
     const [isCustomModalOpen, setIsCustomModalOpen] = useState(false);
     const [editingSnippetId, setEditingSnippetId] = useState<string | null>(null);
-    const [isSavingToServer, setIsSavingToServer] = useState(false);
-    const [isSyncingProgress, setIsSyncingProgress] = useState(false);
 
     // Contrast Level for Target Follow Text (ความเข้มตัวพิมพ์ตาม)
     const [contrastLevel, setContrastLevel] = useState<ContrastLevel>('medium');
@@ -333,23 +330,17 @@ export default function CodeTypingPage() {
     const lastTypingTimeRef = useRef<number>(0);
     const lastTimerTickTimeRef = useRef<number>(0);
     const activeTypingAccumulatedMsRef = useRef<number>(0);
-    const unsyncedSecondsRef = useRef<number>(0);
-    const isDirtyProgressRef = useRef<boolean>(false);
-    const isSyncingRef = useRef<boolean>(false);
-    const hasRestoredInitialProgressRef = useRef<boolean>(false);
 
     // Live Refs เพื่อให้อ่านค่าล่าสุดใน Interval / Unload โดยไม่ต้องสร้าง Closure ใหม่ทุกครั้งที่กดคีย์บอร์ด
     const selectedSnippetIdRef = useRef<string>(selectedSnippetId);
     const activeWordIdxRef = useRef<number>(activeWordIdx);
     const inputBufferRef = useRef<string>(inputBuffer);
     const typedWordsHistoryRef = useRef<{ [tokenIdx: number]: string }>(typedWordsHistory);
-    const todayCodeTimeSecondsRef = useRef<number>(todayCodeTimeSeconds);
 
     useEffect(() => { selectedSnippetIdRef.current = selectedSnippetId; }, [selectedSnippetId]);
     useEffect(() => { activeWordIdxRef.current = activeWordIdx; }, [activeWordIdx]);
     useEffect(() => { inputBufferRef.current = inputBuffer; }, [inputBuffer]);
     useEffect(() => { typedWordsHistoryRef.current = typedWordsHistory; }, [typedWordsHistory]);
-    useEffect(() => { todayCodeTimeSecondsRef.current = todayCodeTimeSeconds; }, [todayCodeTimeSeconds]);
 
     // Smooth Floating Caret Ref (อัปเดตผ่าน DOM ตรงๆ ระดับ GPU 60fps ไม่ต้องเรียก setState ทุกครั้งที่พิมพ์!)
     const caretElRef = useRef<HTMLDivElement>(null);
@@ -404,249 +395,63 @@ export default function CodeTypingPage() {
         }
     }, [session?.user?.email]);
 
-    const syncProgressToServer = useCallback(async (forceSync = false) => {
-        if (!session?.user?.email) return;
-        if (isSyncingRef.current && !forceSync) return;
-        if (!isDirtyProgressRef.current && unsyncedSecondsRef.current <= 0 && !forceSync) return;
-
-        isSyncingRef.current = true;
-        setIsSyncingProgress(true);
-
-        const addedSec = unsyncedSecondsRef.current;
-        unsyncedSecondsRef.current = 0;
-        isDirtyProgressRef.current = false;
-
-        try {
-            const res = await fetch('/api/code/progress', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    selectedSnippetId: selectedSnippetIdRef.current,
-                    activeWordIdx: activeWordIdxRef.current,
-                    inputBuffer: inputBufferRef.current,
-                    typedWordsHistory: typedWordsHistoryRef.current,
-                    todayTimeSeconds: todayCodeTimeSecondsRef.current,
-                    addedSeconds: addedSec
-                })
-            });
-
-            if (res.ok) {
-                const data = await res.json();
-                if (data.success && typeof data.todayTimeSeconds === 'number') {
-                    const mergedTime = Math.max(todayCodeTimeSecondsRef.current, data.todayTimeSeconds);
-                    setTodayCodeTimeSeconds(mergedTime);
-                    todayCodeTimeSecondsRef.current = mergedTime;
-                    try {
-                        const timeKey = getTodayTimeStorageKey(session?.user?.email);
-                        localStorage.setItem(timeKey, String(mergedTime));
-                    } catch {
-                        // ignore
-                    }
-                }
-            } else {
-                unsyncedSecondsRef.current += addedSec;
-                isDirtyProgressRef.current = true;
-            }
-        } catch {
-            unsyncedSecondsRef.current += addedSec;
-            isDirtyProgressRef.current = true;
-        } finally {
-            isSyncingRef.current = false;
-            setIsSyncingProgress(false);
-        }
-    }, [session?.user?.email]);
 
     // โหลด Snippets + เวลาวันนี้ + ตำแหน่งโค้ดล่าสุดที่พิมพ์ค้างไว้ในรหัสบัญชี
     useEffect(() => {
-        let isMounted = true;
+        const email = session?.user?.email;
+        const timeKey = getTodayTimeStorageKey(email);
+        const storageKey = getCodeStorageKey(email);
 
-        async function loadAllAccountData() {
-            try {
-                const email = session?.user?.email;
+        try {
+            const savedTime = Number(localStorage.getItem(timeKey)) || 0;
+            setTodayCodeTimeSeconds(savedTime);
 
-                // 1. โหลดเวลาวันนี้จาก LocalStorage ก่อนเพื่อให้แสดงผลทันใจ
-                let localTodaySec = 0;
-                const timeKey = getTodayTimeStorageKey(email);
-                const savedTime = localStorage.getItem(timeKey);
-                if (savedTime) {
-                    const parsedTime = parseInt(savedTime, 10);
-                    if (!isNaN(parsedTime) && parsedTime > 0) {
-                        localTodaySec = parsedTime;
-                        if (isMounted) {
-                            setTodayCodeTimeSeconds(localTodaySec);
-                            todayCodeTimeSecondsRef.current = localTodaySec;
-                        }
-                    }
-                }
-
-                // 2. โหลด Custom Snippets จาก LocalStorage
-                const storageKey = getCodeStorageKey(email);
-                let localCustom: CodeSnippet[] = [];
-                let savedSnippets = localStorage.getItem(storageKey);
-                if (!savedSnippets && !email) {
-                    savedSnippets = localStorage.getItem('pimwai_custom_code_snippets');
-                }
-                if (savedSnippets) {
-                    const parsed = JSON.parse(savedSnippets);
-                    if (Array.isArray(parsed) && parsed.length > 0) {
-                        localCustom = parsed;
-                    }
-                }
-
-                let starterOverrides: Record<string, Partial<CodeSnippet>> = {};
-                try {
-                    const rawOverrides = localStorage.getItem(getLocalStarterOverridesKey(email));
-                    if (rawOverrides) starterOverrides = JSON.parse(rawOverrides);
-                } catch {
-                    starterOverrides = {};
-                }
-                const localStarters = PRESET_SNIPPETS.map(snippet => ({
-                    ...snippet,
-                    ...(starterOverrides[snippet.id] || {}),
-                    localOnly: true
-                }));
-                let allAvailableSnippets = [...localStarters, ...localCustom];
-
-                // 3. โหลดความคืบหน้าล่าสุดจาก LocalStorage
-                let localProgress: any = null;
-                const progressKey = getProgressStorageKey(email);
-                const savedProgressStr = localStorage.getItem(progressKey);
-                if (savedProgressStr) {
-                    try {
-                        localProgress = JSON.parse(savedProgressStr);
-                    } catch {
-                        localProgress = null;
-                    }
-                }
-
-                // 4. ถ้าล็อกอินแล้ว ดึงทั้ง Snippets และ Progress (เวลาวันนี้ + พิมพ์ถึงตรงไหน) จากฐานข้อมูลในรหัส
-                if (email) {
-                    const [snippetsRes, progressRes] = await Promise.all([
-                        fetch('/api/code/snippets').catch(() => null),
-                        fetch('/api/code/progress').catch(() => null)
-                    ]);
-
-                    if (snippetsRes && snippetsRes.ok) {
-                        const sData = await snippetsRes.json();
-                        if (sData.success && Array.isArray(sData.snippets)) {
-                            const serverSnippets: CodeSnippet[] = sData.snippets;
-                            const serverIds = new Set(serverSnippets.map(s => s.id));
-                            const combined = [...serverSnippets];
-
-                            for (const loc of localCustom) {
-                                if (!serverIds.has(loc.id) && !serverSnippets.some(s => s.title === loc.title && s.code === loc.code)) {
-                                    combined.push(loc);
-                                }
-                            }
-                            allAvailableSnippets = [...localStarters, ...combined];
-                            try {
-                                localStorage.setItem(storageKey, JSON.stringify(combined));
-                            } catch {
-                                // ignore
-                            }
-                        }
-                    }
-
-                    if (isMounted) {
-                        setSnippets(allAvailableSnippets);
-                    }
-
-                    if (progressRes && progressRes.ok) {
-                        const pData = await progressRes.json();
-                        if (pData.success) {
-                            const serverTodaySec = Number(pData.todayTimeSeconds) || 0;
-                            const bestTodaySec = Math.max(localTodaySec, serverTodaySec);
-                            if (isMounted) {
-                                setTodayCodeTimeSeconds(bestTodaySec);
-                                todayCodeTimeSecondsRef.current = bestTodaySec;
-                                try {
-                                    localStorage.setItem(timeKey, String(bestTodaySec));
-                                } catch {
-                                    // ignore
-                                }
-                            }
-
-                            // ถ้าเวลาในเครื่องมากกว่าบนเซิร์ฟเวอร์ ให้ซิงค์ขึ้นเซิร์ฟเวอร์ด้วย
-                            if (localTodaySec > serverTodaySec) {
-                                isDirtyProgressRef.current = true;
-                            }
-
-                            // เลือกความคืบหน้าที่ใหม่กว่าระหว่างเครื่องกับรหัสบัญชีบนเซิร์ฟเวอร์
-                            const serverProg = pData.progress;
-                            let targetProg = serverProg;
-                            if (localProgress && serverProg) {
-                                const localTime = localProgress.updatedAt ? new Date(localProgress.updatedAt).getTime() : 0;
-                                const serverTime = serverProg.updatedAt ? new Date(serverProg.updatedAt).getTime() : 0;
-                                if (localTime > serverTime) {
-                                    targetProg = localProgress;
-                                    isDirtyProgressRef.current = true;
-                                }
-                            } else if (localProgress && !serverProg) {
-                                targetProg = localProgress;
-                                isDirtyProgressRef.current = true;
-                            }
-
-                            if (targetProg && isMounted && !hasRestoredInitialProgressRef.current) {
-                                hasRestoredInitialProgressRef.current = true;
-                                const validSnippet = allAvailableSnippets.find(s => s.id === targetProg.selectedSnippetId) || allAvailableSnippets[0];
-                                const { allTokens: tokensForSnippet } = parseCodeIntoLines(validSnippet.code);
-                                const safeIdx = Math.min(
-                                    Math.max(0, Number(targetProg.activeWordIdx) || 0),
-                                    Math.max(0, tokensForSnippet.length - 1)
-                                );
-
-                                setSelectedSnippetId(validSnippet.id);
-                                selectedSnippetIdRef.current = validSnippet.id;
-                                setActiveWordIdx(safeIdx);
-                                activeWordIdxRef.current = safeIdx;
-                                setInputBuffer(targetProg.inputBuffer || '');
-                                inputBufferRef.current = targetProg.inputBuffer || '';
-                                setTypedWordsHistory(targetProg.typedWordsHistory || {});
-                                typedWordsHistoryRef.current = targetProg.typedWordsHistory || {};
-
-                                saveProgressToLocalStorage(
-                                    validSnippet.id,
-                                    safeIdx,
-                                    targetProg.inputBuffer || '',
-                                    targetProg.typedWordsHistory || {}
-                                );
-                                return;
-                            }
-                        }
-                    }
-                } else {
-                    if (isMounted) {
-                        setSnippets(allAvailableSnippets);
-                    }
-                }
-
-                // Fallback: กู้คืนตำแหน่งพิมพ์ล่าสุดจาก LocalStorage (กรณีไม่ได้ล็อกอิน หรือยังไม่มีบนเซิร์ฟเวอร์)
-                if (localProgress && isMounted && !hasRestoredInitialProgressRef.current) {
-                    hasRestoredInitialProgressRef.current = true;
-                    const validSnippet = allAvailableSnippets.find(s => s.id === localProgress.selectedSnippetId) || allAvailableSnippets[0];
-                    const { allTokens: tokensForSnippet } = parseCodeIntoLines(validSnippet.code);
-                    const safeIdx = Math.min(
-                        Math.max(0, Number(localProgress.activeWordIdx) || 0),
-                        Math.max(0, tokensForSnippet.length - 1)
-                    );
-
-                    setSelectedSnippetId(validSnippet.id);
-                    selectedSnippetIdRef.current = validSnippet.id;
-                    setActiveWordIdx(safeIdx);
-                    activeWordIdxRef.current = safeIdx;
-                    setInputBuffer(localProgress.inputBuffer || '');
-                    inputBufferRef.current = localProgress.inputBuffer || '';
-                    setTypedWordsHistory(localProgress.typedWordsHistory || {});
-                    typedWordsHistoryRef.current = localProgress.typedWordsHistory || {};
-                }
-            } catch (e) {
-                console.error('Failed to load code account data:', e);
+            let localCustom: CodeSnippet[] = [];
+            let savedSnippets = localStorage.getItem(storageKey);
+            if (!savedSnippets && !email) savedSnippets = localStorage.getItem('pimwai_custom_code_snippets');
+            if (savedSnippets) {
+                const parsed = JSON.parse(savedSnippets);
+                if (Array.isArray(parsed)) localCustom = parsed;
             }
-        }
 
-        loadAllAccountData();
-        return () => { isMounted = false; };
-    }, [session?.user?.email, saveProgressToLocalStorage]);
+            let starterOverrides: Record<string, Partial<CodeSnippet>> = {};
+            try {
+                const rawOverrides = localStorage.getItem(getLocalStarterOverridesKey(email));
+                if (rawOverrides) starterOverrides = JSON.parse(rawOverrides);
+            } catch {
+                starterOverrides = {};
+            }
+
+            const localStarters = PRESET_SNIPPETS.map(snippet => ({
+                ...snippet,
+                ...(starterOverrides[snippet.id] || {}),
+                localOnly: true
+            }));
+            const allAvailableSnippets = [...localStarters, ...localCustom];
+            setSnippets(allAvailableSnippets);
+
+            const savedProgress = localStorage.getItem(getProgressStorageKey(email));
+            if (savedProgress) {
+                const localProgress = JSON.parse(savedProgress);
+                const validSnippet = allAvailableSnippets.find(s => s.id === localProgress.selectedSnippetId) || allAvailableSnippets[0];
+                const { allTokens: tokensForSnippet } = parseCodeIntoLines(validSnippet.code);
+                const safeIdx = Math.min(
+                    Math.max(0, Number(localProgress.activeWordIdx) || 0),
+                    Math.max(0, tokensForSnippet.length - 1)
+                );
+                setSelectedSnippetId(validSnippet.id);
+                selectedSnippetIdRef.current = validSnippet.id;
+                setActiveWordIdx(safeIdx);
+                activeWordIdxRef.current = safeIdx;
+                setInputBuffer(localProgress.inputBuffer || '');
+                inputBufferRef.current = localProgress.inputBuffer || '';
+                setTypedWordsHistory(localProgress.typedWordsHistory || {});
+                typedWordsHistoryRef.current = localProgress.typedWordsHistory || {};
+            }
+        } catch (error) {
+            console.error('Failed to load local code data:', error);
+        }
+    }, [session?.user?.email]);
 
     const currentSnippet = useMemo(() => {
         return snippets.find(s => s.id === selectedSnippetId) || snippets[0];
@@ -727,12 +532,8 @@ export default function CodeTypingPage() {
 
         // บันทึกสถานะที่รีเซ็ตลงในเครื่องและคิวซิงค์เข้าบัญชี
         saveProgressToLocalStorage(targetId, 0, '', {});
-        isDirtyProgressRef.current = true;
-        setTimeout(() => {
-            syncProgressToServer(true);
-            inputRef.current?.focus();
-        }, 50);
-    }, [saveProgressToLocalStorage, syncProgressToServer]);
+        setTimeout(() => inputRef.current?.focus(), 50);
+    }, [saveProgressToLocalStorage]);
 
     // ⏩ ฟังก์ชันข้ามบรรทัดปัจจุบัน: เติมคำที่เหลือในบรรทัดนี้ให้โดยอัตโนมัติ แล้วข้ามไปบรรทัดถัดไปทันที
     const handleSkipCurrentLine = useCallback(() => {
@@ -768,8 +569,6 @@ export default function CodeTypingPage() {
             activeWordIdxRef.current = 0;
             inputBufferRef.current = '';
             typedWordsHistoryRef.current = {};
-            isDirtyProgressRef.current = true;
-            syncProgressToServer(true);
             toast.success('พิมพ์โค้ดเสร็จสมบูรณ์!');
             return;
         }
@@ -780,10 +579,9 @@ export default function CodeTypingPage() {
         inputBufferRef.current = '';
 
         saveProgressToLocalStorage(selectedSnippetIdRef.current, nextActiveIdx, '', nextHistory);
-        isDirtyProgressRef.current = true;
         inputRef.current?.focus();
         toast('ข้ามบรรทัดเรียบร้อย ⏭', { duration: 1500 });
-    }, [isFinished, allTokens, saveProgressToLocalStorage, syncProgressToServer]);
+    }, [isFinished, allTokens, saveProgressToLocalStorage]);
 
     // ⏱️ นับเวลาเล่นเฉพาะขณะกำลังพิมพ์อยู่จริง (สูตร Farm Mode เป๊ะ + ประหยัด CPU สำหรับคอมสเปคต่ำ)
     useEffect(() => {
@@ -812,7 +610,6 @@ export default function CodeTypingPage() {
                     setElapsedSeconds(prev => prev + addedSec);
                     setTodayCodeTimeSeconds(prev => {
                         const nextSec = prev + addedSec;
-                        todayCodeTimeSecondsRef.current = nextSec;
                         try {
                             const key = getTodayTimeStorageKey(session?.user?.email);
                             localStorage.setItem(key, String(nextSec));
@@ -821,9 +618,6 @@ export default function CodeTypingPage() {
                         }
                         return nextSec;
                     });
-
-                    unsyncedSecondsRef.current += addedSec;
-                    isDirtyProgressRef.current = true;
                 }
             } else {
                 // ถ้าหยุดพิมพ์เกิน 1.2 วินาที ให้ตัดเศษ ms ทิ้ง เพื่อหยุดเวลาทันทีอย่างสมบูรณ์
@@ -835,63 +629,6 @@ export default function CodeTypingPage() {
     }, [startTime, isFinished, session?.user?.email]);
 
     // ☁️ ซิงค์เวลาและตำแหน่งโค้ดที่พิมพ์ค้างไว้เข้าในรหัสอัตโนมัติ (ประหยัด CPU Serverless ลดการยิง API ลงกว่า 92%)
-    useEffect(() => {
-        if (!session?.user?.email) return;
-
-        let lastSyncAttempt = Date.now();
-
-        const syncInterval = setInterval(() => {
-            if (isSyncingRef.current) return;
-            const hasPendingData = isDirtyProgressRef.current || unsyncedSecondsRef.current > 0;
-            if (!hasPendingData) return;
-
-            const now = Date.now();
-            const timeSinceLastKeypress = now - (lastTypingTimeRef.current || 0);
-            const timeSinceLastSync = now - lastSyncAttempt;
-
-            // ก. ผู้ใช้หยุดพิมพ์เกิน 4.5 วินาที (Idle sync)
-            // ข. หรือ พิมพ์ต่อเนื่องมานานเกิน 35 วินาทีแล้ว
-            const isIdlePause = timeSinceLastKeypress >= 4500 && timeSinceLastSync >= 10000;
-            const isPeriodicDue = timeSinceLastSync >= 35000;
-
-            if (isIdlePause || isPeriodicDue) {
-                lastSyncAttempt = now;
-                syncProgressToServer();
-            }
-        }, 2000);
-
-        const handleBeforeUnload = () => {
-            if (session?.user?.email) {
-                const payload = JSON.stringify({
-                    selectedSnippetId: selectedSnippetIdRef.current,
-                    activeWordIdx: activeWordIdxRef.current,
-                    inputBuffer: inputBufferRef.current,
-                    typedWordsHistory: typedWordsHistoryRef.current,
-                    todayTimeSeconds: todayCodeTimeSecondsRef.current,
-                    addedSeconds: unsyncedSecondsRef.current
-                });
-                try {
-                    fetch('/api/code/progress', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: payload,
-                        keepalive: true
-                    }).catch(() => {});
-                } catch { }
-                if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
-                    navigator.sendBeacon('/api/code/progress', new Blob([payload], { type: 'application/json' }));
-                }
-            }
-        };
-
-        window.addEventListener('beforeunload', handleBeforeUnload);
-        return () => {
-            clearInterval(syncInterval);
-            window.removeEventListener('beforeunload', handleBeforeUnload);
-            handleBeforeUnload();
-        };
-    }, [session?.user?.email, syncProgressToServer]);
-
     // Calculate metrics
     const wpm = useMemo(() => {
         if (!elapsedSeconds || elapsedSeconds === 0) return 0;
@@ -967,9 +704,7 @@ export default function CodeTypingPage() {
                 activeWordIdxRef.current = 0;
                 inputBufferRef.current = '';
                 typedWordsHistoryRef.current = {};
-                isDirtyProgressRef.current = true;
-                syncProgressToServer(true);
-                toast.success('🎉 พิมพ์โค้ดเสร็จสมบูรณ์!');
+                    toast.success('🎉 พิมพ์โค้ดเสร็จสมบูรณ์!');
                 return;
             }
 
@@ -981,7 +716,6 @@ export default function CodeTypingPage() {
 
             // เซฟตำแหน่งคำปัจจุบันลงเครื่องทันที + ตั้งสถานะให้ซิงค์เข้ารหัส
             saveProgressToLocalStorage(selectedSnippetIdRef.current, nextWordIdx, '', nextHistory);
-            isDirtyProgressRef.current = true;
             return;
         }
 
@@ -995,7 +729,6 @@ export default function CodeTypingPage() {
                 setInputBuffer(nextBuf);
                 inputBufferRef.current = nextBuf;
                 saveProgressToLocalStorage(selectedSnippetIdRef.current, activeWordIdx, nextBuf, typedWordsHistoryRef.current);
-                isDirtyProgressRef.current = true;
             } else if (activeWordIdx > 0) {
                 const prevIdx = activeWordIdx - 1;
                 const prevTyped = typedWordsHistoryRef.current[prevIdx] || '';
@@ -1004,7 +737,6 @@ export default function CodeTypingPage() {
                 setInputBuffer(prevTyped);
                 inputBufferRef.current = prevTyped;
                 saveProgressToLocalStorage(selectedSnippetIdRef.current, prevIdx, prevTyped, typedWordsHistoryRef.current);
-                isDirtyProgressRef.current = true;
             }
             return;
         }
@@ -1060,148 +792,78 @@ export default function CodeTypingPage() {
             inputBufferRef.current = nextBuf;
 
             saveProgressToLocalStorage(selectedSnippetIdRef.current, activeWordIdx, nextBuf, typedWordsHistoryRef.current);
-            isDirtyProgressRef.current = true;
         }
     };
 
     // 💾 บันทึกโค้ดลงในรหัสบัญชี (Database Account) + สำรองใน localStorage
-    const handleSaveCustomSnippet = async (e: React.FormEvent) => {
+    const handleSaveCustomSnippet = (e: React.FormEvent) => {
         e.preventDefault();
         if (!customTitle.trim() || !customCode.trim()) {
-            toast.error('กรุณาระบุชื่อและใส่โค้ดให้ครบถ้วน');
+            toast.error('Please enter a title and code.');
             return;
         }
 
         const cleanTitle = customTitle.trim();
         const cleanLanguage = customLanguage;
         const cleanCode = customCode.replace(/\r\n/g, '\n');
-
         const editedSnippet = snippets.find(s => s.id === editingSnippetId);
-        if (editedSnippet?.localOnly) {
-            const updatedStarter: CodeSnippet = { ...editedSnippet, title: cleanTitle, language: cleanLanguage, code: cleanCode };
-            setSnippets(current => current.map(s => s.id === editedSnippet.id ? updatedStarter : s));
-            try {
+
+        try {
+            if (editedSnippet?.localOnly) {
                 const key = getLocalStarterOverridesKey(session?.user?.email);
                 const overrides = JSON.parse(localStorage.getItem(key) || '{}');
                 localStorage.setItem(key, JSON.stringify({
                     ...overrides,
                     [editedSnippet.id]: { title: cleanTitle, language: cleanLanguage, code: cleanCode }
                 }));
-            } catch {
-                toast.error('Could not save to localStorage.');
-                return;
+                const updatedStarter = { ...editedSnippet, title: cleanTitle, language: cleanLanguage, code: cleanCode };
+                setSnippets(current => current.map(s => s.id === editedSnippet.id ? updatedStarter : s));
+                resetPractice(updatedStarter.id);
+            } else {
+                const newSnippet: CodeSnippet = {
+                    id: editingSnippetId || `custom-${Date.now()}`,
+                    title: cleanTitle,
+                    language: cleanLanguage,
+                    code: cleanCode,
+                    isCustom: true
+                };
+                const existingCustom = snippets.filter(s => s.isCustom);
+                const updatedCustom = editingSnippetId
+                    ? existingCustom.map(s => s.id === editingSnippetId ? newSnippet : s)
+                    : [newSnippet, ...existingCustom];
+                localStorage.setItem(getCodeStorageKey(session?.user?.email), JSON.stringify(updatedCustom));
+                setSnippets([...snippets.filter(s => !s.isCustom), ...updatedCustom]);
+                resetPractice(newSnippet.id);
             }
-            setCustomTitle('');
-            setCustomCode('');
-            setEditingSnippetId(null);
-            setIsCustomModalOpen(false);
-            resetPractice(updatedStarter.id);
-            toast.success('Saved on this device.');
+
+            localStorage.removeItem(getDraftSnippetStorageKey(session?.user?.email));
+        } catch {
+            toast.error('Could not save to localStorage.');
             return;
         }
-
-        const tempId = editingSnippetId || `custom-${Date.now()}`;
-        const newSnippet: CodeSnippet = {
-            id: tempId,
-            title: cleanTitle,
-            language: cleanLanguage,
-            code: cleanCode,
-            isCustom: true
-        };
-
-        // แสดงผลทันทีในเครื่อง (Optimistic update)
-        const existingCustom = snippets.filter(s => s.isCustom);
-        const updatedCustom = editingSnippetId
-            ? existingCustom.map(s => s.id === editingSnippetId ? newSnippet : s)
-            : [newSnippet, ...existingCustom];
-        setSnippets([...snippets.filter(s => !s.isCustom), ...updatedCustom]);
-        setSelectedSnippetId(newSnippet.id);
-        resetPractice(newSnippet.id);
 
         setCustomTitle('');
         setCustomCode('');
         setEditingSnippetId(null);
         setIsCustomModalOpen(false);
-
-        // ล้างร่างข้อความที่เซฟค้างไว้หลังบันทึกสำเร็จ
-        try {
-            const draftKey = getDraftSnippetStorageKey(session?.user?.email);
-            localStorage.removeItem(draftKey);
-        } catch { }
-
-        // เซฟลง localStorage ตามบัญชี
-        const storageKey = getCodeStorageKey(session?.user?.email);
-        try {
-            localStorage.setItem(storageKey, JSON.stringify(updatedCustom));
-        } catch {
-            // ignore
-        }
-
-        // ☁️ เซฟลงในรหัสบัญชีผู้ใช้ใน Database
-        if (session?.user?.email) {
-            setIsSavingToServer(true);
-            try {
-                const res = await fetch('/api/code/snippets', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        id: editingSnippetId && !editingSnippetId.startsWith('custom-') ? editingSnippetId : undefined,
-                        title: cleanTitle,
-                        language: cleanLanguage,
-                        code: cleanCode
-                    })
-                });
-                const data = await res.json();
-                if (data.success && data.snippet) {
-                    const serverSnippet = data.snippet;
-                    const finalCustom = editingSnippetId
-                        ? existingCustom.map(s => s.id === editingSnippetId ? serverSnippet : s)
-                        : [serverSnippet, ...existingCustom.filter(s => s.id !== tempId)];
-                    setSnippets(current => [...current.filter(s => !s.isCustom), ...finalCustom]);
-                    setSelectedSnippetId(serverSnippet.id);
-                    selectedSnippetIdRef.current = serverSnippet.id;
-                    localStorage.setItem(storageKey, JSON.stringify(finalCustom));
-                    saveProgressToLocalStorage(serverSnippet.id, 0, '', {});
-                    isDirtyProgressRef.current = true;
-                    syncProgressToServer(true);
-                    toast.success('บันทึกโค้ดลงในรหัสบัญชีเรียบร้อย!');
-                    return;
-                }
-            } catch (err) {
-                console.error('Error saving snippet to server:', err);
-            } finally {
-                setIsSavingToServer(false);
-            }
-        }
-
-        toast.success('บันทึกโค้ดของคุณเรียบร้อยแล้ว!');
+        toast.success('Saved on this device.');
     };
 
-    // ลบ Custom Snippet ออกจากบัญชีและเครื่อง
-    const handleDeleteSnippet = async (id: string, e: React.MouseEvent) => {
+    const handleDeleteSnippet = (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        const storageKey = getCodeStorageKey(session?.user?.email);
         const updatedCustom = snippets.filter(s => s.isCustom && s.id !== id);
         try {
-            localStorage.setItem(storageKey, JSON.stringify(updatedCustom));
+            localStorage.setItem(getCodeStorageKey(session?.user?.email), JSON.stringify(updatedCustom));
         } catch {
-            // ignore
+            toast.error('Could not save to localStorage.');
+            return;
         }
         setSnippets([...snippets.filter(s => !s.isCustom), ...updatedCustom]);
 
         if (selectedSnippetId === id) {
             resetPractice(snippets.find(s => s.localOnly)?.id || PRESET_SNIPPETS[0].id);
         }
-
-        if (session?.user?.email && !id.startsWith('custom-')) {
-            try {
-                await fetch(`/api/code/snippets?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
-            } catch (err) {
-                console.error('Error deleting from server:', err);
-            }
-        }
-
-        toast.success('ลบโค้ดเรียบร้อย');
+        toast.success('Snippet deleted.');
     };
 
     const untypedClass = CONTRAST_CONFIG[contrastLevel].textClass;
@@ -1237,8 +899,8 @@ export default function CodeTypingPage() {
                                     <span>{s.title}</span>
                                     {s.localOnly && (
                                         <span
-                                                title="Edit starter file"
-                                                onClick={(e) => {
+                                            title="Edit starter file"
+                                            onClick={(e) => {
                                                     e.stopPropagation();
                                                     setEditingSnippetId(s.id);
                                                     setCustomTitle(s.title);
@@ -1246,17 +908,14 @@ export default function CodeTypingPage() {
                                                     setCustomCode(s.code);
                                                     setIsCustomModalOpen(true);
                                                 }}
-                                                className={`ml-0.5 inline-flex cursor-pointer items-center transition-colors ${isSelected ? 'text-white' : 'text-gray-400 hover:text-gray-700'}`}
+                                            className={`ml-0.5 inline-flex cursor-pointer items-center transition-colors ${isSelected ? 'text-white' : 'text-gray-400 hover:text-gray-700'}`}
                                             >
                                                 <Pencil size={11} />
-                                        </span>
+                                            </span>
                                     )}
                                     {s.isCustom && (
                                         <>
-                                            <span title="บันทึกในรหัสบัญชีแล้ว">
-                                                <Cloud size={11} className={isSelected ? 'text-white/80' : 'text-blue-400'} />
-                                            </span>
-                                            <span
+<span
                                                 title="แก้ไขโค้ด"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
@@ -1620,7 +1279,7 @@ export default function CodeTypingPage() {
                                 </div>
                                 <div>
                                     <h3 className="font-bold text-gray-800 text-base">{editingSnippetId ? 'แก้ไขชุดโค้ด' : 'ใส่โค้ดที่คุณต้องการฝึก'}</h3>
-                                    <p className="text-xs text-gray-400">{snippets.find(s => s.id === editingSnippetId)?.localOnly ? 'Saved only in this device localStorage' : 'Saved to your account and available on other devices'}</p>
+                                    <p className="text-xs text-gray-400">Saved only in this browser localStorage</p>
                                 </div>
                             </div>
                             <button
@@ -1694,11 +1353,10 @@ export default function CodeTypingPage() {
                                 </button>
                                 <button
                                     type="submit"
-                                    disabled={isSavingToServer}
-                                    className="px-5 py-2.5 bg-[#5cb5db] hover:bg-[#4ba3c7] text-white text-sm font-bold rounded-2xl shadow-md hover:shadow-lg transition cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                                    className="px-5 py-2.5 bg-[#5cb5db] hover:bg-[#4ba3c7] text-white text-sm font-bold rounded-2xl shadow-md hover:shadow-lg transition cursor-pointer flex items-center gap-1.5 "
                                 >
                                     <Save size={16} />
-                                    <span>{isSavingToServer ? 'Saving...' : snippets.find(s => s.id === editingSnippetId)?.localOnly ? 'Save on this device' : editingSnippetId ? 'Save changes' : 'Save to account'}</span>
+                                    <span>{editingSnippetId ? 'Save changes on this device' : 'Save on this device'}</span>
                                 </button>
                             </div>
                         </form>
