@@ -1269,12 +1269,34 @@ export default function FarmPage() {
             }
         };
 
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'hidden') {
+                flushFarmData();
+            }
+        };
+
         window.addEventListener('beforeunload', flushFarmData);
+        window.addEventListener('pagehide', flushFarmData);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
         return () => {
             window.removeEventListener('beforeunload', flushFarmData);
+            window.removeEventListener('pagehide', flushFarmData);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
             flushFarmData(); // 🌟 จะถูกเรียกทันทีเมื่อ Next.js เปลี่ยนหน้าหรือสลับเมนู!
         };
     }, [session?.user]);
+
+    // 🌟 ฟังก์ชันจบรอบสำหรับโหมดพิมพ์ชิว (Zen Mode) เมื่อผู้เล่นพิมพ์ไปเรื่อยๆ จนพอใจแล้ว
+    const handleFinishZenSession = useCallback(() => {
+        setEndTime(Date.now());
+        setIsFinished(true);
+        isFinishedRef.current = true;
+        setIsTyping(false);
+        if (!isRepeatPracticeRef.current) {
+            syncExpToDatabase(undefined, true);
+        }
+    }, [syncExpToDatabase]);
 
     // ซิงค์แต้มและเวลาทันทีเมื่อจบรอบในทุกโหมด (บันทึก FarmSession เป็น 1 แถวสรุปจบรอบ)
     useEffect(() => {
@@ -2858,6 +2880,19 @@ export default function FarmPage() {
                                         >
                                             <RefreshCw size={18} strokeWidth={2.8} />
                                         </button>
+
+                                        {/* 🌟 3. ปุ่มจบรอบ/บันทึกผล สำหรับโหมดพิมพ์ชิว (Zen Mode) เมื่อพิมพ์ไปเรื่อยๆ จนพอใจแล้ว */}
+                                        {mode === 'zen' && activeWordIdx >= 3 && (
+                                            <button
+                                                type="button"
+                                                onClick={handleFinishZenSession}
+                                                className="flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-[#0c648b] to-[#5cb5db] hover:from-[#094d6b] hover:to-[#4ba3c7] text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs hover:shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer ml-1"
+                                                title="จบการพิมพ์ชิลล์และดูผลสรุปคะแนนรอบนี้"
+                                            >
+                                                <CheckCircle2 size={15} />
+                                                <span>จบรอบ / ดูผลสรุป</span>
+                                            </button>
+                                        )}
                                     </div>
 
                                     <div className="w-[1px] h-4 bg-gray-200 hidden sm:block mx-0.5"></div>
