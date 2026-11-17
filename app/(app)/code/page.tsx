@@ -1207,7 +1207,7 @@ export default function CodeTypingPage() {
                             </div>
 
                             {/* ⌨️ Code Text Stream Area (High-Performance Memoized Engine สำหรับคอมทุกสเปค) */}
-                            <div className="relative flex-1 min-h-0 max-h-[380px]">
+                            <div className="relative h-[380px] max-h-[55vh] min-h-[160px]">
                                 <div
                                     ref={textContainerRef}
                                     onScroll={handleCodeScroll}
