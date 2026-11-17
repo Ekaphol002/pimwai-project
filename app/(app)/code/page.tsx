@@ -318,6 +318,9 @@ export default function CodeTypingPage() {
     const [errorCount, setErrorCount] = useState(0);
     const [isSoundOn, setIsSoundOn] = useState(true);
     const [isAudioModalOpen, setIsAudioModalOpen] = useState(false);
+    const [isCodeScrollActive, setIsCodeScrollActive] = useState(false);
+    const [codeScrollThumb, setCodeScrollThumb] = useState({ top: 0, height: 100, visible: false });
+    const codeScrollHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
         const unsub = soundManager.subscribe((state) => {
@@ -351,6 +354,29 @@ export default function CodeTypingPage() {
 
     const registerWordRef = useCallback((idx: number, el: HTMLSpanElement | null) => {
         wordElementsRef.current[idx] = el;
+    }, []);
+
+    const updateCodeScrollThumb = useCallback((element: HTMLDivElement) => {
+        const maxScroll = element.scrollHeight - element.clientHeight;
+        if (maxScroll <= 1) {
+            setCodeScrollThumb({ top: 0, height: 100, visible: false });
+            return;
+        }
+
+        const height = Math.max(8, (element.clientHeight / element.scrollHeight) * 100);
+        const top = (element.scrollTop / maxScroll) * (100 - height);
+        setCodeScrollThumb({ top, height, visible: true });
+    }, []);
+
+    const handleCodeScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
+        updateCodeScrollThumb(event.currentTarget);
+        setIsCodeScrollActive(true);
+        if (codeScrollHideTimerRef.current) clearTimeout(codeScrollHideTimerRef.current);
+        codeScrollHideTimerRef.current = setTimeout(() => setIsCodeScrollActive(false), 800);
+    }, [updateCodeScrollThumb]);
+
+    useEffect(() => () => {
+        if (codeScrollHideTimerRef.current) clearTimeout(codeScrollHideTimerRef.current);
     }, []);
 
     // Load saved contrast level
@@ -456,6 +482,13 @@ export default function CodeTypingPage() {
     const currentSnippet = useMemo(() => {
         return snippets.find(s => s.id === selectedSnippetId) || snippets[0];
     }, [snippets, selectedSnippetId]);
+
+    useEffect(() => {
+        const frame = requestAnimationFrame(() => {
+            if (textContainerRef.current) updateCodeScrollThumb(textContainerRef.current);
+        });
+        return () => cancelAnimationFrame(frame);
+    }, [currentSnippet.code, updateCodeScrollThumb]);
 
     // ⚡ Performance Optimization: แปลงโค้ดเฉพาะตอนเปลี่ยนชุดโค้ดเท่านั้น ไม่รันซ้ำตอนพิมพ์
     const { lines, allTokens } = useMemo(() => {
@@ -875,7 +908,7 @@ export default function CodeTypingPage() {
             <div className="w-full max-w-5xl flex flex-col gap-5">
 
                 {/* 🌟 Top Control Pill - Pure White Card with Soft Shadow (สไตล์ Farm Mode) */}
-                <div className="bg-white px-5 sm:px-6 py-3 rounded-3xl shadow-md border border-blue-50/60 flex flex-wrap items-center justify-between gap-3 text-sm text-gray-500">
+                <div className="bg-white px-5 sm:px-6 py-3 rounded-3xl shadow-lg shadow-blue-500/5 border border-blue-50/60 flex flex-wrap items-center justify-between gap-3 text-sm text-gray-500">
 
                     {/* Left: Snippets Selector */}
                     <div className="flex flex-wrap items-center gap-1.5">
@@ -994,7 +1027,7 @@ export default function CodeTypingPage() {
                 {/* ⌨️ Main Typing Stream Box (กล่องสีขาวใหญ่ เหมือนโหมดฟาร์มเป๊ะ) */}
                 <div
                     onClick={() => inputRef.current?.focus()}
-                    className="w-full bg-white rounded-3xl p-6 sm:p-8 shadow-md relative min-h-[460px] flex flex-col justify-between overflow-hidden border border-blue-50 cursor-text"
+                    className="w-full bg-white rounded-3xl p-6 sm:p-8 shadow-lg shadow-blue-500/5 relative min-h-[460px] flex flex-col justify-between overflow-hidden border border-blue-50 cursor-text"
                 >
                     {/* Hidden Textarea for Input */}
                     <textarea
@@ -1174,10 +1207,12 @@ export default function CodeTypingPage() {
                             </div>
 
                             {/* ⌨️ Code Text Stream Area (High-Performance Memoized Engine สำหรับคอมทุกสเปค) */}
-                            <div
-                                ref={textContainerRef}
-                                className="relative flex-1 overflow-x-auto overflow-y-auto max-h-[380px] font-mono text-lg sm:text-xl leading-relaxed py-4 pr-2 antialiased select-none"
-                            >
+                            <div className="relative flex-1 min-h-0 max-h-[380px]">
+                                <div
+                                    ref={textContainerRef}
+                                    onScroll={handleCodeScroll}
+                                    className="no-scrollbar relative h-full overflow-x-auto overflow-y-auto font-mono text-lg sm:text-xl leading-relaxed py-4 pr-2 antialiased select-none"
+                                >
                                 {/* 🎯 Direct-DOM GPU Caret (เลื่อนสมูท 60fps โดยไม่ก่อให้เกิด React Re-render และไม่ใช้ animate-pulse ที่กินเครื่อง) */}
                                 <div
                                     ref={caretElRef}
@@ -1241,6 +1276,18 @@ export default function CodeTypingPage() {
                                         </div>
                                     );
                                 })}
+                                </div>
+                                {codeScrollThumb.visible && (
+                                    <div
+                                        aria-hidden="true"
+                                        className={`pointer-events-none absolute right-1 top-4 bottom-4 z-30 w-1.5 transition-opacity duration-200 ${isCodeScrollActive ? 'opacity-100' : 'opacity-0'}`}
+                                    >
+                                        <div
+                                            className="absolute w-1 rounded-full bg-gray-400/80"
+                                            style={{ height: `${codeScrollThumb.height}%`, top: `${codeScrollThumb.top}%` }}
+                                        />
+                                    </div>
+                                )}
                             </div>
 
                             {/* Bottom Helper Bar */}
