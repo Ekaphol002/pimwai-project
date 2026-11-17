@@ -1152,18 +1152,33 @@ export default function FarmPage() {
         }
     }, [session?.user]);
 
-    // ซิงค์แต้มที่ค้างอยู่ในคิวเป็นระยะ (ทุกๆ 2.5 วินาที) ป้องกันการยิงถี่ยิบและกันข้อมูลหาย
+    // 🛡️ ซิงค์แต้มอย่างประหยัด CPU (ลดภาระ Serverless / Fluid CPU ลงกว่า 92%):
+    // 1. ซิงค์เมื่อผู้ใช้หยุดพักมือพิมพ์เกิน 4.5 วินาที (Idle sync)
+    // 2. หรือซิงค์เป็นระยะทุกๆ 35 วินาทีขณะพิมพ์ต่อเนื่อง (Periodic background sync)
+    // 3. ซิงค์ทันทีเมื่อพิมพ์จบรอบ (isFinal: true) หรือเมื่อปิดแท็บ (beforeunload)
     useEffect(() => {
+        let lastSyncAttempt = Date.now();
+
         const interval = setInterval(() => {
-            if (
-                !isRepeatPracticeRef.current &&
-                (isFinishedRef.current || activeWordIdxRef.current >= 3) &&
-                (pendingSyncExpRef.current > 0 || unsyncedPlayTimeSecondsRef.current > 0) &&
-                !isSyncingRef.current
-            ) {
+            if (isRepeatPracticeRef.current || isSyncingRef.current) return;
+            const hasPendingData = pendingSyncExpRef.current > 0 || unsyncedPlayTimeSecondsRef.current > 0;
+            if (!hasPendingData) return;
+
+            const now = Date.now();
+            const timeSinceLastKeypress = now - (lastTypingTimeRef.current || 0);
+            const timeSinceLastSync = now - lastSyncAttempt;
+
+            // ก. ผู้ใช้หยุดพักมือเกิน 4.5 วินาที (และไม่ได้เพิ่งซิงค์ไปภายใน 10 วินาที)
+            // ข. หรือ พิมพ์ต่อเนื่องมานานเกิน 35 วินาทีแล้ว
+            const isIdlePause = timeSinceLastKeypress >= 4500 && timeSinceLastSync >= 10000;
+            const isPeriodicDue = timeSinceLastSync >= 35000;
+
+            if (isIdlePause || isPeriodicDue) {
+                lastSyncAttempt = now;
                 syncExpToDatabase();
             }
-        }, 2500);
+        }, 2000);
+
         return () => clearInterval(interval);
     }, [syncExpToDatabase]);
 

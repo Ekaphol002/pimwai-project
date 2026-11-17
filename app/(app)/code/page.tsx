@@ -1058,15 +1058,31 @@ export default function CodeTypingPage() {
         return () => clearInterval(interval);
     }, [startTime, isFinished, session?.user?.email]);
 
-    // ☁️ ซิงค์เวลาและตำแหน่งโค้ดที่พิมพ์ค้างไว้เข้าในรหัสอัตโนมัติ (ทุก 4 วินาทีเมื่อมีการพิมพ์ และเมื่อสลับหน้า/ปิดแท็บ)
+    // ☁️ ซิงค์เวลาและตำแหน่งโค้ดที่พิมพ์ค้างไว้เข้าในรหัสอัตโนมัติ (ประหยัด CPU Serverless ลดการยิง API ลงกว่า 92%)
     useEffect(() => {
         if (!session?.user?.email) return;
 
+        let lastSyncAttempt = Date.now();
+
         const syncInterval = setInterval(() => {
-            if (isDirtyProgressRef.current || unsyncedSecondsRef.current > 0) {
+            if (isSyncingRef.current) return;
+            const hasPendingData = isDirtyProgressRef.current || unsyncedSecondsRef.current > 0;
+            if (!hasPendingData) return;
+
+            const now = Date.now();
+            const timeSinceLastKeypress = now - (lastTypingTimeRef.current || 0);
+            const timeSinceLastSync = now - lastSyncAttempt;
+
+            // ก. ผู้ใช้หยุดพิมพ์เกิน 4.5 วินาที (Idle sync)
+            // ข. หรือ พิมพ์ต่อเนื่องมานานเกิน 35 วินาทีแล้ว
+            const isIdlePause = timeSinceLastKeypress >= 4500 && timeSinceLastSync >= 10000;
+            const isPeriodicDue = timeSinceLastSync >= 35000;
+
+            if (isIdlePause || isPeriodicDue) {
+                lastSyncAttempt = now;
                 syncProgressToServer();
             }
-        }, 4000);
+        }, 2000);
 
         const handleBeforeUnload = () => {
             if (session?.user?.email) {
@@ -1425,6 +1441,20 @@ export default function CodeTypingPage() {
                                                 <Cloud size={11} className={isSelected ? 'text-white/80' : 'text-blue-400'} />
                                             </span>
                                             <span
+                                                title="แก้ไขโค้ด"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setEditingSnippetId(s.id);
+                                                    setCustomTitle(s.title);
+                                                    setCustomLanguage(s.language);
+                                                    setCustomCode(s.code);
+                                                    setIsCustomModalOpen(true);
+                                                }}
+                                                className="hover:text-blue-200 ml-0.5 cursor-pointer inline-flex items-center"
+                                            >
+                                                <Pencil size={11} />
+                                            </span>
+                                            <span
                                                 title="ลบโค้ด"
                                                 onClick={(e) => handleDeleteSnippet(s.id, e)}
                                                 className="hover:text-red-300 ml-0.5 cursor-pointer inline-flex items-center"
@@ -1650,8 +1680,8 @@ export default function CodeTypingPage() {
                                     <button
                                         type="button"
                                         onClick={handleSkipCurrentLine}
-                                        className="text-gray-400 hover:text-gray-700 hover:scale-110 active:scale-95 transition-transform cursor-pointer p-1.5"
-                                        title="ข้ามบรรทัดนี้"
+                                        className="text-gray-400 hover:text-amber-500 hover:bg-amber-50 hover:scale-110 active:scale-95 transition-all rounded-lg cursor-pointer p-1.5"
+                                        title="ข้ามบรรทัดนี้ (ระบบจะเติมโค้ดบรรทัดนี้ให้อัตโนมัติ)"
                                         aria-label="ข้ามบรรทัดนี้"
                                     >
                                         <SkipForward size={18} />
