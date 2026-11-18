@@ -296,6 +296,18 @@ export default function FarmPage() {
     // Modal State
     const [isPerkModalOpen, setIsPerkModalOpen] = useState<boolean>(false);
     const [isSeoExpanded, setIsSeoExpanded] = useState<boolean>(false);
+    const seoToggleButtonRef = useRef<HTMLButtonElement>(null);
+    const seoToggleButtonTopRef = useRef<number | null>(null);
+
+    useLayoutEffect(() => {
+        const previousTop = seoToggleButtonTopRef.current;
+        const button = seoToggleButtonRef.current;
+        if (previousTop === null || !button) return;
+
+        seoToggleButtonTopRef.current = null;
+        const topShift = button.getBoundingClientRect().top - previousTop;
+        if (Math.abs(topShift) > 1) window.scrollBy(0, topShift);
+    }, [isSeoExpanded]);
 
     useEffect(() => {
         try {
@@ -309,6 +321,7 @@ export default function FarmPage() {
     }, []);
 
     const toggleSeoExpanded = () => {
+        seoToggleButtonTopRef.current = seoToggleButtonRef.current?.getBoundingClientRect().top ?? null;
         setIsSeoExpanded(prev => {
             const next = !prev;
             try {
@@ -2911,17 +2924,18 @@ export default function FarmPage() {
 
                 </div>
 
+                <div className="w-full max-w-6xl mt-4 grid grid-cols-1 sm:grid-cols-4 gap-3 items-start">
                 {/* 🎖️ Lesson Perks Ribbon (ซ่อนอัตโนมัติเมื่อเริ่มพิมพ์ จนกว่าจะขยับเมาส์) */}
-                <div className={`w-full max-w-6xl mt-4 bg-white rounded-2xl sm:rounded-3xl p-3.5 sm:px-6 sm:py-3.5 shadow-lg shadow-blue-500/5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs transition-all duration-300 ease-in-out ${isFocusMode
+                <div className={`w-full min-w-0 sm:col-span-3 bg-white rounded-2xl sm:rounded-3xl p-3.5 sm:px-5 sm:py-3.5 shadow-lg shadow-blue-500/5 flex flex-col sm:flex-row sm:flex-nowrap items-center justify-between gap-2 text-xs transition-all duration-300 ease-in-out ${isFocusMode
                     ? 'opacity-0 pointer-events-none translate-y-4'
                     : 'opacity-100 translate-y-0'
                     }`}>
-                    <div className="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-2 font-bold text-gray-700">
-                        <span>บัฟติดตัวจากบทเรียน:</span>
+                    <div className="w-full min-w-0 sm:w-auto flex items-center justify-between sm:justify-start gap-1.5 font-bold text-gray-700 sm:shrink-0">
+                        <span className="whitespace-nowrap text-xs">บัฟติดตัวจากบทเรียน:</span>
                         <button
                             type="button"
                             onClick={() => setIsPerkModalOpen(true)}
-                            className="flex items-center gap-1 text-[11px] font-bold text-white bg-[#5cb5db] px-2.5 py-1 rounded-lg transition-all cursor-pointer"
+                            className="flex items-center gap-1 whitespace-nowrap text-[11px] font-bold text-white bg-[#5cb5db] px-2.5 py-1 rounded-lg transition-all cursor-pointer"
                             title="คลิกเพื่ออ่านรายละเอียดบัฟทั้งหมด"
                         >
                             <Info size={13} className="text-white" />
@@ -2929,12 +2943,12 @@ export default function FarmPage() {
                         </button>
                     </div>
 
-                    <div className="grid grid-cols-3 sm:flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
+                    <div className="grid grid-cols-3 sm:flex sm:flex-nowrap items-center gap-1 sm:gap-1.5 w-full min-w-0 sm:w-auto sm:flex-1 sm:justify-end">
                         {/* 1. Beginner Perk */}
                         <button
                             type="button"
                             onClick={() => setIsPerkModalOpen(true)}
-                            className={`flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl font-bold text-[10px] sm:text-xs transition-all cursor-pointer hover:scale-[1.02] shadow-xs ${lessonPerks.beginner
+                            className={`flex items-center justify-center gap-1 sm:gap-1.5 px-2 py-1.5 rounded-xl font-bold text-[10px] sm:text-xs whitespace-nowrap transition-all cursor-pointer shadow-xs ${lessonPerks.beginner
                                 ? 'bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-500 shadow-emerald-600/20'
                                 : 'bg-gray-100/90 text-gray-400 border border-gray-200/60'
                                 }`}
@@ -2948,7 +2962,7 @@ export default function FarmPage() {
                         <button
                             type="button"
                             onClick={() => setIsPerkModalOpen(true)}
-                            className={`flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl font-bold text-[10px] sm:text-xs transition-all cursor-pointer hover:scale-[1.02] shadow-xs ${lessonPerks.intermediate
+                            className={`flex items-center justify-center gap-1 sm:gap-1.5 px-2 py-1.5 rounded-xl font-bold text-[10px] sm:text-xs whitespace-nowrap transition-all cursor-pointer shadow-xs ${lessonPerks.intermediate
                                 ? 'bg-amber-500 hover:bg-amber-600 text-white border border-amber-400 shadow-amber-500/20'
                                 : 'bg-gray-100/90 text-gray-400 border border-gray-200/60'
                                 }`}
@@ -2962,7 +2976,7 @@ export default function FarmPage() {
                         <button
                             type="button"
                             onClick={() => setIsPerkModalOpen(true)}
-                            className={`flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl font-bold text-[10px] sm:text-xs transition-all cursor-pointer hover:scale-[1.02] shadow-xs ${lessonPerks.advanced
+                            className={`flex items-center justify-center gap-1 sm:gap-1.5 px-2 py-1.5 rounded-xl font-bold text-[10px] sm:text-xs whitespace-nowrap transition-all cursor-pointer shadow-xs ${lessonPerks.advanced
                                 ? 'bg-purple-600 hover:bg-purple-700 text-white border border-purple-500 shadow-purple-600/20'
                                 : 'bg-gray-100/90 text-gray-400 border border-gray-200/60'
                                 }`}
@@ -2977,7 +2991,7 @@ export default function FarmPage() {
                     {(!lessonPerks.beginner || !lessonPerks.intermediate || !lessonPerks.advanced) && (
                         <Link
                             href="/lessons"
-                            className="text-[11px] font-bold text-[#5cb5db] hover:text-[#429ec5] flex items-center justify-end sm:justify-start gap-0.5 hover:underline transition-all w-full sm:w-auto"
+                            className="text-[10px] sm:text-[11px] font-bold text-[#5cb5db] hover:text-[#429ec5] flex items-center justify-end sm:justify-start gap-0.5 whitespace-nowrap hover:underline transition-all w-full sm:w-auto sm:shrink-0"
                         >
                             <span>เล่นบทเรียนเพื่อปลดล็อกบัฟ</span>
                             <ChevronRight size={13} />
@@ -3110,31 +3124,42 @@ export default function FarmPage() {
                 {/* 🔍 SEO Semantic Section & Sitelinks Hub (Googlebot Crawl Content): กดซ่อน/พับเก็บได้ และซ่อนอัตโนมัติเมื่อเริ่มพิมพ์ (Focus Mode) */}
                 <section
                     aria-label="ข้อมูลการฝึกพิมพ์ดีดและพิมพ์สัมผัส 10 นิ้ว"
-                    className={`w-full max-w-6xl mt-4 mb-6 text-gray-600 text-xs sm:text-sm leading-relaxed transition-all duration-300 ease-in-out ${isFocusMode
+                    className={`w-full sm:col-span-1 text-gray-600 text-xs sm:text-sm leading-relaxed transition-all duration-300 ease-in-out ${isFocusMode
                         ? 'opacity-0 pointer-events-none translate-y-4'
                         : 'opacity-100 translate-y-0'
                         }`}
                 >
                     {/* แถบหัวข้อแบบพับเก็บได้ (มี H1 อยู่ใน DOM ตลอดเวลาเพื่อ SEO แต่ดูคลีนตาและกดซ่อน/เปิดได้) */}
-                    <div className="bg-white rounded-3xl p-4 sm:px-6 sm:py-3.5 shadow-lg shadow-blue-500/5 flex flex-wrap items-center justify-between gap-3">
-                        <h1 className="text-xs font-bold text-gray-700">
-                            ฝึกพิมพ์ & ฝึกพิมพ์ดีดออนไลน์ฟรี ฝึกพิมพ์สัมผัส 10 นิ้ว ทดสอบความเร็ว WPM | PIMWAI (พิมพ์ไว)
+                    <div className="bg-white rounded-3xl p-3 sm:px-4 sm:py-3.5 shadow-lg shadow-blue-500/5 flex flex-nowrap items-center justify-between gap-2 overflow-hidden">
+                        <h1 className="min-w-0 flex-1 whitespace-nowrap overflow-hidden text-ellipsis text-[10px] sm:text-xs font-bold text-gray-700">
+                            ฝึกพิมพ์สัมผัส 10 นิ้วฟรี | ทดสอบ WPM PIMWAI
                         </h1>
 
                         <button
                             type="button"
                             onClick={toggleSeoExpanded}
+                            ref={seoToggleButtonRef}
                             aria-expanded={isSeoExpanded}
-                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-gray-100 hover:bg-gray-200/80 text-gray-600 font-bold text-xs transition-colors cursor-pointer select-none"
+                            aria-controls="farm-seo-details"
+                            className="inline-flex shrink-0 items-center gap-1 px-2 py-1 rounded-xl bg-gray-100 hover:bg-gray-200/80 text-gray-600 font-bold text-[9px] sm:text-[10px] whitespace-nowrap transition-colors cursor-pointer select-none"
                         >
-                            <span>{isSeoExpanded ? 'ซ่อนคู่มือและข้อมูล' : 'ดูคู่มือวางนิ้ว 10 นิ้ว & ข้อมูลเพิ่มเติม'}</span>
+                            <span>{isSeoExpanded ? 'ซ่อนคู่มือ' : 'คู่มือ 10 นิ้ว'}</span>
                             <ChevronRight
                                 size={14}
                                 className={`transition-transform duration-200 ${isSeoExpanded ? '-rotate-90' : 'rotate-90'}`}
                             />
                         </button>
                     </div>
+                </section>
 
+                <section
+                    id="farm-seo-details"
+                    aria-label="รายละเอียดคู่มือและข้อมูลการฝึกพิมพ์"
+                    className={`w-full sm:col-span-4 mb-6 text-gray-600 text-xs sm:text-sm leading-relaxed transition-all duration-300 ease-in-out ${isFocusMode
+                        ? 'opacity-0 pointer-events-none translate-y-4'
+                        : 'opacity-100 translate-y-0'
+                        }`}
+                >
                     {/* เนื้อหา SEO ทั้งหมดคงอยู่ใน HTML DOM เสมอเพื่อให้ Googlebot เก็บข้อมูลได้ 100% แต่พับซ่อนด้วย CSS ได้ */}
                     <div
                         className={`space-y-4 transition-all duration-300 ease-in-out ${isSeoExpanded
@@ -3288,6 +3313,7 @@ export default function FarmPage() {
                         </div>
                     </div>
                 </section>
+                </div>
 
             </main>
 
