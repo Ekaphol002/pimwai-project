@@ -2873,7 +2873,6 @@ export default function FarmPage() {
                                             <RefreshCw size={18} strokeWidth={2.8} />
                                         </button>
 
-                                        {/* 🌟 3. ปุ่มจบรอบ/บันทึกผล สำหรับโหมดพิมพ์ชิว (Zen Mode) เมื่อพิมพ์ไปเรื่อยๆ จนพอใจแล้ว */}
                                     </div>
 
                                     <div className="w-[1px] h-4 bg-gray-200 hidden sm:block mx-0.5"></div>
