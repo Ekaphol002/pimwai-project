@@ -68,6 +68,9 @@ const getLocalStarterOverridesKey = (email?: string | null) =>
     email ? `pimwai_code_starter_overrides_${email}` : 'pimwai_code_starter_overrides_guest';
 const LOCAL_STORAGE_CONTRAST_KEY = 'pimwai_code_contrast';
 
+// Normalize Thai sara-am plus tone mark in the same input order used by Farm.
+const toTypingOrder = (text: string) => text.replace(/(\u0E33)([\u0E48-\u0E4B])/g, '$2$1');
+
 // สร้าง Storage Key สำหรับจำเวลาพิมพ์โค้ดของวันนี้ (ตัดรอบเที่ยงคืนเวลาไทย)
 const getTodayTimeStorageKey = (email?: string | null) => {
     const todayStr = toDateKey(new Date());
@@ -125,10 +128,11 @@ function parseCodeIntoLines(codeText: string): { lines: CodeLine[]; allTokens: C
 
         const rawWords = trimmed.split(/ +/).filter(w => w.length > 0);
         const wordsOnLine: CodeWordToken[] = rawWords.map((w, wIdx) => {
+            const typingWord = toTypingOrder(w);
             const token: CodeWordToken = {
                 globalIdx: globalCounter++,
-                word: w,
-                chars: w.split(''),
+                word: typingWord,
+                chars: typingWord.split(''),
                 lineNum,
                 isLastInLine: wIdx === rawWords.length - 1
             };
@@ -155,6 +159,7 @@ interface MemoCodeWordProps {
     activeInput: string;
     completedTyped: string | undefined;
     untypedClass: string;
+    peekCharIndex: number | null;
     registerWordRef: (idx: number, el: HTMLSpanElement | null) => void;
 }
 
@@ -165,6 +170,7 @@ const MemoCodeWord = memo(function MemoCodeWord({
     activeInput,
     completedTyped,
     untypedClass,
+    peekCharIndex,
     registerWordRef
 }: MemoCodeWordProps) {
     const targetWord = wToken.word;
@@ -206,6 +212,10 @@ const MemoCodeWord = memo(function MemoCodeWord({
                         }
                     }
 
+                    if (isActive && peekCharIndex === cIdx && cIdx >= currentTyped.length) {
+                        colorClass = 'text-[#0c648b] bg-sky-100 rounded-sm';
+                    }
+
                     return (
                         <span key={cIdx} className={colorClass}>
                             {displayChar}
@@ -234,6 +244,7 @@ const MemoCodeWord = memo(function MemoCodeWord({
         prev.isCompleted === next.isCompleted &&
         prev.activeInput === next.activeInput &&
         prev.completedTyped === next.completedTyped &&
+        prev.peekCharIndex === next.peekCharIndex &&
         prev.untypedClass === next.untypedClass &&
         prev.wToken === next.wToken
     );
@@ -695,6 +706,12 @@ export default function CodeTypingPage() {
             return;
         }
 
+        if (isPeekingLine && (e.key.length === 1 || e.key === 'Dead' || e.key === 'Backspace')) {
+            if (peekTimeoutRef.current) clearTimeout(peekTimeoutRef.current);
+            peekTimeoutRef.current = null;
+            setIsPeekingLine(false);
+        }
+
         const now = Date.now();
         lastTypingTimeRef.current = now;
 
@@ -789,7 +806,7 @@ export default function CodeTypingPage() {
 
             let typedChar = '';
 
-            if (isTargetThai || /[\u0E00-\u0E7F]/.test(e.key)) {
+            if (isTargetThai) {
                 // ถ้าเป้าหมายเป็นภาษาไทย หรือผู้ใช้กดแป้นพิมพ์ภาษาไทย
                 if (e.code && (e.key.length === 1 || e.key === 'Dead')) {
                     const { typedChar: resolvedThai } = resolveThaiKeyWithCapsLock(e);
@@ -1149,9 +1166,9 @@ export default function CodeTypingPage() {
                                             type="button"
                                             onClick={triggerLinePeek}
                                             className="px-3 py-1 bg-[#0c648b] hover:bg-[#094b69] text-white font-bold text-xs rounded-full shadow-xs cursor-pointer transition-colors"
-                                            title="แสดงบรรทัดปัจจุบันชั่วคราว"
+                                            title="แสดงตัวอักษรถัดไปชั่วคราว"
                                         >
-                                            แอบดูบรรทัดนี้ (กด Tab)
+                                            แอบดูตัวถัดไป (กด Tab)
                                         </button>
                                     )}
                                     {(currentSnippet.isCustom || currentSnippet.localOnly) && (
@@ -1256,9 +1273,6 @@ export default function CodeTypingPage() {
                                                 {line.words.map((wToken) => {
                                                     const isCompleted = wToken.globalIdx < activeWordIdx;
                                                     const isActive = wToken.globalIdx === activeWordIdx;
-                                                    const effectiveUntypedClass = contrastLevel === 'hidden' && isPeekingLine && currentToken?.lineNum === line.lineNum
-                                                        ? 'text-gray-400'
-                                                        : untypedClass;
                                                     return (
                                                         <MemoCodeWord
                                                             key={wToken.globalIdx}
@@ -1267,7 +1281,8 @@ export default function CodeTypingPage() {
                                                             isActive={isActive}
                                                             activeInput={isActive ? inputBuffer : ''}
                                                             completedTyped={isCompleted ? typedWordsHistory[wToken.globalIdx] : undefined}
-                                                            untypedClass={effectiveUntypedClass}
+                                                            untypedClass={untypedClass}
+                                                            peekCharIndex={isPeekingLine && isActive ? inputBuffer.length : null}
                                                             registerWordRef={registerWordRef}
                                                         />
                                                     );
