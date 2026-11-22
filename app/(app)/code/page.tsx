@@ -187,6 +187,8 @@ const MemoCodeWord = memo(function MemoCodeWord({
                 {targetChars.map((char, cIdx) => {
                     let colorClass = untypedClass;
                     let displayChar = char;
+                    // ตรวจจับสระบน/สระล่าง/วรรณยุกต์ภาษาไทย (Combining Marks) เช่น ิ ี ึ ื ุ ู ั ็ ่ ้ ๊ ๋ ์
+                    const isThaiCombiningMark = /[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]/.test(char);
 
                     if (isCompleted) {
                         if (cIdx < currentTyped.length) {
@@ -209,11 +211,24 @@ const MemoCodeWord = memo(function MemoCodeWord({
                             if (isHiddenFollow) {
                                 displayChar = currentTyped[cIdx];
                             }
+                        } else {
+                            // 🌟 แก้ปัญหาเบราว์เซอร์แสดงวรรณยุกต์/สระไทยพร้อมกันหมดเมื่อพิมพ์ถึงตัวพยัญชนะ (ในโหมดปิดตัวเขียนตาม):
+                            // สระบน/สระล่าง/วรรณยุกต์ (combining marks) จะเกาะพยัญชนะต้นทันทีถ้ามีอยู่ใน DOM
+                            // หากยังพิมพ์ไม่ถึงตัวนี้ ให้ซ่อนออกไป เพื่อให้ตัวอักษรไทยขึ้นทีละตัวตามที่พิมพ์จริง
+                            if (isHiddenFollow && isThaiCombiningMark && peekCharIndex !== cIdx) {
+                                displayChar = '';
+                            }
+                        }
+                    } else {
+                        // คำที่ยังไม่ได้เริ่มพิมพ์
+                        if (isHiddenFollow && isThaiCombiningMark && peekCharIndex !== cIdx) {
+                            displayChar = '';
                         }
                     }
 
                     if (isActive && peekCharIndex === cIdx && cIdx >= currentTyped.length) {
-                        colorClass = 'text-[#0c648b] bg-sky-100 rounded-sm';
+                        colorClass = 'text-amber-900 bg-amber-200 ring-2 ring-amber-400 font-bold rounded-sm px-0.5 shadow-xs';
+                        displayChar = char;
                     }
 
                     return (
@@ -523,13 +538,14 @@ export default function CodeTypingPage() {
 
         caretEl.style.height = `${caretHeight}px`;
         caretEl.style.transform = `translate3d(${left}px, ${top}px, 0)`;
-        caretEl.style.opacity = isFinished ? '0' : '1';
-    }, [activeWordIdx, isFinished]);
+        // เมื่ออยู่ในโหมดแอบดูคำใบ้ (isPeekingLine) ให้ลดความเข้มเคอร์เซอร์ลงเหลือ 0.15 เพื่อไม่ให้เคอร์เซอร์บังตัวอักษร
+        caretEl.style.opacity = isFinished ? '0' : (isPeekingLine ? '0.15' : '1');
+    }, [activeWordIdx, isFinished, isPeekingLine]);
 
     // Update Caret position on keystroke (Direct DOM manipulation)
     useEffect(() => {
         updateCaretPosition();
-    }, [activeWordIdx, inputBuffer, updateCaretPosition, currentSnippet.id]);
+    }, [activeWordIdx, inputBuffer, updateCaretPosition, currentSnippet.id, isPeekingLine]);
 
     // ⚡ Auto-Scroll เฉพาะเมื่อเปลี่ยนคำและหลุดขอบจอ และใช้การเลื่อนแบบไม่กิน CPU
     useEffect(() => {
@@ -796,7 +812,7 @@ export default function CodeTypingPage() {
             return;
         }
 
-        // 3. พิมพ์ตัวอักษรปกติ (ตรวจจับทีละตัวทันทีที่กด เหมือนโหมดฟาร์ม)
+        // 3. พิมพ์ตัวอักษรปกติ (รองรับพิมพ์สองภาษาอัตโนมัติ ไทย <-> อังกฤษ โดยไม่ต้องกดสลับภาษาคีย์บอร์ด)
         if (e.key.length === 1 || e.key === 'Dead') {
             const nextCharIdx = inputBuffer.length;
             const targetChar = currentToken.word[nextCharIdx];
@@ -806,8 +822,11 @@ export default function CodeTypingPage() {
 
             let typedChar = '';
 
-            if (isTargetThai) {
-                // ถ้าเป้าหมายเป็นภาษาไทย หรือผู้ใช้กดแป้นพิมพ์ภาษาไทย
+            // 1. ถ้าปุ่ม e.key ที่กดมาตรงกับเป้าหมายอยู่แล้ว ให้ใช้ทันที
+            if (targetChar && e.key === targetChar) {
+                typedChar = e.key;
+            } else if (isTargetThai) {
+                // 2. ถ้าเป้าหมายเป็นภาษาไทย: แปลงแป้นภาษาอังกฤษให้เป็นภาษาไทยอัตโนมัติ
                 if (e.code && (e.key.length === 1 || e.key === 'Dead')) {
                     const { typedChar: resolvedThai } = resolveThaiKeyWithCapsLock(e);
                     if (resolvedThai) {
@@ -818,8 +837,13 @@ export default function CodeTypingPage() {
                     typedChar = e.key;
                 }
             } else {
-                // ถ้าเป้าหมายเป็นภาษาอังกฤษ แปลงผ่าน getEnglishCharFromEvent (ช่วยกรณีพิมพ์โค้ดอังกฤษแต่ลืมสลับแป้นไทย)
-                typedChar = getEnglishCharFromEvent(e) || e.key;
+                // 3. ถ้าเป้าหมายเป็นภาษาอังกฤษ: แปลงแป้นภาษาไทยให้เป็นตัวอักษรและสัญลักษณ์อังกฤษอัตโนมัติ
+                const resolvedEng = getEnglishCharFromEvent(e);
+                if (resolvedEng) {
+                    typedChar = resolvedEng;
+                } else if (e.key && e.key.length === 1) {
+                    typedChar = e.key;
+                }
             }
 
             if (!typedChar || typedChar.length !== 1) return;
@@ -1233,14 +1257,36 @@ export default function CodeTypingPage() {
                                 {/* 🎯 Direct-DOM GPU Caret (เลื่อนสมูท 60fps โดยไม่ก่อให้เกิด React Re-render และไม่ใช้ animate-pulse ที่กินเครื่อง) */}
                                 <div
                                     ref={caretElRef}
-                                    className="absolute left-0 top-0 w-[2.5px] bg-[#5cb5db] rounded-full pointer-events-none z-30"
+                                    className="absolute left-0 top-0 w-[2px] bg-[#5cb5db] rounded-full pointer-events-none z-30 transition-opacity duration-150"
                                     style={{
                                         height: '22px',
                                         transform: 'translate3d(0px, 0px, 0)',
-                                        transition: 'transform 65ms ease-out',
-                                        willChange: 'transform',
+                                        transition: 'transform 65ms ease-out, opacity 150ms ease-out',
+                                        willChange: 'transform, opacity',
                                     }}
                                 />
+
+                                {/* 💡 Floating Hint Tooltip during Peek (ระบบใบ้คำ ลอยเหนือตัวอักษร ไม่ให้เคอร์เซอร์บัง) */}
+                                {isPeekingLine && currentToken && (
+                                    <div
+                                        className="absolute z-40 pointer-events-none transition-all duration-75 flex flex-col items-center select-none"
+                                        style={{
+                                            left: `${(wordElementsRef.current[activeWordIdx]?.offsetLeft || 0) + (typedPartRef.current?.offsetWidth || 0)}px`,
+                                            top: `${Math.max(0, (wordElementsRef.current[activeWordIdx]?.offsetTop || 0) - 28)}px`,
+                                            transform: 'translateX(-50%)',
+                                        }}
+                                    >
+                                        <div className="px-2 py-0.5 bg-gray-900/95 text-amber-300 font-mono text-xs font-bold rounded-md shadow-lg border border-amber-400/50 flex items-center gap-1 whitespace-nowrap">
+                                            <span className="text-gray-400 text-[10px]">กด:</span>
+                                            <span className="text-white font-black underline decoration-amber-400">
+                                                {currentToken.word[inputBuffer.length] === ' '
+                                                    ? 'Space'
+                                                    : (currentToken.word[inputBuffer.length] ?? (currentToken.isLastInLine ? 'Enter' : 'Space'))}
+                                            </span>
+                                        </div>
+                                        <div className="w-1.5 h-1 bg-gray-900 rotate-45 -mt-0.5"></div>
+                                    </div>
+                                )}
 
                                 {/* Reference span สำหรับวัดความกว้างของตัวที่พิมพ์ในคำ เพื่อวางตำแหน่ง Caret ให้เป๊ะ */}
                                 <span
@@ -1253,10 +1299,16 @@ export default function CodeTypingPage() {
                                 </span>
 
                                 {lines.map((line) => {
+                                    const isLineActive = currentToken?.lineNum === line.lineNum;
+                                    const isLinePeeking = isPeekingLine && isLineActive;
+
                                     return (
-                                        <div key={line.lineNum} className="flex items-baseline leading-8 min-h-[32px]">
+                                        <div
+                                            key={line.lineNum}
+                                            className={`flex items-baseline leading-8 min-h-[32px] transition-colors rounded-lg ${isLinePeeking ? 'bg-sky-50/60' : ''}`}
+                                        >
                                             {/* Line Number */}
-                                            <div className="select-none text-gray-300 pr-4 text-right border-r border-gray-100 mr-4 shrink-0 font-mono text-sm w-8">
+                                            <div className={`select-none pr-4 text-right border-r border-gray-100 mr-4 shrink-0 font-mono text-sm w-8 transition-colors ${isLinePeeking ? 'text-sky-600 font-bold' : 'text-gray-300'}`}>
                                                 {line.lineNum}
                                             </div>
 
@@ -1273,6 +1325,10 @@ export default function CodeTypingPage() {
                                                 {line.words.map((wToken) => {
                                                     const isCompleted = wToken.globalIdx < activeWordIdx;
                                                     const isActive = wToken.globalIdx === activeWordIdx;
+                                                    const wordUntypedClass = isLinePeeking
+                                                        ? (contrastLevel === 'hidden' ? 'text-sky-700/80 font-medium' : untypedClass)
+                                                        : untypedClass;
+
                                                     return (
                                                         <MemoCodeWord
                                                             key={wToken.globalIdx}
@@ -1281,7 +1337,7 @@ export default function CodeTypingPage() {
                                                             isActive={isActive}
                                                             activeInput={isActive ? inputBuffer : ''}
                                                             completedTyped={isCompleted ? typedWordsHistory[wToken.globalIdx] : undefined}
-                                                            untypedClass={untypedClass}
+                                                            untypedClass={wordUntypedClass}
                                                             peekCharIndex={isPeekingLine && isActive ? inputBuffer.length : null}
                                                             registerWordRef={registerWordRef}
                                                         />
