@@ -21,12 +21,16 @@ export const metadata: Metadata = {
     'เกมพิมพ์เร็วภาษาไทย'
   ],
   alternates: {
-    canonical: 'https://pimwai.com/farm',
+    canonical: 'https://pimwai.com',
+  },
+  robots: {
+    index: false,
+    follow: true,
   },
   openGraph: {
     title: 'โหมดพิมพ์ด่วน & ซ้อมพิมพ์เร็วภาษาไทยจับเวลา WPM | PIMWAI (พิมพ์ไว)',
     description: 'ฝึกพิมพ์ดีดภาษาไทย คลังคำง่ายพิมพ์ลื่น จับเวลา 15/30/60 วิ เช็คความเร็ว WPM และความแม่นยำฟรี!',
-    url: 'https://pimwai.com/farm',
+    url: 'https://pimwai.com',
     siteName: 'PIMWAI (พิมพ์ไว)',
     images: [
       {

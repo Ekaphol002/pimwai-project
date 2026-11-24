@@ -37,5 +37,22 @@ export default function NewsLayout({
 }: {
     children: React.ReactNode;
 }) {
-    return <>{children}</>;
+    const breadcrumbJsonLd = {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "หน้าแรก", "item": "https://pimwai.com" },
+            { "@type": "ListItem", "position": 2, "name": "ข่าวสาร & เทคนิคฝึกพิมพ์สัมผัส", "item": "https://pimwai.com/news" }
+        ]
+    };
+
+    return (
+        <>
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+            />
+            {children}
+        </>
+    );
 }

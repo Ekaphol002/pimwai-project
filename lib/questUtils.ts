@@ -220,6 +220,7 @@ export async function evaluateNewlyCompletedQuests(params: {
 }): Promise<{
   newlyCompletedQuests: CompletedQuestNotification[];
   totalQuestBonusXp: number;
+  dailyQuests: DailyQuestItem[];
 }> {
   const { tx, userId, currentActivity } = params;
   const today = getStartOfTodayBangkok();
@@ -308,7 +309,8 @@ export async function evaluateNewlyCompletedQuests(params: {
 
   return {
     newlyCompletedQuests,
-    totalQuestBonusXp
+    totalQuestBonusXp,
+    dailyQuests: afterQuests
   };
 }
 

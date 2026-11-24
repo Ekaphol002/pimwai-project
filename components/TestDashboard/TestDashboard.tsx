@@ -1,40 +1,38 @@
 // components/TestDashboard/TestDashboard.tsx
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import TestPerformanceSection from '@/components/TestPerformanceSection/TestPerformanceSection';
 import ProblemKeyChart from '@/components/ProblemKeyChart/ProblemKeyChart';
 import TestHistoryList from '@/components/TestHistoryList/TestHistoryList';
-import EmptyStats from '@/components/EmptyTest/EmptyTest';
+import { getGuestTestsList } from '@/lib/guestProgress';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default function TestDashboard({ allResults }: { allResults: any[] }) {
   const [selectedTime, setSelectedTime] = useState(1); // Default 1 นาที
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [guestResults, setGuestResults] = useState<any[]>([]);
 
-  // ✅ 1. ย้าย useMemo ขึ้นมาไว้บนสุด (ก่อน if)
-  // และเพิ่มการเช็ค (allResults || []) เพื่อป้องกัน error กรณีข้อมูลเป็น null
+  useEffect(() => {
+    if (!allResults || allResults.length === 0) {
+      setGuestResults(getGuestTestsList());
+    }
+  }, [allResults]);
+
+  const effectiveResults = useMemo(() => {
+    return allResults && allResults.length > 0 ? allResults : guestResults;
+  }, [allResults, guestResults]);
+
+  // ✅ 1. ย้าย useMemo ขึ้นมาไว้บนสุด
+  // และเพิ่มการเช็ค (effectiveResults || []) เพื่อป้องกัน error กรณีข้อมูลเป็น null
   const filteredResults = useMemo(() => {
-    if (!allResults) return [];
-    return allResults
+    if (!effectiveResults) return [];
+    return effectiveResults
         .filter(r => r.duration === selectedTime)
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [allResults, selectedTime]);
+  }, [effectiveResults, selectedTime]);
 
-  // 2. เช็คภาพรวมว่าเคยเล่นบ้างไหม
-  const hasAnyData = allResults && allResults.length > 0;
-
-  // 3. ถ้าไม่เคยเล่นเลย -> โชว์หน้า Empty
-  if (!hasAnyData) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex flex-col font-sans">
-        <div className="flex-grow flex items-center justify-center"> 
-           <EmptyStats />
-        </div>
-      </div>
-    );
-  }
-
-  // 4. รวมข้อมูลคำผิด (เฉพาะการทดสอบในรอบ 30 วัน เพื่อให้แท่งคำผิดเก่าเกิน 30 วันหายไปตามที่ต้องการ)
+  // 2. รวมข้อมูลคำผิด (เฉพาะการทดสอบในรอบ 30 วัน เพื่อให้แท่งคำผิดเก่าเกิน 30 วันหายไปตามที่ต้องการ)
   const thirtyDaysAgoMs = Date.now() - 30 * 24 * 60 * 60 * 1000;
   const aggregatedMistakes: Record<string, number> = {};
   filteredResults.forEach(r => {

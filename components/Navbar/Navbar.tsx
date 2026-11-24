@@ -200,7 +200,7 @@ export default function Navbar() {
           <div className="hidden lg:flex items-center gap-4 bg-[#182834]/20 rounded-2xl px-6 py-1.5 backdrop-blur-xs">
             <Link href="/lessons" className={`menu-link-base text-sm ${pathname === '/lessons' ? 'menu-link-active' : 'menu-link-inactive'}`}>บทเรียน</Link>
             <Link href="/tests" className={`menu-link-base text-sm ${pathname === '/tests' ? 'menu-link-active' : 'menu-link-inactive'}`}>ทดสอบ</Link>
-            <Link href="/farm" className={`menu-link-base text-sm ${pathname === '/farm' || pathname === '/' ? 'menu-link-active' : 'menu-link-inactive'}`}>พิมพ์ด่วน</Link>
+            <Link href="/" className={`menu-link-base text-sm ${pathname === '/farm' || pathname === '/' ? 'menu-link-active' : 'menu-link-inactive'}`}>พิมพ์ด่วน</Link>
             <Link href="/rankings" className={`menu-link-base text-sm ${pathname === '/rankings' ? 'menu-link-active' : 'menu-link-inactive'}`}>อันดับ</Link>
             <Link href="/progress" className={`menu-link-base text-sm ${pathname === '/progress' ? 'menu-link-active' : 'menu-link-inactive'}`}>สรุปผลรวม</Link>
             <Link
@@ -371,7 +371,7 @@ export default function Navbar() {
               ทดสอบ
             </Link>
             <Link
-              href="/farm"
+              href="/"
               onClick={() => setIsMobileMenuOpen(false)}
               className={`py-2 px-3 rounded-xl font-bold text-sm ${pathname === '/farm' || pathname === '/' ? 'bg-[#5cb5db] text-white' : 'text-white/80 hover:bg-white/10'}`}
             >

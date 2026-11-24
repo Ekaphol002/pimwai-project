@@ -9,10 +9,8 @@ export default withAuth({
 })
 
 export const config = {
-  // 🔒 ระบุ path ที่ต้องการ "ล็อก" (ห้ามคนนอกเข้า)
+  // 🔒 ล็อกเฉพาะหน้าสรุปผลส่วนตัว ส่วน /lesson และ /typing-test เปิดให้เล่นแบบ Guest ได้ทันที
   matcher: [
-    "/progress/:path*",     // ล็อกหน้าดูผลงาน
-    "/typing-test/:path*",  // ล็อกหน้าพิมพ์แข่ง (สำคัญ!)
-    "/lesson/:path*",       // ล็อกหน้าฝึกซ้อม (ใน folder practice)
+    "/progress/:path*",
   ]
 }

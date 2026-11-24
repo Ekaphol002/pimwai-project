@@ -274,7 +274,7 @@ export default async function LessonsPage({ searchParams }: PageProps) {
           />
         </div>
 
-        <div className="w-120 flex-shrink-0 hidden lg:block mr-6">
+        <div className="w-120 flex-shrink-0 hidden lg:block mr-6" data-nosnippet>
           <TodayStats
             rank={user?.rank || 1}
             exp={user?.currentExp || 0}

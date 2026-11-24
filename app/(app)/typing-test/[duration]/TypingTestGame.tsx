@@ -10,6 +10,7 @@ import PracticeNavbar from '@/components/PracticeNavbar/PracticeNavbar';
 import { SENTENCES_POOL } from '@/data/sentences';
 import { thaiShiftKeyDisplayMap, resolveThaiKeyWithCapsLock } from '@/lib/keyMaps';
 import { soundManager } from '@/lib/soundEffects';
+import { getGuestExp, recordGuestTestResult, computeGuestDailyQuests, GuestDailyQuestItem } from '@/lib/guestProgress';
 
 // ลดจำนวนตัวอักษรต่อบรรทัดลงเล็กน้อยเพื่อให้ตัดคำภาษาไทยสวยขึ้น
 const CHARS_PER_LINE = 45;
@@ -122,6 +123,8 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
   const [finalWPM, setFinalWPM] = useState(0);
   const [finalAcc, setFinalAcc] = useState(0);
   const [earnedXP, setEarnedXP] = useState(0);
+  const [totalXP, setTotalXP] = useState(0);
+  const [dailyQuests, setDailyQuests] = useState<GuestDailyQuestItem[]>([]);
   const isSubmittingRef = useRef(false);
   const [xpBreakdown, setXpBreakdown] = useState(null);
 
@@ -187,6 +190,7 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
     setFinalAcc(accuracy);
 
     try {
+      const guestTotalExp = getGuestExp();
       const res = await fetch('/api/save-test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -194,14 +198,28 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
           duration: timeLimitMinutes,
           wpm: netWPM,
           accuracy,
-          mistakes: problemKeys
+          mistakes: problemKeys,
+          guestTotalExp
         }),
       });
 
       const data = await res.json();
       if (data.success) {
         setEarnedXP(data.earnedXP);
+        setTotalXP(data.totalXP || 0);
         setXpBreakdown(data.xpBreakdown);
+        if (data.isGuest) {
+          recordGuestTestResult({
+            duration: timeLimitMinutes,
+            wpm: netWPM,
+            accuracy,
+            mistakes: problemKeys,
+            totalXP: data.totalXP || 0
+          });
+          setDailyQuests(computeGuestDailyQuests());
+        } else if (Array.isArray(data.dailyQuests)) {
+          setDailyQuests(data.dailyQuests);
+        }
         if (Array.isArray(data.completedQuests) && data.completedQuests.length > 0) {
           for (const q of data.completedQuests) {
             toast(`ภารกิจสำเร็จ: ${q.text} (+${q.xp} EXP)`, {
@@ -369,7 +387,9 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
             onNextLesson={() => router.push('/tests')}
             isTestMode={true}
             earnedXP={earnedXP}
+            totalXP={totalXP}
             xpBreakdown={xpBreakdown}
+            dailyQuests={dailyQuests}
           />
         ) : isLoading ? (
           <div className="h-screen flex flex-col items-center justify-center py-20 text-gray-400 font-bold text-2xl">

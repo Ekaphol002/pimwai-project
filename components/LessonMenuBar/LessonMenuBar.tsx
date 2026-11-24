@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect, useTransition } from 'react';
 import { Check, X, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { computeGuestDailyQuests } from '@/lib/guestProgress';
 
 // ✅ 1. นิยามหน้าตาของ Quest (ให้เหมือนกับที่ส่งมาจาก page.tsx)
 interface Quest {
@@ -27,6 +28,28 @@ export default function LessonMenuBar({ selectedLevel, quests }: LessonMenuBarPr
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [targetLevel, setTargetLevel] = useState<string | null>(null);
+  const [effectiveQuests, setEffectiveQuests] = useState<Quest[]>(quests);
+
+  useEffect(() => {
+    const syncQuests = () => {
+      const serverHasProgress = quests.some(q => q.current > 0 || q.isCompleted);
+      if (serverHasProgress) {
+        setEffectiveQuests(quests);
+        return;
+      }
+      const guestQuests = computeGuestDailyQuests();
+      const guestHasProgress = guestQuests.some(q => q.current > 0 || q.isCompleted);
+      setEffectiveQuests(guestHasProgress ? guestQuests : quests);
+    };
+
+    syncQuests();
+    window.addEventListener('storage', syncQuests);
+    window.addEventListener('focus', syncQuests);
+    return () => {
+      window.removeEventListener('storage', syncQuests);
+      window.removeEventListener('focus', syncQuests);
+    };
+  }, [quests]);
 
   const levels = [
     { id: 'beginner', name: 'ระดับเริ่มต้น' },
@@ -34,10 +57,10 @@ export default function LessonMenuBar({ selectedLevel, quests }: LessonMenuBarPr
     { id: 'advanced', name: 'ระดับสูง' },
   ];
 
-  // ✅ 3. คำนวณจาก quests ที่รับมาจริงๆ (ใช้ isCompleted ที่คำนวณมาแล้วจากหลังบ้าน)
-  const questsCompleted = quests.filter(q => q.isCompleted).length;
-  const questsTotal = quests.length;
-  const isEndgameQuests = quests.some(q => q.tier === 2);
+  // ✅ 3. คำนวณจาก effectiveQuests (รองรับทั้งผู้เล่นที่ล็อกอินและ Guest)
+  const questsCompleted = effectiveQuests.filter(q => q.isCompleted).length;
+  const questsTotal = effectiveQuests.length;
+  const isEndgameQuests = effectiveQuests.some(q => q.tier === 2);
 
   // --- คำนวณเส้นรอบวงกลม ---
   const size = 64;
@@ -68,7 +91,7 @@ export default function LessonMenuBar({ selectedLevel, quests }: LessonMenuBarPr
     if (selectedLevel) {
       try {
         localStorage.setItem('pimwai_last_active_level', selectedLevel);
-      } catch (e) {}
+      } catch (e) { }
     }
   }, [selectedLevel]);
 
@@ -82,7 +105,7 @@ export default function LessonMenuBar({ selectedLevel, quests }: LessonMenuBarPr
           router.replace(`?level=${savedLevel}`);
         }
       }
-    } catch (e) {}
+    } catch (e) { }
   }, []);
 
   const handleSelectLevel = (levelId: string) => {
@@ -90,7 +113,7 @@ export default function LessonMenuBar({ selectedLevel, quests }: LessonMenuBarPr
 
     try {
       localStorage.setItem('pimwai_last_active_level', levelId);
-    } catch (e) {}
+    } catch (e) { }
 
     setTargetLevel(levelId);
     startTransition(() => {
@@ -105,7 +128,7 @@ export default function LessonMenuBar({ selectedLevel, quests }: LessonMenuBarPr
   }, [isPending]);
 
   return (
-    <nav className="w-full bg-white h-20 z-20 relative">
+    <nav className="w-full bg-white h-20 z-20 relative" data-nosnippet>
 
       <div className="max-w-screen-2xl h-full flex items-center justify-between pl-11 pr-6 mx-auto">
 
@@ -150,7 +173,7 @@ export default function LessonMenuBar({ selectedLevel, quests }: LessonMenuBarPr
         <div className="flex items-center gap-3">
           {/* 1. รายการเควส */}
           <div className={`hidden lg:flex items-center gap-1 border-2 rounded-full p-2 px-4 ${isEndgameQuests ? 'border-amber-300 bg-amber-50/50 shadow-xs' : 'border-gray-200'}`}>
-            {quests.map((quest, index) => {
+            {effectiveQuests.map((quest, index) => {
               // ✅ 4. ใช้ isCompleted จาก Props โดยตรง
               const isCompleted = quest.isCompleted;
 
@@ -161,8 +184,8 @@ export default function LessonMenuBar({ selectedLevel, quests }: LessonMenuBarPr
                   <div className="flex flex-col items-end">
                     <div className="flex items-center gap-1.5">
                       {isCompleted ? (
-                        <div className="bg-green-100 rounded-full p-0.5">
-                          <Check className="w-3 h-3 text-green-600" />
+                        <div className="bg-emerald-600 rounded-full p-0.5">
+                          <Check className="w-3 h-3 text-white" strokeWidth={3} />
                         </div>
                       ) : (
                         <X className="w-3 h-3 text-gray-300" />
@@ -179,7 +202,7 @@ export default function LessonMenuBar({ selectedLevel, quests }: LessonMenuBarPr
                   </div>
 
                   {/* เส้นขีดคั่น */}
-                  {index < quests.length - 1 && (
+                  {index < effectiveQuests.length - 1 && (
                     <div className="w-[2px] h-10 bg-gray-200 rounded-full mx-1"></div>
                   )}
 

@@ -54,18 +54,93 @@ const EXP_CONFIG = {
 export async function POST(request: Request) {
     try {
         const session = await getServerSession(authOptions);
-        if (!session || !session.user?.email) {
-            return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
-        }
-
         const body = await request.json();
-        const { subLessonId, wpm, accuracy, stars, duration } = body;
+        const { subLessonId, wpm, accuracy, stars, duration, guestContext } = body;
 
         // 🚨 1. Validation & Anti-Cheat
         if (typeof stars !== 'number' || stars < 0 || stars > 3) return NextResponse.json({ error: "Invalid stars" }, { status: 400 });
         if (typeof accuracy !== 'number' || accuracy > 100 || accuracy < 0) return NextResponse.json({ error: "Invalid accuracy" }, { status: 400 });
         if (typeof wpm !== 'number' || wpm > 250 || (wpm > 40 && (!duration || duration < 3))) {
             return NextResponse.json({ error: "Suspicious activity detected" }, { status: 400 });
+        }
+
+        // ดึงข้อมูล Lesson แม่
+        const subLessonInfo = await prisma.subLesson.findUnique({
+            where: { id: subLessonId },
+            include: { lesson: true }
+        });
+
+        let difficultyMultiplier = 1.0;
+        if (subLessonInfo?.lesson?.level) {
+            difficultyMultiplier = EXP_CONFIG.MULTIPLIER[subLessonInfo.lesson.level as keyof typeof EXP_CONFIG.MULTIPLIER] || 1.0;
+        }
+
+        // 🌟 กรณีไม่ได้ล็อกอิน (Guest Mode): คำนวณ EXP และ Breakdown ให้เหมือนล็อกอิน 100% เพื่อเก็บไว้ซิงค์ตอนล็อกอิน
+        if (!session || !session.user?.email) {
+            const prevStars = Number(guestContext?.prevStars) || 0;
+            const prevWpm = Number(guestContext?.prevWpm) || 0;
+            const hasExisting = Boolean(guestContext?.hasExisting);
+            const prevUpdatedToday = Boolean(guestContext?.prevUpdatedToday);
+            const dailyTotalLessons = Number(guestContext?.dailyTotalLessons) || 1;
+            const lastPlayedDateKey = typeof guestContext?.lastPlayedDateKey === 'string' ? guestContext.lastPlayedDateKey : null;
+            const guestTotalExp = Math.max(0, Number(guestContext?.guestTotalExp) || 0);
+
+            let baseLessonExp = 0;
+            const isFirstClear = !hasExisting || prevStars === 0;
+            let isNewHighScore = false;
+
+            if (isFirstClear) {
+                const starBonus = stars === 3 ? EXP_CONFIG.BONUS_3_STARS : stars * EXP_CONFIG.PER_STAR;
+                let rawExp = EXP_CONFIG.BASE_CLEAR + starBonus;
+                rawExp = Math.round(rawExp * difficultyMultiplier);
+                if (accuracy === 100) rawExp += EXP_CONFIG.PERFECT_BONUS;
+                baseLessonExp = rawExp;
+                isNewHighScore = true;
+            } else if (wpm > prevWpm || stars > prevStars) {
+                baseLessonExp = EXP_CONFIG.REPLAY_SCORE;
+                isNewHighScore = true;
+            }
+
+            let wpmBonus = 0;
+            if (accuracy >= 90) {
+                if (wpm >= EXP_CONFIG.WPM_MILESTONES.FASTEST) wpmBonus = EXP_CONFIG.WPM_BONUS.FASTEST;
+                else if (wpm >= EXP_CONFIG.WPM_MILESTONES.FASTER) wpmBonus = EXP_CONFIG.WPM_BONUS.FASTER;
+                else if (wpm >= EXP_CONFIG.WPM_MILESTONES.FAST) wpmBonus = EXP_CONFIG.WPM_BONUS.FAST;
+            }
+
+            let grinderBonus = 0;
+            if (!prevUpdatedToday) {
+                if (dailyTotalLessons === EXP_CONFIG.GRINDER_MILESTONES.LEVEL_1) grinderBonus = EXP_CONFIG.GRINDER_BONUS.LEVEL_1;
+                else if (dailyTotalLessons === EXP_CONFIG.GRINDER_MILESTONES.LEVEL_2) grinderBonus = EXP_CONFIG.GRINDER_BONUS.LEVEL_2;
+                else if (dailyTotalLessons === EXP_CONFIG.GRINDER_MILESTONES.LEVEL_3) grinderBonus = EXP_CONFIG.GRINDER_BONUS.LEVEL_3;
+            }
+
+            let firstWinBonus = 0;
+            const todayDateKey = toDateKey(new Date());
+            if (!lastPlayedDateKey || lastPlayedDateKey !== todayDateKey) {
+                firstWinBonus = EXP_CONFIG.FIRST_WIN_REWARD;
+            }
+
+            const earnedXP = baseLessonExp + wpmBonus + grinderBonus + firstWinBonus;
+            const nextTotalExp = guestTotalExp + earnedXP;
+
+            return NextResponse.json({
+                success: true,
+                isGuest: true,
+                earnedXP,
+                xpBreakdown: {
+                    base: baseLessonExp,
+                    quest: 0,
+                    wpm: wpmBonus,
+                    grinder: grinderBonus,
+                    firstWin: firstWinBonus,
+                },
+                completedQuest: null,
+                completedQuests: [],
+                isNewHighScore,
+                totalXP: nextTotalExp,
+                rank: getRankFromExp(nextTotalExp, false),
+            });
         }
 
         const cleanEmail = session.user.email?.trim().toLowerCase();
@@ -80,17 +155,6 @@ export async function POST(request: Request) {
         if (!user) return NextResponse.json({ success: false, error: "User not found" }, { status: 404 });
 
         const userId = user.id;
-
-        // ดึงข้อมูล Lesson แม่
-        const subLessonInfo = await prisma.subLesson.findUnique({
-            where: { id: subLessonId },
-            include: { lesson: true }
-        });
-
-        let difficultyMultiplier = 1.0;
-        if (subLessonInfo?.lesson?.level) {
-            difficultyMultiplier = EXP_CONFIG.MULTIPLIER[subLessonInfo.lesson.level as keyof typeof EXP_CONFIG.MULTIPLIER] || 1.0;
-        }
 
         const result = await prisma.$transaction(async (tx) => {
             const today = getStartOfTodayBangkok();
@@ -160,7 +224,7 @@ export async function POST(request: Request) {
             });
             const dailyTotalLessons = dailyStats._count.subLessonId;
 
-            const { newlyCompletedQuests, totalQuestBonusXp } = await evaluateNewlyCompletedQuests({
+            const { newlyCompletedQuests, totalQuestBonusXp, dailyQuests } = await evaluateNewlyCompletedQuests({
                 tx,
                 userId,
                 currentActivity: {
@@ -243,6 +307,7 @@ export async function POST(request: Request) {
                 questBonus,
                 completedQuestInfo,
                 newlyCompletedQuests,
+                dailyQuests,
                 wpmBonus,      // 🌟 ส่งกลับ
                 grinderBonus,  // 🌟 ส่งกลับ
                 firstWinBonus, // 🌟 ส่งกลับ
@@ -266,6 +331,7 @@ export async function POST(request: Request) {
 
             completedQuest: result.completedQuestInfo,
             completedQuests: result.newlyCompletedQuests,
+            dailyQuests: result.dailyQuests,
             isNewHighScore: result.isNewHighScore,
             totalXP: result.updatedUser.currentExp,
             rank: result.updatedUser.rank

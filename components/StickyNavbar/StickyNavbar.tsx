@@ -65,7 +65,7 @@ export default function StickyNavbar() {
           >ทดสอบ</Link>
 
           <Link
-            href="/farm"
+            href="/"
             className={`menu-link-base text-xs sm:text-sm ${pathname === '/farm' || pathname === '/' ? 'menu-link-active' : 'menu-link-inactive'}`}
           >พิมพ์ด่วน</Link>
 
@@ -124,7 +124,7 @@ export default function StickyNavbar() {
             ทดสอบ
           </Link>
           <Link
-            href="/farm"
+            href="/"
             onClick={() => setIsMobileMenuOpen(false)}
             className={`py-2 px-3 rounded-xl font-bold text-sm ${pathname === '/farm' || pathname === '/' ? 'bg-[#5cb5db] text-white' : 'text-white/80 hover:bg-white/10'}`}
           >

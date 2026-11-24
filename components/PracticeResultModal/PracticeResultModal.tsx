@@ -2,7 +2,10 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Star, ChevronDown, Clock } from 'lucide-react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useSession } from 'next-auth/react';
+import { Star, ChevronDown, Clock, Sparkles } from 'lucide-react';
 import StarParticleEffect from '../StarParticleEffect/StarParticleEffect';
 import Keyboard from '@/components/Keyboard/Keyboard';
 import RankProgressBox from './RankProgressBox';
@@ -71,6 +74,8 @@ export default function PracticeResultModal({
   totalXP = 0
 }: Props) {
 
+  const { data: session } = useSession();
+  const pathname = usePathname();
   const [isExpanded, setIsExpanded] = useState(false);
   const { count: displayWpm, isDone: isWpmDone } = useCountUp(wpm, 1200);
   const { count: displayAcc, isDone: isAccDone } = useCountUp(acc, 1200);
@@ -80,16 +85,15 @@ export default function PracticeResultModal({
 
   // Effect สำหรับควบคุมจังหวะการเริ่มอนิเมชัน EXP (รอให้ดาวเด้งครบก่อน)
   useEffect(() => {
-    if (isTestMode) return;
     if (!isWpmDone || !isAccDone) return;
 
     let delay = 0;
-    if (stars > 0) {
+    if (!isTestMode && stars > 0) {
       // สูตรคำนวณเวลา: ดาวดวงสุดท้ายเด้งตอน (stars - 1) * 600
       // บวกเพิ่มอีกหน่อยเพื่อให้ดาวเด้งเสร็จนิ่งๆ แล้วค่อยเลื่อนหลอด
       delay = ((stars - 1) * 600) + 800;
     } else {
-      delay = 300; // ถ้าไม่ได้ดาวเลย ให้รอนิดนึงแล้วเลื่อนเลย
+      delay = 300; // ถ้าไม่ได้ดาวเลยหรืออยู่ในโหมดทดสอบ ให้รอนิดนึงแล้วเลื่อนเลย
     }
 
     const timer = setTimeout(() => {
@@ -323,13 +327,33 @@ export default function PracticeResultModal({
         </div>
 
         {/* Rank & EXP Progress Box (อยู่ด้านล่าง เพิ่มเติม และถูกดันลงเมื่อกด expand) */}
-        {totalXP > 0 && !isTestMode && (
-          <div className="mb-6">
+        {totalXP > 0 && (
+          <div className="mb-5">
             <RankProgressBox
               totalExp={totalXP}
               earnedExp={earnedXP}
               shouldAnimate={startExpAnimation}
             />
+          </div>
+        )}
+
+        {/* Guest Save EXP Prompt: ชวนล็อกอินเมื่อเล่นแบบไม่ได้ล็อกอินแล้วได้ EXP */}
+        {!session?.user && totalXP > 0 && (
+          <div className="mb-6 px-5 py-3.5 rounded-2xl bg-white border border-gray-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex flex-col">
+              <span className="text-sm font-bold text-gray-800">
+                บันทึก {totalXP.toLocaleString()} EXP ไว้ในบัญชีของคุณ
+              </span>
+              <span className="text-xs text-gray-500">
+                เข้าสู่ระบบเพื่อเก็บ EXP ดาว และความคืบหน้าไว้ถาวร
+              </span>
+            </div>
+            <Link
+              href={`/login?callbackUrl=${encodeURIComponent(isTestMode ? '/tests' : (pathname || '/lessons'))}`}
+              className="text-blue-500 underline"
+            >
+              เข้าสู่ระบบ
+            </Link>
           </div>
         )}
 

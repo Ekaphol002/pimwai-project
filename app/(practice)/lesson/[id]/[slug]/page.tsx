@@ -43,7 +43,7 @@ export async function generateMetadata(
   { params }: PageProps,
   parent: ResolvingMetadata
 ): Promise<Metadata> {
-  const { slug } = await params;
+  const { id, slug } = await params;
   const subLesson = await getSubLesson(slug); // ✅ ใช้ Cached Function
 
   const parentIcons = (await parent).icons || {};
@@ -55,15 +55,18 @@ export async function generateMetadata(
     };
   }
 
-  const pageTitle = `${subLesson.lesson.title}: ${subLesson.title} | ฝึกพิมพ์ PIMWAI`;
+  const pageTitle = `${subLesson.lesson.title}: ${subLesson.title} - แบบฝึกหัดพิมพ์สัมผัส`;
 
   return {
     title: pageTitle,
-    description: `ฝึกพิมพ์ดีดบทเรียน ${subLesson.title} ...`,
+    description: `ฝึกพิมพ์ดีดบทเรียน ${subLesson.lesson.title} (${subLesson.title}) หัดวางนิ้วพิมพ์สัมผัส 10 นิ้ว วัดความเร็ว WPM และความแม่นยำฟรีบน PIMWAI`,
+    alternates: {
+      canonical: `https://pimwai.com/lesson/${id}/${slug}`,
+    },
     icons: {
       icon: '/icon.png',
-      shortcut: '/icon.png',
-      apple: '/icon.png',
+      shortcut: '/favicon-48x48.png',
+      apple: '/apple-touch-icon.png',
     },
   };
 }

@@ -76,7 +76,7 @@ export default function EmptyStats() {
               </p>
 
               {/* ปุ่มกดเริ่ม */}
-              <Link href={`/typing-test/${opt.time}-minute`} rel="nofollow" className="w-full mt-auto">
+              <Link href={`/typing-test/${opt.time}-minute`} className="w-full mt-auto">
                 <button className="w-full bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-bold py-2 px-4 rounded-xl text-base flex items-center justify-center gap-2 transition-colors shadow-sm hover:shadow-md active:scale-95 cursor-pointer">
                   เริ่มทดสอบ <Play size={18} fill="currentColor" />
                 </button>

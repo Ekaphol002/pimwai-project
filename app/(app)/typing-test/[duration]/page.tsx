@@ -17,13 +17,18 @@ export async function generateMetadata(
   const minutes = duration.split('-')[0] || '1';
 
   return {
-    title: `ทดสอบพิมพ์เร็ว ${minutes} นาที วัดระดับ WPM | PIMWAI Typing Test`,
-    description: `ทดสอบความเร็วการพิมพ์ของคุณในเวลา ${minutes} นาที เช็คความแม่นยำ (Accuracy) และ Words Per Minute (WPM) พร้อมระบบวิเคราะห์จุดอ่อน ฟรี!`,
-    openGraph: {
-      title: `ท้าประลองความเร็วพิมพ์ ${minutes} นาที! คุณจะพิมพ์ได้กี่คำ?`,
-      description: 'มาทดสอบความเร็วนิ้วของคุณที่ PIMWAI เว็บฝึกพิมพ์ดีดภาษาไทยที่ทันสมัยที่สุด',
+    title: `ทดสอบพิมพ์เร็ว ${minutes} นาที วัดระดับ WPM & ซ้อมสอบพิมพ์ดีด`,
+    description: `ทดสอบความเร็วพิมพ์ดีดจับเวลา ${minutes} นาที เช็คค่าคำต่อนาที (WPM) ความแม่นยำ (Accuracy) และวิเคราะห์ตัวอักษรที่พิมพ์ผิดบ่อย ฟรีบน PIMWAI`,
+    alternates: {
+      canonical: `https://pimwai.com/typing-test/${duration}`,
     },
-    keywords: [`ทดสอบพิมพ์ ${minutes} นาที`, 'Typing Speed Test', 'แข่งพิมพ์เร็ว', 'วัด WPM', 'PIMWAI'],
+    openGraph: {
+      title: `ท้าประลองความเร็วพิมพ์ ${minutes} นาที! คุณจะพิมพ์ได้กี่คำต่อนาที (WPM)?`,
+      description: 'มาทดสอบความเร็วนิ้วของคุณที่ PIMWAI เว็บฝึกพิมพ์ดีดภาษาไทยที่ทันสมัยที่สุด',
+      url: `https://pimwai.com/typing-test/${duration}`,
+      images: ['/Bannerlink.png'],
+    },
+    keywords: [`ทดสอบพิมพ์ดีด ${minutes} นาที`, `สอบพิมพ์ดีด ${minutes} นาที`, 'Typing Speed Test', 'แข่งพิมพ์เร็ว', 'วัด WPM ภาษาไทย', 'PIMWAI'],
   };
 }
 

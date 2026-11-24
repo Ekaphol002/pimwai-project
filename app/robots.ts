@@ -8,9 +8,12 @@ export default function robots(): MetadataRoute.Robots {
                 allow: [
                     '/',
                     '/lessons',
+                    '/lesson/',
                     '/tests',
+                    '/typing-test/',
                     '/rankings',
                     '/news',
+                    '/news/',
                 ],
                 disallow: [
                     '/api/',
@@ -22,12 +25,8 @@ export default function robots(): MetadataRoute.Robots {
                     '/progress/',
                     '/settings',
                     '/reset-account',
-                    '/lesson/',
-                    '/typing-test/',
                     '/*?*callbackUrl*',
                     '/*?*level=*',
-                    '/_next/static/media/*.woff2',
-                    '/_next/static/media/*.woff',
                 ],
             }
         ],

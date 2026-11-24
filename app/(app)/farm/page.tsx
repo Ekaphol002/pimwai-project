@@ -595,22 +595,14 @@ export default function FarmPage() {
                 if (data.success && data.user) {
                     let exp = data.user.currentExp || 0;
 
-                    // 🌟 ถ้าเคยเล่นในฐานะ Guest มาก่อนแล้วเพิ่งล็อกอินเข้ามา
-                    // ป้องกันบั๊ก: ซิงค์เฉพาะบัญชีใหม่ที่แต้มยังเป็น 0 (exp === 0) เท่านั้น ป้องกันแต้มค้างจากบัญชีอื่นมาทับ!
+                    // 🌟 ถ้ามีแต้ม Guest ที่กำลังรอซิงค์เข้าบัญชีผ่าน GuestProgressSync ให้รวมแสดงผลทันทีโดยไม่ลบทิ้งก่อนซิงค์เสร็จ
                     try {
                         const savedGuestExp = localStorage.getItem('pimwai_guest_exp');
                         if (savedGuestExp) {
                             const parsedGuestExp = parseInt(savedGuestExp, 10);
-                            if (!isNaN(parsedGuestExp) && exp === 0 && parsedGuestExp > 0) {
-                                exp = parsedGuestExp;
-                                // ซิงค์แต้มจาก Guest เข้าระบบบัญชีผู้ใช้ใหม่
-                                fetch('/api/farm/save', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ expEarned: parsedGuestExp })
-                                });
+                            if (!isNaN(parsedGuestExp) && parsedGuestExp > 0) {
+                                exp = exp === 0 ? parsedGuestExp : exp + parsedGuestExp;
                             }
-                            localStorage.removeItem('pimwai_guest_exp');
                         }
                     } catch (e) { }
 

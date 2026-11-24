@@ -1,7 +1,9 @@
 "use client";
 
+import React, { useState, useEffect, useMemo } from 'react';
 import { Play, RotateCcw, Star, Check } from 'lucide-react';
 import Link from 'next/link';
+import { getGuestLessonsMap, GuestLessonRecord } from '@/lib/guestProgress';
 
 export interface SubLesson {
   id: string;
@@ -10,6 +12,7 @@ export interface SubLesson {
   stars?: number;
   wpm?: number;
   acc?: number;
+  duration?: number;
 }
 
 export interface LessonUnit {
@@ -55,7 +58,7 @@ function LessonButton({
 
   if (status === 'completed') {
     return (
-      <Link href={targetUrl} rel="nofollow">
+      <Link href={targetUrl}>
         <button className={`${baseStyle} bg-white text-green-700 hover:bg-gray-100`}>
           <RotateCcw className="w-3.5 h-3.5" />
           Restart
@@ -65,7 +68,7 @@ function LessonButton({
   }
   if (status === 'resume') {
     return (
-      <Link href={targetUrl} rel="nofollow">
+      <Link href={targetUrl}>
         <button className={`${baseStyle} bg-yellow-400 text-yellow-900 hover:bg-yellow-500`}>
           <Play className="w-3.5 h-3.5 mr-0.5" fill="currentColor" />
           Resume
@@ -75,7 +78,7 @@ function LessonButton({
   }
   if (status === 'start') {
     return (
-      <Link href={targetUrl} rel="nofollow">
+      <Link href={targetUrl}>
         <button className={`${baseStyle} bg-blue-200 text-white hover:bg-blue-200`}>
           <Play className="w-3.5 h-3.5 mr-0.5" fill="currentColor" />
           Start
@@ -172,6 +175,69 @@ function InteractiveBar({
 }
 
 export default function LessonList({ title, lessons }: LessonListProps) {
+  const [guestMap, setGuestMap] = useState<Record<string, GuestLessonRecord>>({});
+
+  useEffect(() => {
+    const loadGuest = () => setGuestMap(getGuestLessonsMap());
+    loadGuest();
+    window.addEventListener('storage', loadGuest);
+    window.addEventListener('focus', loadGuest);
+    return () => {
+      window.removeEventListener('storage', loadGuest);
+      window.removeEventListener('focus', loadGuest);
+    };
+  }, []);
+
+  const mergedLessons = useMemo(() => {
+    if (!guestMap || Object.keys(guestMap).length === 0) return lessons;
+    return lessons.map((unit) => {
+      const subLessons = (unit.subLessons || []).map((sub) => {
+        if (sub.status === 'completed') return sub;
+        const guestSub = guestMap[sub.id];
+        if (!guestSub) return sub;
+        return {
+          ...sub,
+          status: 'completed',
+          stars: guestSub.stars,
+          wpm: guestSub.wpm,
+          acc: guestSub.accuracy,
+          duration: guestSub.duration,
+        };
+      });
+
+      const isAllCompleted = subLessons.length > 0 && subLessons.every((s) => s.status === 'completed');
+      const isSomeCompleted = subLessons.some((s) => s.status === 'completed');
+      let unitStatus = unit.status;
+      if (isAllCompleted) unitStatus = 'completed';
+      else if (isSomeCompleted) unitStatus = 'resume';
+
+      const played = subLessons.filter((s) => s.status === 'completed');
+      const avgSpeed = played.length > 0
+        ? String(Math.round(played.reduce((sum, s) => sum + (s.wpm || 0), 0) / played.length))
+        : unit.avgSpeed;
+      const avgAcc = played.length > 0
+        ? `${Math.round(played.reduce((sum, s) => sum + (s.acc || 0), 0) / played.length)}%`
+        : unit.avgAcc;
+
+      const totalSeconds = played.reduce((sum, s) => sum + (s.duration || 0), 0);
+      let timeString = unit.time;
+      if (totalSeconds > 0) {
+        const m = Math.floor(totalSeconds / 60);
+        const s = totalSeconds % 60;
+        timeString = m > 0 ? `${m}m ${s}s` : `${s}s`;
+      }
+
+      return {
+        ...unit,
+        status: unitStatus,
+        avgSpeed,
+        avgAcc,
+        time: timeString,
+        subLessons,
+      };
+    });
+  }, [lessons, guestMap]);
+
   const cleanTitle = (t: string) => {
     const parts = t.split(':');
     return parts.length > 1 ? parts[1].trim() : t;
@@ -191,7 +257,7 @@ export default function LessonList({ title, lessons }: LessonListProps) {
       </div>
 
       {/* 🏆 Victory Celebration Banner */}
-      {lessons.length > 0 && lessons.every(l => l.status === 'completed') && (() => {
+      {mergedLessons.length > 0 && mergedLessons.every(l => l.status === 'completed') && (() => {
         const isBeginner = title.includes('เริ่มต้น') || title.includes('Beginner');
         const isIntermediate = title.includes('ระดับกลาง') || title.includes('ปานกลาง') || title.includes('Intermediate');
         const nextHref = isBeginner ? '/lessons?level=intermediate' : isIntermediate ? '/lessons?level=advanced' : '/';
@@ -245,7 +311,7 @@ export default function LessonList({ title, lessons }: LessonListProps) {
       })()}
 
       <div className="flex flex-col gap-4">
-        {lessons.map((unit, index) => (
+        {mergedLessons.map((unit, index) => (
           <div
             key={unit.id}
             className={`

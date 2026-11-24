@@ -16,6 +16,7 @@ import {
     RefreshCw,
     Plus,
     Trash2,
+    Cloud,
     SunMedium
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
@@ -24,7 +25,6 @@ import { toDateKey } from '@/lib/streakUtils';
 import { getEnglishCharFromEvent } from '@/lib/englishWords';
 import { resolveThaiKeyWithCapsLock } from '@/lib/keyMaps';
 import QuickAudioModal from '@/components/QuickAudioModal/QuickAudioModal';
-import starterCodeFiles from '@/data/code-starters.json';
 
 interface CodeSnippet {
     id: string;
@@ -32,7 +32,6 @@ interface CodeSnippet {
     language: string;
     code: string;
     isCustom?: boolean;
-    localOnly?: boolean;
 }
 
 interface CodeWordToken {
@@ -60,16 +59,251 @@ const CONTRAST_CONFIG: Record<ContrastLevel, { label: string; textClass: string;
     solid: { label: 'เข้มชัดเจน', textClass: 'text-gray-700', desc: '90%' },
 };
 
-const PRESET_SNIPPETS: CodeSnippet[] = starterCodeFiles as CodeSnippet[];
+const PRESET_SNIPPETS: CodeSnippet[] = [
+    {
+        id: 'php-config',
+        title: '1. config.php',
+        language: 'PHP',
+        code: `<?php
+try {
+    $conn = new PDO("mysql:host=localhost;dbname=competition_db;charset=utf8", "root", "");
+} catch (PDOException $e) {
+    die("Connection failed: " . $e->getMessage());
+}
+?>`
+    },
+    {
+        id: 'php-dashboard',
+        title: '2. dashboard.php',
+        language: 'PHP',
+        code: `<?php
+require_once 'auth.php';
+require_once 'config.php';
+
+$stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
+$stmt->execute([$_SESSION['user_id']]);
+$user = $stmt->fetch();
+?>
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>แดชบอร์ด</title>
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+</head>
+<body class="bg-light">
+<nav class="navbar navbar-dark bg-primary shadow-sm">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="dashboard.php">ระบบสมาชิก</a>
+        <div class="d-flex align-items-center gap-2 text-white">
+            <span><?= $user['firstname'] . ' ' . $user['lastname'] ?></span>
+            <a href="logout.php" class="btn btn-sm btn-light">ออกจากระบบ</a>
+        </div>
+    </div>
+</nav>
+<div class="container col-md-8 mt-4">
+    <div class="card shadow-sm p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4>สวัสดีคุณ <?= $user['firstname'] . ' ' . $user['lastname'] ?></h4>
+            <span class="badge <?= $user['role'] === 'admin' ? 'bg-danger' : 'bg-secondary' ?>">สถานะ: <?= $user['role'] ?></span>
+        </div>
+        <hr>
+        <p><b>รหัสสมาชิก (ID):</b> #<?= $user['id'] ?></p>
+        <p><b>อีเมล:</b> <?= $user['email'] ?></p>
+        <p><b>วันที่สมัครสมาชิก:</b> <?= $user['created_at'] ?></p>
+        <div class="d-flex gap-2 mt-3">
+            <?php if ($user['role'] === 'admin'): ?>
+                <a href="admin_dashboard.php" class="btn btn-dark">จัดการระบบ (Admin)</a>
+            <?php endif; ?>
+            <a href="profile.php" class="btn btn-primary">แก้ไขข้อมูลส่วนตัว</a>
+            <a href="logout.php" class="btn btn-outline-danger ms-auto">ออกจากระบบ</a>
+        </div>
+    </div>
+</div>
+</body>
+</html>`
+    },
+    {
+        id: 'php-admin-dashboard',
+        title: '3. admin_dashboard.php',
+        language: 'PHP',
+        code: `<?php
+require_once 'auth.php';
+require_once 'config.php';
+
+if ($_SESSION['role'] !== 'admin') {
+    header("Location: dashboard.php");
+    exit();
+}
+
+if (isset($_GET['delete']) && $_GET['delete'] != $_SESSION['user_id']) {
+    $conn->prepare("DELETE FROM users WHERE id = ?")->execute([$_GET['delete']]);
+    header("Location: admin_dashboard.php");
+    exit();
+}
+
+if (isset($_GET['toggle_role']) && $_GET['toggle_role'] != $_SESSION['user_id']) {
+    $conn->prepare("UPDATE users SET role = IF(role='admin','user','admin') WHERE id = ?")->execute([$_GET['toggle_role']]);
+    header("Location: admin_dashboard.php");
+    exit();
+}
+
+$all_users = $conn->query("SELECT * FROM users ORDER BY id ASC")->fetchAll();
+?>
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>จัดการระบบ (Admin)</title>
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+</head>
+<body class="bg-light">
+<nav class="navbar navbar-dark bg-dark shadow-sm">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="admin_dashboard.php">ระบบจัดการผู้ใช้งาน (Admin)</a>
+        <div class="d-flex gap-2">
+            <a href="dashboard.php" class="btn btn-sm btn-outline-light">หน้าแดชบอร์ด</a>
+            <a href="logout.php" class="btn btn-sm btn-danger">ออกจากระบบ</a>
+        </div>
+    </div>
+</nav>
+<div class="container mt-4">
+    <div class="card shadow-sm p-4">
+        <h5 class="fw-bold mb-3">รายชื่อสมาชิกทั้งหมด (<?= count($all_users) ?> คน)</h5>
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr><th>ID</th><th>ชื่อ - นามสกุล</th><th>อีเมล</th><th>สิทธิ์</th><th>วันที่สมัคร</th><th class="text-center">จัดการ</th></tr>
+            </thead>
+            <tbody>
+                <?php foreach ($all_users as $u): ?>
+                <tr>
+                    <td>#<?= $u['id'] ?></td>
+                    <td><?= $u['firstname'] . ' ' . $u['lastname'] ?></td>
+                    <td><?= $u['email'] ?></td>
+                    <td><span class="badge <?= $u['role'] === 'admin' ? 'bg-danger' : 'bg-secondary' ?>"><?= $u['role'] ?></span></td>
+                    <td><?= $u['created_at'] ?></td>
+                    <td class="text-center">
+                        <?php if ($u['id'] != $_SESSION['user_id']): ?>
+                            <a href="?toggle_role=<?= $u['id'] ?>" class="btn btn-sm btn-outline-dark" onclick="return confirm('เปลี่ยนสิทธิ์ผู้ใช้นี้?')">สลับสิทธิ์</a>
+                            <a href="?delete=<?= $u['id'] ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('ยืนยันการลบสมาชิก?')">ลบ</a>
+                        <?php else: ?>
+                            <span class="text-muted small">บัญชีของคุณ</span>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>`
+    },
+    {
+        id: 'php-profile',
+        title: '4. profile.php',
+        language: 'PHP',
+        code: `<?php
+require_once 'auth.php';
+require_once 'config.php';
+
+$uid = $_SESSION['user_id'];
+$error = $success = '';
+
+$stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
+$stmt->execute([$uid]);
+$user = $stmt->fetch();
+
+if ($_POST) {
+    $action = $_POST['action'] ?? '';
+
+    if ($action === 'update_profile') {
+        $fn = trim($_POST['firstname']);
+        $ln = trim($_POST['lastname']);
+        if (!$fn || !$ln) {
+            $error = "กรุณากรอกชื่อและนามสกุลให้ครบ";
+        } else {
+            $conn->prepare("UPDATE users SET firstname = ?, lastname = ? WHERE id = ?")->execute([$fn, $ln, $uid]);
+            $_SESSION['firstname'] = $user['firstname'] = $fn;
+            $_SESSION['lastname']  = $user['lastname']  = $ln;
+            $success = "บันทึกข้อมูลส่วนตัวเรียบร้อยแล้ว";
+        }
+    } elseif ($action === 'change_password') {
+        $old = $_POST['old_password'];
+        $new = $_POST['new_password'];
+        $con = $_POST['confirm_password'];
+
+        if (!password_verify($old, $user['password'])) $error = "รหัสผ่านเดิมไม่ถูกต้อง";
+        elseif (strlen($new) < 6)                      $error = "รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร";
+        elseif ($new !== $con)                         $error = "รหัสผ่านใหม่และการยืนยันไม่ตรงกัน";
+        else {
+            $hash = password_hash($new, PASSWORD_BCRYPT);
+            $conn->prepare("UPDATE users SET password = ? WHERE id = ?")->execute([$hash, $uid]);
+            $user['password'] = $hash;
+            $success = "เปลี่ยนรหัสผ่านสำเร็จเรียบร้อยแล้ว";
+        }
+    }
+}
+?>
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>แก้ไขข้อมูลส่วนตัว</title>
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+</head>
+<body class="bg-light">
+<nav class="navbar navbar-dark bg-primary shadow-sm">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="dashboard.php">ระบบสมาชิก</a>
+        <div class="d-flex gap-2">
+            <a href="dashboard.php" class="btn btn-sm btn-outline-light">กลับหน้าแดชบอร์ด</a>
+            <a href="logout.php" class="btn btn-sm btn-light">ออกจากระบบ</a>
+        </div>
+    </div>
+</nav>
+<div class="container col-md-7 mt-4 pb-5">
+    <?php if ($success): ?><div class="alert alert-success"><?= $success ?></div><?php endif; ?>
+    <?php if ($error): ?><div class="alert alert-danger"><?= $error ?></div><?php endif; ?>
+
+    <div class="card shadow-sm p-4 mb-4">
+        <h5 class="fw-bold mb-3">แก้ไขข้อมูลส่วนตัว</h5>
+        <form method="POST">
+            <input type="hidden" name="action" value="update_profile">
+            <div class="row mb-3">
+                <div class="col"><label>ชื่อจริง</label><input name="firstname" class="form-control" value="<?= $user['firstname'] ?>" required></div>
+                <div class="col"><label>นามสกุล</label><input name="lastname" class="form-control" value="<?= $user['lastname'] ?>" required></div>
+            </div>
+            <div class="mb-3"><label>อีเมล (ไม่สามารถแก้ไขได้)</label><input class="form-control bg-light" value="<?= $user['email'] ?>" disabled></div>
+            <button class="btn btn-primary">บันทึกข้อมูล</button>
+        </form>
+    </div>
+
+    <div class="card shadow-sm p-4">
+        <h5 class="fw-bold mb-3">เปลี่ยนรหัสผ่าน</h5>
+        <form method="POST">
+            <input type="hidden" name="action" value="change_password">
+            <div class="mb-3"><label>รหัสผ่านเดิม</label><input type="password" name="old_password" id="p1" class="form-control" required></div>
+            <div class="row mb-3">
+                <div class="col"><label>รหัสผ่านใหม่</label><input type="password" name="new_password" id="p2" class="form-control" minlength="6" required></div>
+                <div class="col"><label>ยืนยันรหัสผ่านใหม่</label><input type="password" name="confirm_password" id="p3" class="form-control" minlength="6" required></div>
+            </div>
+            <div class="mb-3">
+                <input type="checkbox" id="show" onclick="p1.type = p2.type = p3.type = this.checked ? 'text' : 'password'">
+                <label for="show">แสดงรหัสผ่าน</label>
+            </div>
+            <button class="btn btn-warning fw-bold">เปลี่ยนรหัสผ่าน</button>
+        </form>
+    </div>
+</div>
+</body>
+</html>`
+    }
+];
 
 const getCodeStorageKey = (email?: string | null) =>
     email ? `pimwai_custom_code_${email}` : 'pimwai_custom_code_guest';
-const getLocalStarterOverridesKey = (email?: string | null) =>
-    email ? `pimwai_code_starter_overrides_${email}` : 'pimwai_code_starter_overrides_guest';
 const LOCAL_STORAGE_CONTRAST_KEY = 'pimwai_code_contrast';
-
-// Normalize Thai sara-am plus tone mark in the same input order used by Farm.
-const toTypingOrder = (text: string) => text.replace(/(\u0E33)([\u0E48-\u0E4B])/g, '$2$1');
 
 // สร้าง Storage Key สำหรับจำเวลาพิมพ์โค้ดของวันนี้ (ตัดรอบเที่ยงคืนเวลาไทย)
 const getTodayTimeStorageKey = (email?: string | null) => {
@@ -128,11 +362,10 @@ function parseCodeIntoLines(codeText: string): { lines: CodeLine[]; allTokens: C
 
         const rawWords = trimmed.split(/ +/).filter(w => w.length > 0);
         const wordsOnLine: CodeWordToken[] = rawWords.map((w, wIdx) => {
-            const typingWord = toTypingOrder(w);
             const token: CodeWordToken = {
                 globalIdx: globalCounter++,
-                word: typingWord,
-                chars: typingWord.split(''),
+                word: w,
+                chars: w.split(''),
                 lineNum,
                 isLastInLine: wIdx === rawWords.length - 1
             };
@@ -227,7 +460,7 @@ const MemoCodeWord = memo(function MemoCodeWord({
                     }
 
                     if (isActive && peekCharIndex === cIdx && cIdx >= currentTyped.length) {
-                        colorClass = 'text-amber-900 bg-amber-200 ring-2 ring-amber-400 font-bold rounded-sm px-0.5 shadow-xs';
+                        colorClass = 'text-sky-700 bg-sky-100 font-bold rounded-xs';
                         displayChar = char;
                     }
 
@@ -273,6 +506,8 @@ export default function CodeTypingPage() {
     const [selectedSnippetId, setSelectedSnippetId] = useState<string>(PRESET_SNIPPETS[0].id);
     const [isCustomModalOpen, setIsCustomModalOpen] = useState(false);
     const [editingSnippetId, setEditingSnippetId] = useState<string | null>(null);
+    const [isSavingToServer, setIsSavingToServer] = useState(false);
+    const [isSyncingProgress, setIsSyncingProgress] = useState(false);
 
     // Contrast Level for Target Follow Text (ความเข้มตัวพิมพ์ตาม)
     const [contrastLevel, setContrastLevel] = useState<ContrastLevel>('medium');
@@ -344,9 +579,6 @@ export default function CodeTypingPage() {
     const [errorCount, setErrorCount] = useState(0);
     const [isSoundOn, setIsSoundOn] = useState(true);
     const [isAudioModalOpen, setIsAudioModalOpen] = useState(false);
-    const [isCodeScrollActive, setIsCodeScrollActive] = useState(false);
-    const [codeScrollThumb, setCodeScrollThumb] = useState({ top: 0, height: 100, visible: false });
-    const codeScrollHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
         const unsub = soundManager.subscribe((state) => {
@@ -359,17 +591,23 @@ export default function CodeTypingPage() {
     const lastTypingTimeRef = useRef<number>(0);
     const lastTimerTickTimeRef = useRef<number>(0);
     const activeTypingAccumulatedMsRef = useRef<number>(0);
+    const unsyncedSecondsRef = useRef<number>(0);
+    const isDirtyProgressRef = useRef<boolean>(false);
+    const isSyncingRef = useRef<boolean>(false);
+    const hasRestoredInitialProgressRef = useRef<boolean>(false);
 
     // Live Refs เพื่อให้อ่านค่าล่าสุดใน Interval / Unload โดยไม่ต้องสร้าง Closure ใหม่ทุกครั้งที่กดคีย์บอร์ด
     const selectedSnippetIdRef = useRef<string>(selectedSnippetId);
     const activeWordIdxRef = useRef<number>(activeWordIdx);
     const inputBufferRef = useRef<string>(inputBuffer);
     const typedWordsHistoryRef = useRef<{ [tokenIdx: number]: string }>(typedWordsHistory);
+    const todayCodeTimeSecondsRef = useRef<number>(todayCodeTimeSeconds);
 
     useEffect(() => { selectedSnippetIdRef.current = selectedSnippetId; }, [selectedSnippetId]);
     useEffect(() => { activeWordIdxRef.current = activeWordIdx; }, [activeWordIdx]);
     useEffect(() => { inputBufferRef.current = inputBuffer; }, [inputBuffer]);
     useEffect(() => { typedWordsHistoryRef.current = typedWordsHistory; }, [typedWordsHistory]);
+    useEffect(() => { todayCodeTimeSecondsRef.current = todayCodeTimeSeconds; }, [todayCodeTimeSeconds]);
 
     // Smooth Floating Caret Ref (อัปเดตผ่าน DOM ตรงๆ ระดับ GPU 60fps ไม่ต้องเรียก setState ทุกครั้งที่พิมพ์!)
     const caretElRef = useRef<HTMLDivElement>(null);
@@ -380,29 +618,6 @@ export default function CodeTypingPage() {
 
     const registerWordRef = useCallback((idx: number, el: HTMLSpanElement | null) => {
         wordElementsRef.current[idx] = el;
-    }, []);
-
-    const updateCodeScrollThumb = useCallback((element: HTMLDivElement) => {
-        const maxScroll = element.scrollHeight - element.clientHeight;
-        if (maxScroll <= 1) {
-            setCodeScrollThumb({ top: 0, height: 100, visible: false });
-            return;
-        }
-
-        const height = Math.max(8, (element.clientHeight / element.scrollHeight) * 100);
-        const top = (element.scrollTop / maxScroll) * (100 - height);
-        setCodeScrollThumb({ top, height, visible: true });
-    }, []);
-
-    const handleCodeScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
-        updateCodeScrollThumb(event.currentTarget);
-        setIsCodeScrollActive(true);
-        if (codeScrollHideTimerRef.current) clearTimeout(codeScrollHideTimerRef.current);
-        codeScrollHideTimerRef.current = setTimeout(() => setIsCodeScrollActive(false), 800);
-    }, [updateCodeScrollThumb]);
-
-    useEffect(() => () => {
-        if (codeScrollHideTimerRef.current) clearTimeout(codeScrollHideTimerRef.current);
     }, []);
 
     // Load saved contrast level
@@ -447,74 +662,241 @@ export default function CodeTypingPage() {
         }
     }, [session?.user?.email]);
 
+    const syncProgressToServer = useCallback(async (forceSync = false) => {
+        if (!session?.user?.email) return;
+        if (isSyncingRef.current && !forceSync) return;
+        if (!isDirtyProgressRef.current && unsyncedSecondsRef.current <= 0 && !forceSync) return;
+
+        isSyncingRef.current = true;
+        setIsSyncingProgress(true);
+
+        const addedSec = unsyncedSecondsRef.current;
+        unsyncedSecondsRef.current = 0;
+        isDirtyProgressRef.current = false;
+
+        try {
+            const res = await fetch('/api/code/progress', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    selectedSnippetId: selectedSnippetIdRef.current,
+                    activeWordIdx: activeWordIdxRef.current,
+                    inputBuffer: inputBufferRef.current,
+                    typedWordsHistory: typedWordsHistoryRef.current,
+                    todayTimeSeconds: todayCodeTimeSecondsRef.current,
+                    addedSeconds: addedSec
+                })
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                if (data.success && typeof data.todayTimeSeconds === 'number') {
+                    const mergedTime = Math.max(todayCodeTimeSecondsRef.current, data.todayTimeSeconds);
+                    setTodayCodeTimeSeconds(mergedTime);
+                    todayCodeTimeSecondsRef.current = mergedTime;
+                    try {
+                        const timeKey = getTodayTimeStorageKey(session?.user?.email);
+                        localStorage.setItem(timeKey, String(mergedTime));
+                    } catch {
+                        // ignore
+                    }
+                }
+            } else {
+                unsyncedSecondsRef.current += addedSec;
+                isDirtyProgressRef.current = true;
+            }
+        } catch {
+            unsyncedSecondsRef.current += addedSec;
+            isDirtyProgressRef.current = true;
+        } finally {
+            isSyncingRef.current = false;
+            setIsSyncingProgress(false);
+        }
+    }, [session?.user?.email]);
 
     // โหลด Snippets + เวลาวันนี้ + ตำแหน่งโค้ดล่าสุดที่พิมพ์ค้างไว้ในรหัสบัญชี
     useEffect(() => {
-        const email = session?.user?.email;
-        const timeKey = getTodayTimeStorageKey(email);
-        const storageKey = getCodeStorageKey(email);
+        let isMounted = true;
 
-        try {
-            const savedTime = Number(localStorage.getItem(timeKey)) || 0;
-            setTodayCodeTimeSeconds(savedTime);
-
-            let localCustom: CodeSnippet[] = [];
-            let savedSnippets = localStorage.getItem(storageKey);
-            if (!savedSnippets && !email) savedSnippets = localStorage.getItem('pimwai_custom_code_snippets');
-            if (savedSnippets) {
-                const parsed = JSON.parse(savedSnippets);
-                if (Array.isArray(parsed)) localCustom = parsed;
-            }
-
-            let starterOverrides: Record<string, Partial<CodeSnippet>> = {};
+        async function loadAllAccountData() {
             try {
-                const rawOverrides = localStorage.getItem(getLocalStarterOverridesKey(email));
-                if (rawOverrides) starterOverrides = JSON.parse(rawOverrides);
-            } catch {
-                starterOverrides = {};
-            }
+                const email = session?.user?.email;
 
-            const localStarters = PRESET_SNIPPETS.map(snippet => ({
-                ...snippet,
-                ...(starterOverrides[snippet.id] || {}),
-                localOnly: true
-            }));
-            const allAvailableSnippets = [...localStarters, ...localCustom];
-            setSnippets(allAvailableSnippets);
+                // 1. โหลดเวลาวันนี้จาก LocalStorage ก่อนเพื่อให้แสดงผลทันใจ
+                let localTodaySec = 0;
+                const timeKey = getTodayTimeStorageKey(email);
+                const savedTime = localStorage.getItem(timeKey);
+                if (savedTime) {
+                    const parsedTime = parseInt(savedTime, 10);
+                    if (!isNaN(parsedTime) && parsedTime > 0) {
+                        localTodaySec = parsedTime;
+                        if (isMounted) {
+                            setTodayCodeTimeSeconds(localTodaySec);
+                            todayCodeTimeSecondsRef.current = localTodaySec;
+                        }
+                    }
+                }
 
-            const savedProgress = localStorage.getItem(getProgressStorageKey(email));
-            if (savedProgress) {
-                const localProgress = JSON.parse(savedProgress);
-                const validSnippet = allAvailableSnippets.find(s => s.id === localProgress.selectedSnippetId) || allAvailableSnippets[0];
-                const { allTokens: tokensForSnippet } = parseCodeIntoLines(validSnippet.code);
-                const safeIdx = Math.min(
-                    Math.max(0, Number(localProgress.activeWordIdx) || 0),
-                    Math.max(0, tokensForSnippet.length - 1)
-                );
-                setSelectedSnippetId(validSnippet.id);
-                selectedSnippetIdRef.current = validSnippet.id;
-                setActiveWordIdx(safeIdx);
-                activeWordIdxRef.current = safeIdx;
-                setInputBuffer(localProgress.inputBuffer || '');
-                inputBufferRef.current = localProgress.inputBuffer || '';
-                setTypedWordsHistory(localProgress.typedWordsHistory || {});
-                typedWordsHistoryRef.current = localProgress.typedWordsHistory || {};
+                // 2. โหลด Custom Snippets จาก LocalStorage
+                const storageKey = getCodeStorageKey(email);
+                let localCustom: CodeSnippet[] = [];
+                let savedSnippets = localStorage.getItem(storageKey);
+                if (!savedSnippets && !email) {
+                    savedSnippets = localStorage.getItem('pimwai_custom_code_snippets');
+                }
+                if (savedSnippets) {
+                    const parsed = JSON.parse(savedSnippets);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        localCustom = parsed;
+                    }
+                }
+
+                let allAvailableSnippets = [...PRESET_SNIPPETS, ...localCustom];
+
+                // 3. โหลดความคืบหน้าล่าสุดจาก LocalStorage
+                let localProgress: any = null;
+                const progressKey = getProgressStorageKey(email);
+                const savedProgressStr = localStorage.getItem(progressKey);
+                if (savedProgressStr) {
+                    try {
+                        localProgress = JSON.parse(savedProgressStr);
+                    } catch {
+                        localProgress = null;
+                    }
+                }
+
+                // 4. ถ้าล็อกอินแล้ว ดึงทั้ง Snippets และ Progress (เวลาวันนี้ + พิมพ์ถึงตรงไหน) จากฐานข้อมูลในรหัส
+                if (email) {
+                    const [snippetsRes, progressRes] = await Promise.all([
+                        fetch('/api/code/snippets').catch(() => null),
+                        fetch('/api/code/progress').catch(() => null)
+                    ]);
+
+                    if (snippetsRes && snippetsRes.ok) {
+                        const sData = await snippetsRes.json();
+                        if (sData.success && Array.isArray(sData.snippets)) {
+                            const serverSnippets: CodeSnippet[] = sData.snippets;
+                            const serverIds = new Set(serverSnippets.map(s => s.id));
+                            const combined = [...serverSnippets];
+
+                            for (const loc of localCustom) {
+                                if (!serverIds.has(loc.id) && !serverSnippets.some(s => s.title === loc.title && s.code === loc.code)) {
+                                    combined.push(loc);
+                                }
+                            }
+                            allAvailableSnippets = [...PRESET_SNIPPETS, ...combined];
+                            try {
+                                localStorage.setItem(storageKey, JSON.stringify(combined));
+                            } catch {
+                                // ignore
+                            }
+                        }
+                    }
+
+                    if (isMounted) {
+                        setSnippets(allAvailableSnippets);
+                    }
+
+                    if (progressRes && progressRes.ok) {
+                        const pData = await progressRes.json();
+                        if (pData.success) {
+                            const serverTodaySec = Number(pData.todayTimeSeconds) || 0;
+                            const bestTodaySec = Math.max(localTodaySec, serverTodaySec);
+                            if (isMounted) {
+                                setTodayCodeTimeSeconds(bestTodaySec);
+                                todayCodeTimeSecondsRef.current = bestTodaySec;
+                                try {
+                                    localStorage.setItem(timeKey, String(bestTodaySec));
+                                } catch {
+                                    // ignore
+                                }
+                            }
+
+                            // ถ้าเวลาในเครื่องมากกว่าบนเซิร์ฟเวอร์ ให้ซิงค์ขึ้นเซิร์ฟเวอร์ด้วย
+                            if (localTodaySec > serverTodaySec) {
+                                isDirtyProgressRef.current = true;
+                            }
+
+                            // เลือกความคืบหน้าที่ใหม่กว่าระหว่างเครื่องกับรหัสบัญชีบนเซิร์ฟเวอร์
+                            const serverProg = pData.progress;
+                            let targetProg = serverProg;
+                            if (localProgress && serverProg) {
+                                const localTime = localProgress.updatedAt ? new Date(localProgress.updatedAt).getTime() : 0;
+                                const serverTime = serverProg.updatedAt ? new Date(serverProg.updatedAt).getTime() : 0;
+                                if (localTime > serverTime) {
+                                    targetProg = localProgress;
+                                    isDirtyProgressRef.current = true;
+                                }
+                            } else if (localProgress && !serverProg) {
+                                targetProg = localProgress;
+                                isDirtyProgressRef.current = true;
+                            }
+
+                            if (targetProg && isMounted && !hasRestoredInitialProgressRef.current) {
+                                hasRestoredInitialProgressRef.current = true;
+                                const validSnippet = allAvailableSnippets.find(s => s.id === targetProg.selectedSnippetId) || allAvailableSnippets[0];
+                                const { allTokens: tokensForSnippet } = parseCodeIntoLines(validSnippet.code);
+                                const safeIdx = Math.min(
+                                    Math.max(0, Number(targetProg.activeWordIdx) || 0),
+                                    Math.max(0, tokensForSnippet.length - 1)
+                                );
+
+                                setSelectedSnippetId(validSnippet.id);
+                                selectedSnippetIdRef.current = validSnippet.id;
+                                setActiveWordIdx(safeIdx);
+                                activeWordIdxRef.current = safeIdx;
+                                setInputBuffer(targetProg.inputBuffer || '');
+                                inputBufferRef.current = targetProg.inputBuffer || '';
+                                setTypedWordsHistory(targetProg.typedWordsHistory || {});
+                                typedWordsHistoryRef.current = targetProg.typedWordsHistory || {};
+
+                                saveProgressToLocalStorage(
+                                    validSnippet.id,
+                                    safeIdx,
+                                    targetProg.inputBuffer || '',
+                                    targetProg.typedWordsHistory || {}
+                                );
+                                return;
+                            }
+                        }
+                    }
+                } else {
+                    if (isMounted) {
+                        setSnippets(allAvailableSnippets);
+                    }
+                }
+
+                // Fallback: กู้คืนตำแหน่งพิมพ์ล่าสุดจาก LocalStorage (กรณีไม่ได้ล็อกอิน หรือยังไม่มีบนเซิร์ฟเวอร์)
+                if (localProgress && isMounted && !hasRestoredInitialProgressRef.current) {
+                    hasRestoredInitialProgressRef.current = true;
+                    const validSnippet = allAvailableSnippets.find(s => s.id === localProgress.selectedSnippetId) || allAvailableSnippets[0];
+                    const { allTokens: tokensForSnippet } = parseCodeIntoLines(validSnippet.code);
+                    const safeIdx = Math.min(
+                        Math.max(0, Number(localProgress.activeWordIdx) || 0),
+                        Math.max(0, tokensForSnippet.length - 1)
+                    );
+
+                    setSelectedSnippetId(validSnippet.id);
+                    selectedSnippetIdRef.current = validSnippet.id;
+                    setActiveWordIdx(safeIdx);
+                    activeWordIdxRef.current = safeIdx;
+                    setInputBuffer(localProgress.inputBuffer || '');
+                    inputBufferRef.current = localProgress.inputBuffer || '';
+                    setTypedWordsHistory(localProgress.typedWordsHistory || {});
+                    typedWordsHistoryRef.current = localProgress.typedWordsHistory || {};
+                }
+            } catch (e) {
+                console.error('Failed to load code account data:', e);
             }
-        } catch (error) {
-            console.error('Failed to load local code data:', error);
         }
-    }, [session?.user?.email]);
+
+        loadAllAccountData();
+        return () => { isMounted = false; };
+    }, [session?.user?.email, saveProgressToLocalStorage]);
 
     const currentSnippet = useMemo(() => {
         return snippets.find(s => s.id === selectedSnippetId) || snippets[0];
     }, [snippets, selectedSnippetId]);
-
-    useEffect(() => {
-        const frame = requestAnimationFrame(() => {
-            if (textContainerRef.current) updateCodeScrollThumb(textContainerRef.current);
-        });
-        return () => cancelAnimationFrame(frame);
-    }, [currentSnippet.code, updateCodeScrollThumb]);
 
     // ⚡ Performance Optimization: แปลงโค้ดเฉพาะตอนเปลี่ยนชุดโค้ดเท่านั้น ไม่รันซ้ำตอนพิมพ์
     const { lines, allTokens } = useMemo(() => {
@@ -538,8 +920,10 @@ export default function CodeTypingPage() {
 
         caretEl.style.height = `${caretHeight}px`;
         caretEl.style.transform = `translate3d(${left}px, ${top}px, 0)`;
-        // เมื่ออยู่ในโหมดแอบดูคำใบ้ (isPeekingLine) ให้ลดความเข้มเคอร์เซอร์ลงเหลือ 0.15 เพื่อไม่ให้เคอร์เซอร์บังตัวอักษร
-        caretEl.style.opacity = isFinished ? '0' : (isPeekingLine ? '0.15' : '1');
+        // เมื่ออยู่ในโหมดแอบดูคำใบ้ (isPeekingLine) หรือจบเกม ให้ซ่อนเคอร์เซอร์ออกไปเลย ไม่ให้บังตัวอักษร
+        const shouldHide = isFinished || isPeekingLine;
+        caretEl.style.display = shouldHide ? 'none' : 'block';
+        caretEl.style.opacity = shouldHide ? '0' : '1';
     }, [activeWordIdx, isFinished, isPeekingLine]);
 
     // Update Caret position on keystroke (Direct DOM manipulation)
@@ -592,8 +976,12 @@ export default function CodeTypingPage() {
 
         // บันทึกสถานะที่รีเซ็ตลงในเครื่องและคิวซิงค์เข้าบัญชี
         saveProgressToLocalStorage(targetId, 0, '', {});
-        setTimeout(() => inputRef.current?.focus(), 50);
-    }, [saveProgressToLocalStorage]);
+        isDirtyProgressRef.current = true;
+        setTimeout(() => {
+            syncProgressToServer(true);
+            inputRef.current?.focus();
+        }, 50);
+    }, [saveProgressToLocalStorage, syncProgressToServer]);
 
     // ⏩ ฟังก์ชันข้ามบรรทัดปัจจุบัน: เติมคำที่เหลือในบรรทัดนี้ให้โดยอัตโนมัติ แล้วข้ามไปบรรทัดถัดไปทันที
     const handleSkipCurrentLine = useCallback(() => {
@@ -629,6 +1017,8 @@ export default function CodeTypingPage() {
             activeWordIdxRef.current = 0;
             inputBufferRef.current = '';
             typedWordsHistoryRef.current = {};
+            isDirtyProgressRef.current = true;
+            syncProgressToServer(true);
             toast.success('พิมพ์โค้ดเสร็จสมบูรณ์!');
             return;
         }
@@ -639,9 +1029,10 @@ export default function CodeTypingPage() {
         inputBufferRef.current = '';
 
         saveProgressToLocalStorage(selectedSnippetIdRef.current, nextActiveIdx, '', nextHistory);
+        isDirtyProgressRef.current = true;
         inputRef.current?.focus();
         toast('ข้ามบรรทัดเรียบร้อย ⏭', { duration: 1500 });
-    }, [isFinished, allTokens, saveProgressToLocalStorage]);
+    }, [isFinished, allTokens, saveProgressToLocalStorage, syncProgressToServer]);
 
     // ⏱️ นับเวลาเล่นเฉพาะขณะกำลังพิมพ์อยู่จริง (สูตร Farm Mode เป๊ะ + ประหยัด CPU สำหรับคอมสเปคต่ำ)
     useEffect(() => {
@@ -670,6 +1061,7 @@ export default function CodeTypingPage() {
                     setElapsedSeconds(prev => prev + addedSec);
                     setTodayCodeTimeSeconds(prev => {
                         const nextSec = prev + addedSec;
+                        todayCodeTimeSecondsRef.current = nextSec;
                         try {
                             const key = getTodayTimeStorageKey(session?.user?.email);
                             localStorage.setItem(key, String(nextSec));
@@ -678,6 +1070,9 @@ export default function CodeTypingPage() {
                         }
                         return nextSec;
                     });
+
+                    unsyncedSecondsRef.current += addedSec;
+                    isDirtyProgressRef.current = true;
                 }
             } else {
                 // ถ้าหยุดพิมพ์เกิน 1.2 วินาที ให้ตัดเศษ ms ทิ้ง เพื่อหยุดเวลาทันทีอย่างสมบูรณ์
@@ -689,6 +1084,63 @@ export default function CodeTypingPage() {
     }, [startTime, isFinished, session?.user?.email]);
 
     // ☁️ ซิงค์เวลาและตำแหน่งโค้ดที่พิมพ์ค้างไว้เข้าในรหัสอัตโนมัติ (ประหยัด CPU Serverless ลดการยิง API ลงกว่า 92%)
+    useEffect(() => {
+        if (!session?.user?.email) return;
+
+        let lastSyncAttempt = Date.now();
+
+        const syncInterval = setInterval(() => {
+            if (isSyncingRef.current) return;
+            const hasPendingData = isDirtyProgressRef.current || unsyncedSecondsRef.current > 0;
+            if (!hasPendingData) return;
+
+            const now = Date.now();
+            const timeSinceLastKeypress = now - (lastTypingTimeRef.current || 0);
+            const timeSinceLastSync = now - lastSyncAttempt;
+
+            // ก. ผู้ใช้หยุดพิมพ์เกิน 4.5 วินาที (Idle sync)
+            // ข. หรือ พิมพ์ต่อเนื่องมานานเกิน 35 วินาทีแล้ว
+            const isIdlePause = timeSinceLastKeypress >= 4500 && timeSinceLastSync >= 10000;
+            const isPeriodicDue = timeSinceLastSync >= 35000;
+
+            if (isIdlePause || isPeriodicDue) {
+                lastSyncAttempt = now;
+                syncProgressToServer();
+            }
+        }, 2000);
+
+        const handleBeforeUnload = () => {
+            if (session?.user?.email) {
+                const payload = JSON.stringify({
+                    selectedSnippetId: selectedSnippetIdRef.current,
+                    activeWordIdx: activeWordIdxRef.current,
+                    inputBuffer: inputBufferRef.current,
+                    typedWordsHistory: typedWordsHistoryRef.current,
+                    todayTimeSeconds: todayCodeTimeSecondsRef.current,
+                    addedSeconds: unsyncedSecondsRef.current
+                });
+                try {
+                    fetch('/api/code/progress', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: payload,
+                        keepalive: true
+                    }).catch(() => { });
+                } catch { }
+                if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+                    navigator.sendBeacon('/api/code/progress', new Blob([payload], { type: 'application/json' }));
+                }
+            }
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => {
+            clearInterval(syncInterval);
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+            handleBeforeUnload();
+        };
+    }, [session?.user?.email, syncProgressToServer]);
+
     // Calculate metrics
     const wpm = useMemo(() => {
         if (!elapsedSeconds || elapsedSeconds === 0) return 0;
@@ -720,12 +1172,6 @@ export default function CodeTypingPage() {
             e.preventDefault();
             triggerLinePeek();
             return;
-        }
-
-        if (isPeekingLine && (e.key.length === 1 || e.key === 'Dead' || e.key === 'Backspace')) {
-            if (peekTimeoutRef.current) clearTimeout(peekTimeoutRef.current);
-            peekTimeoutRef.current = null;
-            setIsPeekingLine(false);
         }
 
         const now = Date.now();
@@ -770,7 +1216,9 @@ export default function CodeTypingPage() {
                 activeWordIdxRef.current = 0;
                 inputBufferRef.current = '';
                 typedWordsHistoryRef.current = {};
-                    toast.success('🎉 พิมพ์โค้ดเสร็จสมบูรณ์!');
+                isDirtyProgressRef.current = true;
+                syncProgressToServer(true);
+                toast.success('🎉 พิมพ์โค้ดเสร็จสมบูรณ์!');
                 return;
             }
 
@@ -782,6 +1230,7 @@ export default function CodeTypingPage() {
 
             // เซฟตำแหน่งคำปัจจุบันลงเครื่องทันที + ตั้งสถานะให้ซิงค์เข้ารหัส
             saveProgressToLocalStorage(selectedSnippetIdRef.current, nextWordIdx, '', nextHistory);
+            isDirtyProgressRef.current = true;
             return;
         }
 
@@ -795,6 +1244,7 @@ export default function CodeTypingPage() {
                 setInputBuffer(nextBuf);
                 inputBufferRef.current = nextBuf;
                 saveProgressToLocalStorage(selectedSnippetIdRef.current, activeWordIdx, nextBuf, typedWordsHistoryRef.current);
+                isDirtyProgressRef.current = true;
             } else if (activeWordIdx > 0) {
                 const prevIdx = activeWordIdx - 1;
                 const prevTyped = typedWordsHistoryRef.current[prevIdx] || '';
@@ -803,6 +1253,7 @@ export default function CodeTypingPage() {
                 setInputBuffer(prevTyped);
                 inputBufferRef.current = prevTyped;
                 saveProgressToLocalStorage(selectedSnippetIdRef.current, prevIdx, prevTyped, typedWordsHistoryRef.current);
+                isDirtyProgressRef.current = true;
             }
             return;
         }
@@ -866,78 +1317,124 @@ export default function CodeTypingPage() {
             inputBufferRef.current = nextBuf;
 
             saveProgressToLocalStorage(selectedSnippetIdRef.current, activeWordIdx, nextBuf, typedWordsHistoryRef.current);
+            isDirtyProgressRef.current = true;
         }
     };
 
     // 💾 บันทึกโค้ดลงในรหัสบัญชี (Database Account) + สำรองใน localStorage
-    const handleSaveCustomSnippet = (e: React.FormEvent) => {
+    const handleSaveCustomSnippet = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!customTitle.trim() || !customCode.trim()) {
-            toast.error('Please enter a title and code.');
+            toast.error('กรุณาระบุชื่อและใส่โค้ดให้ครบถ้วน');
             return;
         }
 
         const cleanTitle = customTitle.trim();
         const cleanLanguage = customLanguage;
         const cleanCode = customCode.replace(/\r\n/g, '\n');
-        const editedSnippet = snippets.find(s => s.id === editingSnippetId);
 
-        try {
-            if (editedSnippet?.localOnly) {
-                const key = getLocalStarterOverridesKey(session?.user?.email);
-                const overrides = JSON.parse(localStorage.getItem(key) || '{}');
-                localStorage.setItem(key, JSON.stringify({
-                    ...overrides,
-                    [editedSnippet.id]: { title: cleanTitle, language: cleanLanguage, code: cleanCode }
-                }));
-                const updatedStarter = { ...editedSnippet, title: cleanTitle, language: cleanLanguage, code: cleanCode };
-                setSnippets(current => current.map(s => s.id === editedSnippet.id ? updatedStarter : s));
-                resetPractice(updatedStarter.id);
-            } else {
-                const newSnippet: CodeSnippet = {
-                    id: editingSnippetId || `custom-${Date.now()}`,
-                    title: cleanTitle,
-                    language: cleanLanguage,
-                    code: cleanCode,
-                    isCustom: true
-                };
-                const existingCustom = snippets.filter(s => s.isCustom);
-                const updatedCustom = editingSnippetId
-                    ? existingCustom.map(s => s.id === editingSnippetId ? newSnippet : s)
-                    : [newSnippet, ...existingCustom];
-                localStorage.setItem(getCodeStorageKey(session?.user?.email), JSON.stringify(updatedCustom));
-                setSnippets([...snippets.filter(s => !s.isCustom), ...updatedCustom]);
-                resetPractice(newSnippet.id);
-            }
+        const tempId = editingSnippetId || `custom-${Date.now()}`;
+        const newSnippet: CodeSnippet = {
+            id: tempId,
+            title: cleanTitle,
+            language: cleanLanguage,
+            code: cleanCode,
+            isCustom: true
+        };
 
-            localStorage.removeItem(getDraftSnippetStorageKey(session?.user?.email));
-        } catch {
-            toast.error('Could not save to localStorage.');
-            return;
-        }
+        // แสดงผลทันทีในเครื่อง (Optimistic update)
+        const existingCustom = snippets.filter(s => s.isCustom);
+        const updatedCustom = editingSnippetId
+            ? existingCustom.map(s => s.id === editingSnippetId ? newSnippet : s)
+            : [newSnippet, ...existingCustom];
+        setSnippets([...PRESET_SNIPPETS, ...updatedCustom]);
+        setSelectedSnippetId(newSnippet.id);
+        resetPractice(newSnippet.id);
 
         setCustomTitle('');
         setCustomCode('');
         setEditingSnippetId(null);
         setIsCustomModalOpen(false);
-        toast.success('Saved on this device.');
+
+        // ล้างร่างข้อความที่เซฟค้างไว้หลังบันทึกสำเร็จ
+        try {
+            const draftKey = getDraftSnippetStorageKey(session?.user?.email);
+            localStorage.removeItem(draftKey);
+        } catch { }
+
+        // เซฟลง localStorage ตามบัญชี
+        const storageKey = getCodeStorageKey(session?.user?.email);
+        try {
+            localStorage.setItem(storageKey, JSON.stringify(updatedCustom));
+        } catch {
+            // ignore
+        }
+
+        // ☁️ เซฟลงในรหัสบัญชีผู้ใช้ใน Database
+        if (session?.user?.email) {
+            setIsSavingToServer(true);
+            try {
+                const res = await fetch('/api/code/snippets', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: editingSnippetId && !editingSnippetId.startsWith('custom-') ? editingSnippetId : undefined,
+                        title: cleanTitle,
+                        language: cleanLanguage,
+                        code: cleanCode
+                    })
+                });
+                const data = await res.json();
+                if (data.success && data.snippet) {
+                    const serverSnippet = data.snippet;
+                    const finalCustom = editingSnippetId
+                        ? existingCustom.map(s => s.id === editingSnippetId ? serverSnippet : s)
+                        : [serverSnippet, ...existingCustom.filter(s => s.id !== tempId)];
+                    setSnippets([...PRESET_SNIPPETS, ...finalCustom]);
+                    setSelectedSnippetId(serverSnippet.id);
+                    selectedSnippetIdRef.current = serverSnippet.id;
+                    localStorage.setItem(storageKey, JSON.stringify(finalCustom));
+                    saveProgressToLocalStorage(serverSnippet.id, 0, '', {});
+                    isDirtyProgressRef.current = true;
+                    syncProgressToServer(true);
+                    toast.success('บันทึกโค้ดลงในรหัสบัญชีเรียบร้อย!');
+                    return;
+                }
+            } catch (err) {
+                console.error('Error saving snippet to server:', err);
+            } finally {
+                setIsSavingToServer(false);
+            }
+        }
+
+        toast.success('บันทึกโค้ดของคุณเรียบร้อยแล้ว!');
     };
 
-    const handleDeleteSnippet = (id: string, e: React.MouseEvent) => {
+    // ลบ Custom Snippet ออกจากบัญชีและเครื่อง
+    const handleDeleteSnippet = async (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
+        const storageKey = getCodeStorageKey(session?.user?.email);
         const updatedCustom = snippets.filter(s => s.isCustom && s.id !== id);
         try {
-            localStorage.setItem(getCodeStorageKey(session?.user?.email), JSON.stringify(updatedCustom));
+            localStorage.setItem(storageKey, JSON.stringify(updatedCustom));
         } catch {
-            toast.error('Could not save to localStorage.');
-            return;
+            // ignore
         }
-        setSnippets([...snippets.filter(s => !s.isCustom), ...updatedCustom]);
+        setSnippets([...PRESET_SNIPPETS, ...updatedCustom]);
 
         if (selectedSnippetId === id) {
-            resetPractice(snippets.find(s => s.localOnly)?.id || PRESET_SNIPPETS[0].id);
+            resetPractice(PRESET_SNIPPETS[0].id);
         }
-        toast.success('Snippet deleted.');
+
+        if (session?.user?.email && !id.startsWith('custom-')) {
+            try {
+                await fetch(`/api/code/snippets?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+            } catch (err) {
+                console.error('Error deleting from server:', err);
+            }
+        }
+
+        toast.success('ลบโค้ดเรียบร้อย');
     };
 
     const untypedClass = CONTRAST_CONFIG[contrastLevel].textClass;
@@ -949,7 +1446,7 @@ export default function CodeTypingPage() {
             <div className="w-full max-w-5xl flex flex-col gap-5">
 
                 {/* 🌟 Top Control Pill - Pure White Card with Soft Shadow (สไตล์ Farm Mode) */}
-                <div className="bg-white px-5 sm:px-6 py-3 rounded-3xl shadow-lg shadow-blue-500/5 border border-blue-50/60 flex flex-wrap items-center justify-between gap-3 text-sm text-gray-500">
+                <div className="bg-white px-5 sm:px-6 py-3 rounded-3xl shadow-md border border-blue-50/60 flex flex-wrap items-center justify-between gap-3 text-sm text-gray-500">
 
                     {/* Left: Snippets Selector */}
                     <div className="flex flex-wrap items-center gap-1.5">
@@ -971,25 +1468,12 @@ export default function CodeTypingPage() {
                                         }`}
                                 >
                                     <span>{s.title}</span>
-                                    {s.localOnly && (
-                                        <span
-                                            title="Edit starter file"
-                                            onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setEditingSnippetId(s.id);
-                                                    setCustomTitle(s.title);
-                                                    setCustomLanguage(s.language);
-                                                    setCustomCode(s.code);
-                                                    setIsCustomModalOpen(true);
-                                                }}
-                                            className={`ml-0.5 inline-flex cursor-pointer items-center transition-colors ${isSelected ? 'text-white' : 'text-gray-400 hover:text-gray-700'}`}
-                                            >
-                                                <Pencil size={11} />
-                                            </span>
-                                    )}
                                     {s.isCustom && (
                                         <>
-<span
+                                            <span title="บันทึกในรหัสบัญชีแล้ว">
+                                                <Cloud size={11} className={isSelected ? 'text-white/80' : 'text-blue-400'} />
+                                            </span>
+                                            <span
                                                 title="แก้ไขโค้ด"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
@@ -1068,7 +1552,7 @@ export default function CodeTypingPage() {
                 {/* ⌨️ Main Typing Stream Box (กล่องสีขาวใหญ่ เหมือนโหมดฟาร์มเป๊ะ) */}
                 <div
                     onClick={() => inputRef.current?.focus()}
-                    className="w-full bg-white rounded-3xl p-6 sm:p-8 shadow-lg shadow-blue-500/5 relative min-h-[460px] flex flex-col justify-between overflow-hidden border border-blue-50 cursor-text"
+                    className="w-full bg-white rounded-3xl p-6 sm:p-8 shadow-md relative min-h-[460px] flex flex-col justify-between overflow-hidden border border-blue-50 cursor-text"
                 >
                     {/* Hidden Textarea for Input */}
                     <textarea
@@ -1190,12 +1674,12 @@ export default function CodeTypingPage() {
                                             type="button"
                                             onClick={triggerLinePeek}
                                             className="px-3 py-1 bg-[#0c648b] hover:bg-[#094b69] text-white font-bold text-xs rounded-full shadow-xs cursor-pointer transition-colors"
-                                            title="แสดงตัวอักษรถัดไปชั่วคราว"
+                                            title="แสดงบรรทัดปัจจุบันชั่วคราว"
                                         >
-                                            แอบดูตัวถัดไป (กด Tab)
+                                            แอบดูบรรทัดนี้ (กด Tab)
                                         </button>
                                     )}
-                                    {(currentSnippet.isCustom || currentSnippet.localOnly) && (
+                                    {currentSnippet.isCustom && (
                                         <button
                                             type="button"
                                             onClick={() => {
@@ -1248,16 +1732,14 @@ export default function CodeTypingPage() {
                             </div>
 
                             {/* ⌨️ Code Text Stream Area (High-Performance Memoized Engine สำหรับคอมทุกสเปค) */}
-                            <div className="relative h-[380px] max-h-[55vh] min-h-[160px]">
-                                <div
-                                    ref={textContainerRef}
-                                    onScroll={handleCodeScroll}
-                                    className="no-scrollbar relative h-full overflow-x-auto overflow-y-auto font-mono text-lg sm:text-xl leading-relaxed py-4 pr-2 antialiased select-none"
-                                >
+                            <div
+                                ref={textContainerRef}
+                                className="relative flex-1 overflow-x-auto overflow-y-auto max-h-[380px] font-mono text-lg sm:text-xl leading-relaxed py-4 pr-2 antialiased select-none"
+                            >
                                 {/* 🎯 Direct-DOM GPU Caret (เลื่อนสมูท 60fps โดยไม่ก่อให้เกิด React Re-render และไม่ใช้ animate-pulse ที่กินเครื่อง) */}
                                 <div
                                     ref={caretElRef}
-                                    className="absolute left-0 top-0 w-[2px] bg-[#5cb5db] rounded-full pointer-events-none z-30 transition-opacity duration-150"
+                                    className="absolute left-0 top-0 w-[2.5px] bg-[#5cb5db] rounded-full pointer-events-none z-30 transition-opacity duration-150"
                                     style={{
                                         height: '22px',
                                         transform: 'translate3d(0px, 0px, 0)',
@@ -1265,28 +1747,6 @@ export default function CodeTypingPage() {
                                         willChange: 'transform, opacity',
                                     }}
                                 />
-
-                                {/* 💡 Floating Hint Tooltip during Peek (ระบบใบ้คำ ลอยเหนือตัวอักษร ไม่ให้เคอร์เซอร์บัง) */}
-                                {isPeekingLine && currentToken && (
-                                    <div
-                                        className="absolute z-40 pointer-events-none transition-all duration-75 flex flex-col items-center select-none"
-                                        style={{
-                                            left: `${(wordElementsRef.current[activeWordIdx]?.offsetLeft || 0) + (typedPartRef.current?.offsetWidth || 0)}px`,
-                                            top: `${Math.max(0, (wordElementsRef.current[activeWordIdx]?.offsetTop || 0) - 28)}px`,
-                                            transform: 'translateX(-50%)',
-                                        }}
-                                    >
-                                        <div className="px-2 py-0.5 bg-gray-900/95 text-amber-300 font-mono text-xs font-bold rounded-md shadow-lg border border-amber-400/50 flex items-center gap-1 whitespace-nowrap">
-                                            <span className="text-gray-400 text-[10px]">กด:</span>
-                                            <span className="text-white font-black underline decoration-amber-400">
-                                                {currentToken.word[inputBuffer.length] === ' '
-                                                    ? 'Space'
-                                                    : (currentToken.word[inputBuffer.length] ?? (currentToken.isLastInLine ? 'Enter' : 'Space'))}
-                                            </span>
-                                        </div>
-                                        <div className="w-1.5 h-1 bg-gray-900 rotate-45 -mt-0.5"></div>
-                                    </div>
-                                )}
 
                                 {/* Reference span สำหรับวัดความกว้างของตัวที่พิมพ์ในคำ เพื่อวางตำแหน่ง Caret ให้เป๊ะ */}
                                 <span
@@ -1329,6 +1789,9 @@ export default function CodeTypingPage() {
                                                         ? (contrastLevel === 'hidden' ? 'text-sky-700/80 font-medium' : untypedClass)
                                                         : untypedClass;
 
+                                                    const effectiveUntypedClass = contrastLevel === 'hidden' && isPeekingLine && currentToken?.lineNum === line.lineNum
+                                                        ? 'text-gray-400'
+                                                        : untypedClass;
                                                     return (
                                                         <MemoCodeWord
                                                             key={wToken.globalIdx}
@@ -1347,18 +1810,6 @@ export default function CodeTypingPage() {
                                         </div>
                                     );
                                 })}
-                                </div>
-                                {codeScrollThumb.visible && (
-                                    <div
-                                        aria-hidden="true"
-                                        className={`pointer-events-none absolute right-1 top-4 bottom-4 z-30 w-1.5 transition-opacity duration-200 ${isCodeScrollActive ? 'opacity-100' : 'opacity-0'}`}
-                                    >
-                                        <div
-                                            className="absolute w-1 rounded-full bg-gray-400/80"
-                                            style={{ height: `${codeScrollThumb.height}%`, top: `${codeScrollThumb.top}%` }}
-                                        />
-                                    </div>
-                                )}
                             </div>
 
                             {/* Bottom Helper Bar */}
@@ -1397,7 +1848,7 @@ export default function CodeTypingPage() {
                                 </div>
                                 <div>
                                     <h3 className="font-bold text-gray-800 text-base">{editingSnippetId ? 'แก้ไขชุดโค้ด' : 'ใส่โค้ดที่คุณต้องการฝึก'}</h3>
-                                    <p className="text-xs text-gray-400">Saved only in this browser localStorage</p>
+                                    <p className="text-xs text-gray-400">บันทึกเชื่อมกับรหัสบัญชีของคุณ ใช้ได้ทุกเครื่องรวมถึงคอมวิทยาลัย</p>
                                 </div>
                             </div>
                             <button
@@ -1471,10 +1922,11 @@ export default function CodeTypingPage() {
                                 </button>
                                 <button
                                     type="submit"
-                                    className="px-5 py-2.5 bg-[#5cb5db] hover:bg-[#4ba3c7] text-white text-sm font-bold rounded-2xl shadow-md hover:shadow-lg transition cursor-pointer flex items-center gap-1.5 "
+                                    disabled={isSavingToServer}
+                                    className="px-5 py-2.5 bg-[#5cb5db] hover:bg-[#4ba3c7] text-white text-sm font-bold rounded-2xl shadow-md hover:shadow-lg transition cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
                                 >
                                     <Save size={16} />
-                                    <span>{editingSnippetId ? 'Save changes on this device' : 'Save on this device'}</span>
+                                    <span>{isSavingToServer ? 'กำลังบันทึก...' : editingSnippetId ? 'บันทึกการแก้ไข' : 'บันทึกลงบัญชี'}</span>
                                 </button>
                             </div>
                         </form>

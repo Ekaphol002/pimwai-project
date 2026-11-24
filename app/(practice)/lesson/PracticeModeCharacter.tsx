@@ -15,6 +15,7 @@ import {
   resolveThaiKeyWithCapsLock
 } from '@/lib/keyMaps';
 import { soundManager } from '@/lib/soundEffects';
+import { getGuestLessonMetaForSave, recordGuestLessonResult, computeGuestDailyQuests, GuestDailyQuestItem } from '@/lib/guestProgress';
 import { CheckCircle2 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 
@@ -82,6 +83,7 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
   const [xpBreakdown, setXpBreakdown] = useState<XpBreakdown | null>(null);
   const [questText, setQuestText] = useState<string | null>(null);
   const [totalXP, setTotalXP] = useState(0);
+  const [dailyQuests, setDailyQuests] = useState<GuestDailyQuestItem[]>([]);
 
   // ใช้ Ref เพื่อป้องกันการส่งข้อมูลซ้ำ (Double Submit)
   const isSubmittingRef = useRef(false);
@@ -108,6 +110,7 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
     isSubmittingRef.current = true;
 
     try {
+      const guestContext = getGuestLessonMetaForSave(subLessonId);
       const res = await fetch('/api/save-lesson', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -116,7 +119,8 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
           wpm,
           accuracy,
           stars,
-          duration
+          duration,
+          guestContext
         }),
       });
 
@@ -127,6 +131,19 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
         setEarnedXP(data.earnedXP);
         setXpBreakdown(data.xpBreakdown);
         setTotalXP(data.totalXP);
+        if (data.isGuest) {
+          recordGuestLessonResult({
+            subLessonId,
+            wpm,
+            accuracy,
+            stars,
+            duration,
+            totalXP: data.totalXP
+          });
+          setDailyQuests(computeGuestDailyQuests());
+        } else if (Array.isArray(data.dailyQuests)) {
+          setDailyQuests(data.dailyQuests);
+        }
         if (data.completedQuest) {
           setQuestText(data.completedQuest.text);
         } else {
@@ -344,6 +361,7 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
           xpBreakdown={xpBreakdown}
           questText={questText}
           totalXP={totalXP}
+          dailyQuests={dailyQuests}
         />
       ) : showIntro && hasNewKeys ? (
         // Intro Screen - แสดงเฉพาะเมื่อมี newKeys

@@ -19,6 +19,14 @@ export const metadata: Metadata = {
     description: 'เช็คอันดับนักพิมพ์สัมผัสที่มีความเร็ว WPM และ EXP สูงสุดบน PIMWAI',
     url: 'https://pimwai.com/rankings',
     siteName: 'PIMWAI (พิมพ์ไว)',
+    images: [
+      {
+        url: '/Bannerlink.png',
+        width: 1200,
+        height: 630,
+        alt: 'ตารางจัดอันดับคนพิมพ์เร็ว Leaderboard บน PIMWAI',
+      },
+    ],
     type: 'website',
     locale: 'th_TH',
   },
@@ -29,8 +37,21 @@ export default function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "หน้าแรก", "item": "https://pimwai.com" },
+      { "@type": "ListItem", "position": 2, "name": "ตารางจัดอันดับคนพิมพ์เร็ว", "item": "https://pimwai.com/rankings" }
+    ]
+  };
+
   return (
     <div className="flex flex-col">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
       <div className="flex flex-1 w-full max-w-screen-2xl mx-auto bg-gray-200">
         <main className="flex-1 overflow-y-auto">
           {children}

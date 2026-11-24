@@ -8,12 +8,8 @@ import { evaluateNewlyCompletedQuests } from '@/lib/questUtils';
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || !session.user?.email) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
-    }
-
     const body = await request.json();
-    const { duration, wpm, accuracy, mistakes } = body;
+    const { duration, wpm, accuracy, mistakes, guestTotalExp } = body;
 
     // 🚨 1. ตรวจสอบ Duration & Anti-Cheat
     const numDuration = Number(duration);
@@ -24,29 +20,6 @@ export async function POST(request: Request) {
 
     if (typeof wpm !== 'number' || typeof accuracy !== 'number' || wpm > 250 || accuracy > 100 || accuracy < 0) {
       return NextResponse.json({ success: false, error: "Suspicious activity detected" }, { status: 400 });
-    }
-
-    const cleanEmail = session.user.email?.trim().toLowerCase();
-    const user = await prisma.user.findFirst({
-      where: {
-        OR: [
-          ...((session.user as any)?.id ? [{ id: (session.user as any).id }] : []),
-          ...(cleanEmail ? [{ email: cleanEmail }] : [])
-        ]
-      }
-    });
-    if (!user) return NextResponse.json({ success: false, error: "User not found" }, { status: 404 });
-
-    // ⏱️ Rate Limiting: ป้องกันการยิงบันทึกผลถี่ผิดปกติ
-    const lastTest = await prisma.speedTestResult.findFirst({
-      where: { userId: user.id },
-      orderBy: { createdAt: 'desc' }
-    });
-    if (lastTest) {
-      const timeSinceLastMs = Date.now() - new Date(lastTest.createdAt).getTime();
-      if (timeSinceLastMs < 20000) {
-        return NextResponse.json({ success: false, error: "กรุณารอสักครู่ก่อนบันทึกผลการทดสอบถัดไป" }, { status: 429 });
-      }
     }
 
     // 🧮 2. คำนวณ XP
@@ -78,6 +51,49 @@ export async function POST(request: Request) {
     let earnedXP = totalRawXP + enduranceBonus;
     if (earnedXP < 0) earnedXP = 0;
 
+    // 🌟 กรณีไม่ได้ล็อกอิน (Guest Mode): คืนค่า EXP และ Breakdown ให้สะสมไว้ซิงค์ตอนล็อกอิน
+    if (!session || !session.user?.email) {
+      const prevGuestExp = Math.max(0, Number(guestTotalExp) || 0);
+      const nextTotalExp = prevGuestExp + earnedXP;
+      return NextResponse.json({
+        success: true,
+        isGuest: true,
+        earnedXP,
+        totalXP: nextTotalExp,
+        completedQuests: [],
+        xpBreakdown: {
+          base: 0,
+          wpm: Math.round(speedXp * multiplier),
+          grinder: Math.round(accuracyBonus * multiplier),
+          quest: enduranceBonus,
+          firstWin: 0,
+        },
+      });
+    }
+
+    const cleanEmail = session.user.email?.trim().toLowerCase();
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          ...((session.user as any)?.id ? [{ id: (session.user as any).id }] : []),
+          ...(cleanEmail ? [{ email: cleanEmail }] : [])
+        ]
+      }
+    });
+    if (!user) return NextResponse.json({ success: false, error: "User not found" }, { status: 404 });
+
+    // ⏱️ Rate Limiting: ป้องกันการยิงบันทึกผลถี่ผิดปกติ
+    const lastTest = await prisma.speedTestResult.findFirst({
+      where: { userId: user.id },
+      orderBy: { createdAt: 'desc' }
+    });
+    if (lastTest) {
+      const timeSinceLastMs = Date.now() - new Date(lastTest.createdAt).getTime();
+      if (timeSinceLastMs < 20000) {
+        return NextResponse.json({ success: false, error: "กรุณารอสักครู่ก่อนบันทึกผลการทดสอบถัดไป" }, { status: 429 });
+      }
+    }
+
     // 💾 3. บันทึกและอัปเดต
     const result = await prisma.$transaction(async (tx) => {
       // 3.1 บันทึกผล
@@ -91,7 +107,7 @@ export async function POST(request: Request) {
         }
       });
 
-      const { newlyCompletedQuests, totalQuestBonusXp } = await evaluateNewlyCompletedQuests({
+      const { newlyCompletedQuests, totalQuestBonusXp, dailyQuests } = await evaluateNewlyCompletedQuests({
         tx,
         userId: user.id,
         currentActivity: {
@@ -155,7 +171,7 @@ export async function POST(request: Request) {
         console.error("Auto cleanup speed test in save-test error:", cleanupErr);
       }
 
-      return { newTestResult, updatedUser, newlyCompletedQuests, totalQuestBonusXp, finalEarnedXP };
+      return { newTestResult, updatedUser, newlyCompletedQuests, totalQuestBonusXp, finalEarnedXP, dailyQuests };
     });
 
     // 📤 4. ส่ง Breakdown กลับไปโชว์
@@ -168,6 +184,7 @@ export async function POST(request: Request) {
       earnedXP: result.finalEarnedXP,
       totalXP: result.updatedUser.currentExp,
       completedQuests: result.newlyCompletedQuests,
+      dailyQuests: result.dailyQuests,
       xpBreakdown: {
         base: 0, 
         wpm: Math.round(speedXp * multiplier),       // ช่อง "โบนัสความเร็ว"

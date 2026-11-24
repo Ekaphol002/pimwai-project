@@ -14,6 +14,7 @@ import {
   resolveThaiKeyWithCapsLock
 } from '@/lib/keyMaps';
 import { soundManager } from '@/lib/soundEffects';
+import { getGuestLessonMetaForSave, recordGuestLessonResult, computeGuestDailyQuests, GuestDailyQuestItem } from '@/lib/guestProgress';
 import { CheckCircle2 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 
@@ -160,6 +161,7 @@ export default function PracticeModeWord({
   const [questText, setQuestText] = useState<string | null>(null);
   const [xpBreakdown, setXpBreakdown] = useState<XpBreakdown | null>(null);
   const [totalXP, setTotalXP] = useState(0);
+  const [dailyQuests, setDailyQuests] = useState<GuestDailyQuestItem[]>([]);
 
   const handleNextLesson = () => {
     if (nextUrl) {
@@ -185,6 +187,7 @@ export default function PracticeModeWord({
 
   const saveResultToDb = async (wpm: number, accuracy: number, stars: number, duration: number) => {
     try {
+      const guestContext = getGuestLessonMetaForSave(subLessonId);
       const res = await fetch('/api/save-lesson', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -193,7 +196,8 @@ export default function PracticeModeWord({
           wpm,
           accuracy,
           stars,
-          duration
+          duration,
+          guestContext
         }),
       });
 
@@ -203,6 +207,19 @@ export default function PracticeModeWord({
         setEarnedXP(data.earnedXP);
         setXpBreakdown(data.xpBreakdown);
         setTotalXP(data.totalXP);
+        if (data.isGuest) {
+          recordGuestLessonResult({
+            subLessonId,
+            wpm,
+            accuracy,
+            stars,
+            duration,
+            totalXP: data.totalXP
+          });
+          setDailyQuests(computeGuestDailyQuests());
+        } else if (Array.isArray(data.dailyQuests)) {
+          setDailyQuests(data.dailyQuests);
+        }
         if (data.completedQuest) {
           setQuestText(data.completedQuest.text);
         } else {
@@ -487,6 +504,7 @@ export default function PracticeModeWord({
           xpBreakdown={xpBreakdown}
           questText={questText}
           totalXP={totalXP}
+          dailyQuests={dailyQuests}
         />
       ) : showIntro && hasNewKeys ? (
         // Intro Screen - แสดงเฉพาะเมื่อมี newKeys

@@ -60,8 +60,16 @@ export const metadata: Metadata = {
   authors: [{ name: "PIMWAI Team", url: "https://pimwai.com" }],
   creator: "PIMWAI (พิมพ์ไว)",
   publisher: "PIMWAI (พิมพ์ไว)",
-  alternates: {
-    canonical: 'https://pimwai.com',
+  icons: {
+    icon: [
+      { url: '/favicon-48x48.png', sizes: '48x48', type: 'image/png' },
+      { url: '/icon-96x96.png', sizes: '96x96', type: 'image/png' },
+      { url: '/icon.png', sizes: '192x192', type: 'image/png' },
+    ],
+    shortcut: ['/favicon-48x48.png'],
+    apple: [
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
   },
   openGraph: {
     title: "PIMWAI (พิมพ์ไว) - ฝึกพิมพ์ดีดออนไลน์ฟรี ฝึกพิมพ์สัมผัส 10 นิ้ว & ทดสอบ WPM",
@@ -112,11 +120,25 @@ export default function RootLayout({
     "@context": "https://schema.org",
     "@graph": [
       {
+        "@type": "Organization",
+        "@id": "https://pimwai.com/#organization",
+        "name": "PIMWAI (พิมพ์ไว)",
+        "alternateName": ["PIMWAI", "พิมพ์ไว", "พิมไว"],
+        "url": "https://pimwai.com",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://pimwai.com/icon.png",
+          "width": 192,
+          "height": 192
+        }
+      },
+      {
         "@type": "WebSite",
         "@id": "https://pimwai.com/#website",
         "name": "PIMWAI (พิมพ์ไว)",
         "alternateName": ["PIMWAI", "พิมพ์ไว", "พิมไว", "ฝึกพิมพ์ดีด PIMWAI"],
         "url": "https://pimwai.com",
+        "publisher": { "@id": "https://pimwai.com/#organization" },
         "inLanguage": "th-TH"
       },
       {
