@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { getRankFromExp } from '@/lib/rankUtils';
+import { getRankFromExp, calculateRankInfo, getRankMultiplierConfig } from '@/lib/rankUtils';
 import { getStartOfTodayBangkok, toDateKey } from '@/lib/streakUtils';
 import { evaluateNewlyCompletedQuests } from '@/lib/questUtils';
 
@@ -85,6 +85,9 @@ export async function POST(request: Request) {
             const lastPlayedDateKey = typeof guestContext?.lastPlayedDateKey === 'string' ? guestContext.lastPlayedDateKey : null;
             const guestTotalExp = Math.max(0, Number(guestContext?.guestTotalExp) || 0);
 
+            const guestRankInfo = calculateRankInfo(guestTotalExp, false);
+            const rankMul = getRankMultiplierConfig(guestRankInfo.rank, guestRankInfo.stars).totalBaseMultiplier;
+
             let baseLessonExp = 0;
             const isFirstClear = !hasExisting || prevStars === 0;
             let isNewHighScore = false;
@@ -94,31 +97,31 @@ export async function POST(request: Request) {
                 let rawExp = EXP_CONFIG.BASE_CLEAR + starBonus;
                 rawExp = Math.round(rawExp * difficultyMultiplier);
                 if (accuracy === 100) rawExp += EXP_CONFIG.PERFECT_BONUS;
-                baseLessonExp = rawExp;
+                baseLessonExp = Math.round(rawExp * rankMul);
                 isNewHighScore = true;
             } else if (wpm > prevWpm || stars > prevStars) {
-                baseLessonExp = EXP_CONFIG.REPLAY_SCORE;
+                baseLessonExp = Math.round(EXP_CONFIG.REPLAY_SCORE * rankMul);
                 isNewHighScore = true;
             }
 
             let wpmBonus = 0;
             if (accuracy >= 90) {
-                if (wpm >= EXP_CONFIG.WPM_MILESTONES.FASTEST) wpmBonus = EXP_CONFIG.WPM_BONUS.FASTEST;
-                else if (wpm >= EXP_CONFIG.WPM_MILESTONES.FASTER) wpmBonus = EXP_CONFIG.WPM_BONUS.FASTER;
-                else if (wpm >= EXP_CONFIG.WPM_MILESTONES.FAST) wpmBonus = EXP_CONFIG.WPM_BONUS.FAST;
+                if (wpm >= EXP_CONFIG.WPM_MILESTONES.FASTEST) wpmBonus = Math.round(EXP_CONFIG.WPM_BONUS.FASTEST * rankMul);
+                else if (wpm >= EXP_CONFIG.WPM_MILESTONES.FASTER) wpmBonus = Math.round(EXP_CONFIG.WPM_BONUS.FASTER * rankMul);
+                else if (wpm >= EXP_CONFIG.WPM_MILESTONES.FAST) wpmBonus = Math.round(EXP_CONFIG.WPM_BONUS.FAST * rankMul);
             }
 
             let grinderBonus = 0;
             if (!prevUpdatedToday) {
-                if (dailyTotalLessons === EXP_CONFIG.GRINDER_MILESTONES.LEVEL_1) grinderBonus = EXP_CONFIG.GRINDER_BONUS.LEVEL_1;
-                else if (dailyTotalLessons === EXP_CONFIG.GRINDER_MILESTONES.LEVEL_2) grinderBonus = EXP_CONFIG.GRINDER_BONUS.LEVEL_2;
-                else if (dailyTotalLessons === EXP_CONFIG.GRINDER_MILESTONES.LEVEL_3) grinderBonus = EXP_CONFIG.GRINDER_BONUS.LEVEL_3;
+                if (dailyTotalLessons === EXP_CONFIG.GRINDER_MILESTONES.LEVEL_1) grinderBonus = Math.round(EXP_CONFIG.GRINDER_BONUS.LEVEL_1 * rankMul);
+                else if (dailyTotalLessons === EXP_CONFIG.GRINDER_MILESTONES.LEVEL_2) grinderBonus = Math.round(EXP_CONFIG.GRINDER_BONUS.LEVEL_2 * rankMul);
+                else if (dailyTotalLessons === EXP_CONFIG.GRINDER_MILESTONES.LEVEL_3) grinderBonus = Math.round(EXP_CONFIG.GRINDER_BONUS.LEVEL_3 * rankMul);
             }
 
             let firstWinBonus = 0;
             const todayDateKey = toDateKey(new Date());
             if (!lastPlayedDateKey || lastPlayedDateKey !== todayDateKey) {
-                firstWinBonus = EXP_CONFIG.FIRST_WIN_REWARD;
+                firstWinBonus = Math.round(EXP_CONFIG.FIRST_WIN_REWARD * rankMul);
             }
 
             const earnedXP = baseLessonExp + wpmBonus + grinderBonus + firstWinBonus;
@@ -169,6 +172,10 @@ export async function POST(request: Request) {
                 updatedToday: new Date(existingProgress.updatedAt).getTime() >= today.getTime()
             } : null;
 
+            // คำนวณตัวคูณแรงค์ (Rank Multiplier) เพื่อให้ EXP ในบทเรียนโตตามแรงค์และสู้โหมดพิมพ์ด่วน (Farm) ได้
+            const userRankInfo = calculateRankInfo(user.currentExp || 0, user.rank === 7);
+            const rankMul = getRankMultiplierConfig(userRankInfo.rank, userRankInfo.stars).totalBaseMultiplier;
+
             // --- 2. คำนวณ Base XP ---
             let baseLessonExp = 0;
             const isFirstClear = !existingProgress || existingProgress.stars === 0;
@@ -180,7 +187,7 @@ export async function POST(request: Request) {
                 rawExp = Math.round(rawExp * difficultyMultiplier);
                 if (accuracy === 100) rawExp += EXP_CONFIG.PERFECT_BONUS;
 
-                baseLessonExp = rawExp;
+                baseLessonExp = Math.round(rawExp * rankMul);
                 isNewHighScore = true;
 
                 if (!existingProgress) {
@@ -197,7 +204,7 @@ export async function POST(request: Request) {
                 // Replay Mode
                 const isBetterScore = wpm > existingProgress.wpm || stars > existingProgress.stars;
                 if (isBetterScore) {
-                    baseLessonExp = EXP_CONFIG.REPLAY_SCORE;
+                    baseLessonExp = Math.round(EXP_CONFIG.REPLAY_SCORE * rankMul);
                     isNewHighScore = true;
                 }
                 // อัปเดต updatedAt และสะสม duration ของวันนี้เพื่อให้เควสรายวันทำงานแม้เล่นด่านซ้ำ
@@ -245,18 +252,18 @@ export async function POST(request: Request) {
             // A. 🏎️ WPM Milestone Bonus
             let wpmBonus = 0;
             if (accuracy >= 90) { // ต้องแม่นด้วยถึงจะได้โบนัสความเร็ว
-                if (wpm >= EXP_CONFIG.WPM_MILESTONES.FASTEST) wpmBonus = EXP_CONFIG.WPM_BONUS.FASTEST;
-                else if (wpm >= EXP_CONFIG.WPM_MILESTONES.FASTER) wpmBonus = EXP_CONFIG.WPM_BONUS.FASTER;
-                else if (wpm >= EXP_CONFIG.WPM_MILESTONES.FAST) wpmBonus = EXP_CONFIG.WPM_BONUS.FAST;
+                if (wpm >= EXP_CONFIG.WPM_MILESTONES.FASTEST) wpmBonus = Math.round(EXP_CONFIG.WPM_BONUS.FASTEST * rankMul);
+                else if (wpm >= EXP_CONFIG.WPM_MILESTONES.FASTER) wpmBonus = Math.round(EXP_CONFIG.WPM_BONUS.FASTER * rankMul);
+                else if (wpm >= EXP_CONFIG.WPM_MILESTONES.FAST) wpmBonus = Math.round(EXP_CONFIG.WPM_BONUS.FAST * rankMul);
             }
 
             // B. 🏋️ Grinder Bonus (โบนัสคนขยัน: ให้เฉพาะเมื่อนับด่านใหม่ของวันนี้เท่านั้น ป้องกันการเล่นด่านเดิมซ้ำเพื่อปั๊มโบนัส)
             let grinderBonus = 0;
             const wasUpdatedToday = prevLessonProgress?.updatedToday;
             if (!wasUpdatedToday) {
-                if (dailyTotalLessons === EXP_CONFIG.GRINDER_MILESTONES.LEVEL_1) grinderBonus = EXP_CONFIG.GRINDER_BONUS.LEVEL_1;
-                else if (dailyTotalLessons === EXP_CONFIG.GRINDER_MILESTONES.LEVEL_2) grinderBonus = EXP_CONFIG.GRINDER_BONUS.LEVEL_2;
-                else if (dailyTotalLessons === EXP_CONFIG.GRINDER_MILESTONES.LEVEL_3) grinderBonus = EXP_CONFIG.GRINDER_BONUS.LEVEL_3;
+                if (dailyTotalLessons === EXP_CONFIG.GRINDER_MILESTONES.LEVEL_1) grinderBonus = Math.round(EXP_CONFIG.GRINDER_BONUS.LEVEL_1 * rankMul);
+                else if (dailyTotalLessons === EXP_CONFIG.GRINDER_MILESTONES.LEVEL_2) grinderBonus = Math.round(EXP_CONFIG.GRINDER_BONUS.LEVEL_2 * rankMul);
+                else if (dailyTotalLessons === EXP_CONFIG.GRINDER_MILESTONES.LEVEL_3) grinderBonus = Math.round(EXP_CONFIG.GRINDER_BONUS.LEVEL_3 * rankMul);
             }
 
             // C. 🌅 First Win of the Day (เทียบตามเวลาประเทศไทยป้องกัน Timezone UTC คลาดเคลื่อน)
@@ -265,7 +272,7 @@ export async function POST(request: Request) {
             const todayDateKey = toDateKey(new Date());
 
             if (!userLastPlayedDateKey || userLastPlayedDateKey !== todayDateKey) {
-                firstWinBonus = EXP_CONFIG.FIRST_WIN_REWARD;
+                firstWinBonus = Math.round(EXP_CONFIG.FIRST_WIN_REWARD * rankMul);
             }
 
             // --- 4. รวม XP และอัปเดต User ---
