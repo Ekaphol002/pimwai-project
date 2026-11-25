@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from "next-auth/react";
 import { FaCaretDown, FaUserCog, FaSignOutAlt } from 'react-icons/fa';
-import { Flame, MessageSquarePlus, Menu, X, Loader2, Send, Newspaper, Code2 } from 'lucide-react';
+import { Flame, MessageSquarePlus, Menu, X, Loader2, Send, Newspaper, Code2, ShieldAlert } from 'lucide-react';
 import { calculateCurrentStreak } from '@/lib/streakUtils';
 import toast, { Toaster } from 'react-hot-toast';
 import { isAdmin } from '@/lib/adminAuth';
@@ -300,6 +300,17 @@ export default function Navbar() {
                         <span>ส่งข้อเสนอแนะ</span>
                       </button>
 
+                      {isAdmin(session.user?.email) && (
+                        <Link
+                          href="/admin"
+                          onClick={() => setIsDropdownOpen(false)}
+                          className="w-full text-left flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-50 hover:text-red-600 transition-colors"
+                        >
+                          <ShieldAlert className="text-base text-red-500" size={16} />
+                          <span>Admin Panel</span>
+                        </Link>
+                      )}
+
                       <button
                         onClick={() => signOut({ callbackUrl: '/login' })}
                         className="w-full text-left flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold text-red-500 hover:bg-red-50 transition-colors border-t border-gray-100"
@@ -424,6 +435,17 @@ export default function Navbar() {
               <MessageSquarePlus size={16} />
               <span>ส่งข้อเสนอแนะ</span>
             </button>
+
+            {isAdmin(session?.user?.email) && (
+              <Link
+                href="/admin"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`py-2 px-3 rounded-xl font-bold text-sm flex items-center gap-2 ${pathname === '/admin' ? 'bg-red-500 text-white' : 'text-red-300 hover:bg-white/10'}`}
+              >
+                <ShieldAlert size={16} />
+                <span>Admin Panel</span>
+              </Link>
+            )}
 
             <div className="border-t border-white/10 pt-3 mt-1 flex flex-col gap-2">
               {session ? (

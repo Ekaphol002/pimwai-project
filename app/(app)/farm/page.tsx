@@ -366,7 +366,7 @@ export default function FarmPage() {
     const [maxCombo, setMaxCombo] = useState<number>(0);
     const [multiplier, setMultiplier] = useState<number>(1.0);
     const [roundExpEarned, setRoundExpEarned] = useState<number>(0);
-    const [sessionExpEarned, setSessionExpEarned] = useState<number>(0);
+    const [todayExpEarned, setTodayExpEarned] = useState<number>(0);
     const [currentWpm, setCurrentWpm] = useState<number>(0);
     const [accuracy, setAccuracy] = useState<number>(100);
 
@@ -395,6 +395,16 @@ export default function FarmPage() {
             } catch (e) { }
         }
     }, [todayFarmTimeSeconds]);
+
+    // บันทึก EXP วันนี้ลง LocalStorage แยกตามบัญชีและวันที่ (เวลาไทย) เพื่อคงค่าทันทีแม้รีเฟรชหน้า
+    useEffect(() => {
+        if (typeof window === 'undefined' || !isUserLoaded) return;
+        try {
+            const todayKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+            const userKey = session?.user?.email || 'guest';
+            localStorage.setItem(`pimwai_today_farm_exp_${userKey}_${todayKey}`, String(todayExpEarned));
+        } catch (e) { }
+    }, [todayExpEarned, isUserLoaded, session?.user?.email]);
     const [sessionPlayTimeSeconds, setSessionPlayTimeSeconds] = useState<number>(0);
     const roundIdRef = useRef<string>(`rnd_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`);
 
@@ -615,6 +625,17 @@ export default function FarmPage() {
                     if (typeof data.user?.todayFarmTimeSeconds === 'number') {
                         setTodayFarmTimeSeconds(prev => Math.max(prev, data.user.todayFarmTimeSeconds));
                     }
+                    try {
+                        const todayKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+                        const userKey = data.user.email || session?.user?.email || 'guest';
+                        const cachedTodayExp = parseInt(localStorage.getItem(`pimwai_today_farm_exp_${userKey}_${todayKey}`) || '0', 10) || 0;
+                        const serverTodayExp = typeof data.user?.todayFarmExp === 'number' ? data.user.todayFarmExp : 0;
+                        setTodayExpEarned(Math.max(cachedTodayExp, serverTodayExp));
+                    } catch (e) {
+                        if (typeof data.user?.todayFarmExp === 'number') {
+                            setTodayExpEarned(data.user.todayFarmExp);
+                        }
+                    }
 
                     const isTop10 = Boolean(data.isTop10 || data.user?.isTop10 || data.user?.rank === 7);
                     setIsTop10User(isTop10);
@@ -647,6 +668,9 @@ export default function FarmPage() {
                         const guestExp = savedGuestExp ? parseInt(savedGuestExp, 10) || 0 : 0;
                         setUserTotalExp(guestExp);
                         userTotalExpRef.current = guestExp;
+                        const todayKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+                        const cachedGuestTodayExp = parseInt(localStorage.getItem(`pimwai_today_farm_exp_guest_${todayKey}`) || '0', 10) || 0;
+                        setTodayExpEarned(cachedGuestTodayExp);
                         const rInfo = calculateRankInfo(guestExp);
                         lastSeenRankRef.current = rInfo.rank;
                         const rCfg = getRankMultiplierConfig(rInfo.rank, rInfo.stars);
@@ -665,6 +689,9 @@ export default function FarmPage() {
                     const guestExp = savedGuestExp ? parseInt(savedGuestExp, 10) || 0 : 0;
                     setUserTotalExp(guestExp);
                     userTotalExpRef.current = guestExp;
+                    const todayKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+                    const cachedGuestTodayExp = parseInt(localStorage.getItem(`pimwai_today_farm_exp_guest_${todayKey}`) || '0', 10) || 0;
+                    setTodayExpEarned(cachedGuestTodayExp);
                     const rInfo = calculateRankInfo(guestExp);
                     const rCfg = getRankMultiplierConfig(rInfo.rank, rInfo.stars);
                     setMultiplier(rCfg.totalBaseMultiplier);
@@ -688,7 +715,7 @@ export default function FarmPage() {
                 if (expToCancel > 0) {
                     setUserTotalExp(prev => Math.max(0, prev - expToCancel));
                     userTotalExpRef.current = Math.max(0, userTotalExpRef.current - expToCancel);
-                    setSessionExpEarned(prev => Math.max(0, prev - expToCancel));
+                    setTodayExpEarned(prev => Math.max(0, prev - expToCancel));
                 }
                 pendingSyncExpRef.current = 0;
                 unsyncedWordsCountRef.current = 0;
@@ -797,7 +824,7 @@ export default function FarmPage() {
                 if (expToCancel > 0) {
                     setUserTotalExp(prev => Math.max(0, prev - expToCancel));
                     userTotalExpRef.current = Math.max(0, userTotalExpRef.current - expToCancel);
-                    setSessionExpEarned(prev => Math.max(0, prev - expToCancel));
+                    setTodayExpEarned(prev => Math.max(0, prev - expToCancel));
                 }
                 pendingSyncExpRef.current = 0;
                 unsyncedWordsCountRef.current = 0;
@@ -1124,13 +1151,16 @@ export default function FarmPage() {
                 if (typeof data?.updatedUser?.todayFarmTimeSeconds === 'number') {
                     setTodayFarmTimeSeconds(prev => Math.max(prev, data.updatedUser.todayFarmTimeSeconds));
                 }
+                if (typeof data?.updatedUser?.todayFarmExp === 'number') {
+                    setTodayExpEarned(prev => Math.max(prev, data.updatedUser.todayFarmExp));
+                }
                 // แจ้งเตือนเมื่อมีภารกิจรายวันสำเร็จระหว่างพิมพ์ด่วน พร้อมบวก EXP รางวัลเควส
                 if (Array.isArray(data?.completedQuests) && data.completedQuests.length > 0) {
                     const questBonus = Number(data.questBonusXp) || 0;
                     if (questBonus > 0) {
                         setRoundExpEarned(prev => prev + questBonus);
                         roundExpEarnedRef.current += questBonus;
-                        setSessionExpEarned(prev => prev + questBonus);
+                        setTodayExpEarned(prev => prev + questBonus);
                         setUserTotalExp(prev => {
                             const nextTotal = Math.max(prev + questBonus, Number(data?.updatedUser?.currentExp) || 0);
                             userTotalExpRef.current = nextTotal;
@@ -1397,7 +1427,7 @@ export default function FarmPage() {
                 if (!isRepeatPracticeRef.current && bountyExp > 0) {
                     setRoundExpEarned(prev => prev + bountyExp);
                     roundExpEarnedRef.current += bountyExp;
-                    setSessionExpEarned(prev => prev + bountyExp);
+                    setTodayExpEarned(prev => prev + bountyExp);
                     setUserTotalExp(prev => {
                         const nextTotal = prev + bountyExp;
                         userTotalExpRef.current = nextTotal;
@@ -1596,7 +1626,7 @@ export default function FarmPage() {
                 if (!isRepeatPracticeRef.current && !isOverHumanSpeed) {
                     setRoundExpEarned(prev => prev + charExpGain);
                     roundExpEarnedRef.current += charExpGain;
-                    setSessionExpEarned(prev => prev + charExpGain);
+                    setTodayExpEarned(prev => prev + charExpGain);
                     wordExpEarnedRef.current += charExpGain;
                     setUserTotalExp(prev => {
                         const nextTotal = prev + charExpGain;
@@ -1651,7 +1681,7 @@ export default function FarmPage() {
                     if (isFeverActiveRef.current) bountyExp *= 2;
                     setRoundExpEarned(prev => prev + bountyExp);
                     roundExpEarnedRef.current += bountyExp;
-                    setSessionExpEarned(prev => prev + bountyExp);
+                    setTodayExpEarned(prev => prev + bountyExp);
                     setUserTotalExp(prev => prev + bountyExp);
                     pendingSyncExpRef.current += bountyExp;
                     triggerWordFloater(activeWordIdx, isGoldenBounty ? 'golden_bounty' : 'bounty', `+${bountyExp} EXP`, bountyExp);
@@ -2371,7 +2401,7 @@ export default function FarmPage() {
                                                 </span>
                                                 <span className="text-emerald-600 font-bold text-[10px] flex items-center gap-0.5">
                                                     <Sparkles size={10} className="text-yellow-500 fill-yellow-500 shrink-0" />
-                                                    +{sessionExpEarned.toLocaleString()}
+                                                    +{todayExpEarned.toLocaleString()}
                                                 </span>
                                             </div>
                                             {/* 🌟 หลอด ExpBar ย้ายขึ้นมาอยู่แถวเดียวกันตรงนี้เลย! */}
@@ -2497,12 +2527,12 @@ export default function FarmPage() {
                                             showText={false}
                                         />
 
-                                        {/* แสดง EXP สะสมรอบนี้ (Desktop) */}
+                                        {/* แสดง EXP ที่ได้รับวันนี้ (Desktop) */}
                                         <div className="hidden sm:flex items-center justify-center gap-2 text-xs sm:text-sm font-bold mt-2 px-1">
-                                            <span className="text-gray-500 font-semibold">EXP สะสมรอบนี้:</span>
+                                            <span className="text-gray-500 font-semibold">EXP วันนี้:</span>
                                             <span className="text-emerald-600 font-black text-sm sm:text-base flex items-center gap-1 logo-font">
                                                 <Sparkles size={15} className="text-yellow-500 fill-yellow-500 shrink-0" />
-                                                +{sessionExpEarned.toLocaleString()} EXP
+                                                +{todayExpEarned.toLocaleString()} EXP
                                             </span>
                                         </div>
                                     </div>

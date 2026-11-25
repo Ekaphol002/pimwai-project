@@ -7,6 +7,7 @@ import CharacterConveyorBox from '@/components/CharacterConveyorBox/CharacterCon
 import Keyboard from '@/components/Keyboard/Keyboard';
 import PracticeResultModal from '@/components/PracticeResultModal/PracticeResultModal';
 import NewKeyIntro from '@/components/NewKeyIntro/NewKeyIntro'; // Import
+import LessonLiveHud from '@/components/LessonLiveHud/LessonLiveHud';
 import {
   reverseThaiKeyMap,
   thaiShiftKeyDisplayMap,
@@ -20,6 +21,17 @@ import { CheckCircle2 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 
 const CHARS_PER_LINE = 8;
+
+function expandCharacterText(text: string, minTokens: number = 40): string {
+  if (!text) return '';
+  const baseTokens = text.trim().split(/\s+/).filter(Boolean);
+  if (baseTokens.length === 0) return '';
+  const result = [...baseTokens];
+  while (result.length < minTokens) {
+    result.push(...baseTokens);
+  }
+  return result.slice(0, Math.max(minTokens, baseTokens.length)).join(' ');
+}
 
 function chunkTextIntoCharLines(text: string): string[][] {
   if (!text) return [[]];
@@ -58,11 +70,13 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
   const introTargetChar = newKeys[0] || ' ';
   const introExpectedKey = reverseThaiKeyMap[introTargetChar] || 'Space';
 
+  const [expandedText, setExpandedText] = useState('');
   const [lines, setLines] = useState<string[][]>([[]]);
   const [currentLineIndex, setCurrentLineIndex] = useState(0);
   const [currentCharInLineIndex, setCurrentCharInLineIndex] = useState(0);
   const [isCurrentCharCorrect, setIsCurrentCharCorrect] = useState<boolean | null>(null);
   const [errorCount, setErrorCount] = useState(0);
+  const [combo, setCombo] = useState(0);
   const [pressedKey, setPressedKey] = useState<string | null>(null);
   const [errorKey, setErrorKey] = useState<string | null>(null);
 
@@ -84,6 +98,7 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
   const [questText, setQuestText] = useState<string | null>(null);
   const [totalXP, setTotalXP] = useState(0);
   const [dailyQuests, setDailyQuests] = useState<GuestDailyQuestItem[]>([]);
+  const [isSavingXP, setIsSavingXP] = useState(false);
 
   // ใช้ Ref เพื่อป้องกันการส่งข้อมูลซ้ำ (Double Submit)
   const isSubmittingRef = useRef(false);
@@ -98,7 +113,9 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
 
   useEffect(() => {
     if (initialText) {
-      const chunkedLines = chunkTextIntoCharLines(initialText);
+      const expanded = expandCharacterText(initialText, 40);
+      setExpandedText(expanded);
+      const chunkedLines = chunkTextIntoCharLines(expanded);
       setLines(chunkedLines);
       resetLesson(chunkedLines);
     }
@@ -108,6 +125,7 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
   const saveResultToDb = async (wpm: number, accuracy: number, stars: number, duration: number) => {
     if (isSubmittingRef.current) return; // ป้องกันส่งซ้ำ
     isSubmittingRef.current = true;
+    setIsSavingXP(true);
 
     try {
       const guestContext = getGuestLessonMetaForSave(subLessonId);
@@ -162,6 +180,8 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
 
     } catch (error) {
       console.error('บันทึกผลล้มเหลว:', error);
+    } finally {
+      setIsSavingXP(false);
     }
   };
 
@@ -179,7 +199,7 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
     const durationInSeconds = Math.round(durationMs / 1000);
 
     const durationInMinutes = durationMs / 60000;
-    const totalChars = initialText.replace(/ /g, '').length;
+    const totalChars = (expandedText || initialText).replace(/ /g, '').length;
     const grossWPM = (totalChars / 4) / durationInMinutes;
     const errorPenalty = totalErrors / durationInMinutes;
     const netWPM = Math.round(grossWPM - errorPenalty);
@@ -212,6 +232,7 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
     setCurrentCharInLineIndex(0);
     setIsCurrentCharCorrect(null);
     setErrorCount(0);
+    setCombo(0);
 
     setStartTime(null);
     setTotalErrors(0);
@@ -284,6 +305,7 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
         // กรณีต้องกด Shift แต่ไม่กด -> ผิด
         setIsCurrentCharCorrect(false);
         setErrorKey(typedKeyCode);
+        setCombo(0);
         setErrorCount((count) => count + 1);
         setTotalErrors(prev => prev + 1);
         setProblemKeys((prev) => ({ ...prev, [expectedChar]: (prev[expectedChar] || 0) + 1 }));
@@ -295,6 +317,7 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
         // ✅ กรณีพิมพ์ถูก: ขยับทันที ไม่ต้องรอ setTimeout
         setIsCurrentCharCorrect(true); // เซ็ตเพื่อให้สีเขียวขึ้นแป๊บเดียว หรือ Conveyor ขยับ
         setErrorKey(null);
+        setCombo(prev => prev + 1);
 
         const isLastCharOfLine = currentCharInLineIndex === lines[currentLineIndex].length - 1;
         const isLastLine = currentLineIndex === lines.length - 1;
@@ -322,6 +345,7 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
         // กรณีพิมพ์ผิดทั่วไป
         setIsCurrentCharCorrect(false);
         setErrorKey(typedKeyCode);
+        setCombo(0);
         setErrorCount((count) => count + 1);
         setTotalErrors(prev => prev + 1);
         setProblemKeys((prev) => ({ ...prev, [expectedChar]: (prev[expectedChar] || 0) + 1 }));
@@ -362,6 +386,7 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
           questText={questText}
           totalXP={totalXP}
           dailyQuests={dailyQuests}
+          isLoadingXP={isSavingXP}
         />
       ) : showIntro && hasNewKeys ? (
         // Intro Screen - แสดงเฉพาะเมื่อมี newKeys
@@ -387,6 +412,24 @@ export default function PracticeModeCharacter({ initialText, subLessonId, nextUr
             currentCharIndexInLine={currentCharInLineIndex}
             isCurrentCharCorrect={isCurrentCharCorrect}
             shakeTrigger={errorCount}
+          />
+          <LessonLiveHud
+            completedChars={currentLineIndex * CHARS_PER_LINE + currentCharInLineIndex}
+            totalChars={lines.reduce((sum, l) => sum + l.length, 0)}
+            liveAcc={(() => {
+              const done = currentLineIndex * CHARS_PER_LINE + currentCharInLineIndex;
+              const total = done + totalErrors;
+              return total > 0 ? Math.round((done / total) * 100) : 100;
+            })()}
+            currentStars={(() => {
+              const done = currentLineIndex * CHARS_PER_LINE + currentCharInLineIndex;
+              const total = done + totalErrors;
+              const acc = total > 0 ? Math.round((done / total) * 100) : 100;
+              return acc >= 95 ? 3 : acc >= 90 ? 2 : acc >= 85 ? 1 : 0;
+            })()}
+            combo={combo}
+            startTime={startTime}
+            isFinished={isFinished}
           />
           <Keyboard
             pressedKey={pressedKey}

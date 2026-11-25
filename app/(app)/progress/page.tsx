@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { Zap, Target, Clock, Star, Sparkles, Flame, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
+import { useSession } from 'next-auth/react';
+import { Zap, Target, Clock, Star, Sparkles, Flame, ChevronLeft, ChevronRight, LogIn, RefreshCw } from 'lucide-react';
 import StickyNavbar from '@/components/StickyNavbar/StickyNavbar';
 import StatCard from '@/components/ProgressStatCard/ProgressStatCard';
 import LessonList from '@/components/ProgressList/ProgressList';
@@ -9,6 +11,7 @@ import ActivityGraph from '@/components/ActivityGraph/ActivityGraph';
 import RecentActivityWidget from '@/components/RecentActivityWidget/RecentActivityWidget';
 
 export default function ProgressPage() {
+    const { status } = useSession();
     const [stats, setStats] = useState({
         totalStars: 0,
         avgSpeed: 0,
@@ -21,27 +24,42 @@ export default function ProgressPage() {
     const [recentActivity, setRecentActivity] = useState<any[]>([]);
     const [courseProgress, setCourseProgress] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
+
+    const fetchData = useCallback(async () => {
+        setIsLoading(true);
+        setLoadError(null);
+        try {
+            const res = await fetch('/api/progress', { cache: 'no-store' });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                setStats(data.stats);
+                setActivityDates(data.activityDates || []);
+                if (data.dailyStats) setDailyStats(data.dailyStats);
+                setRecentActivity(data.recentActivity || []);
+                setCourseProgress(data.courseProgress || []);
+            } else if (res.status === 401) {
+                setLoadError('UNAUTHORIZED');
+            } else {
+                setLoadError(data.error || 'ไม่สามารถโหลดข้อมูลสรุปผลรวมได้');
+            }
+        } catch (error) {
+            console.error("Failed to load progress:", error);
+            setLoadError('เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง');
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
 
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const res = await fetch('/api/progress');
-                const data = await res.json();
-                if (data.success) {
-                    setStats(data.stats);
-                    setActivityDates(data.activityDates);
-                    if (data.dailyStats) setDailyStats(data.dailyStats);
-                    setRecentActivity(data.recentActivity);
-                    setCourseProgress(data.courseProgress);
-                }
-            } catch (error) {
-                console.error("Failed to load progress:", error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
+        if (status === 'loading') return;
+        if (status === 'unauthenticated') {
+            setIsLoading(false);
+            setLoadError('UNAUTHORIZED');
+            return;
+        }
         fetchData();
-    }, []);
+    }, [status, fetchData]);
 
     const renderStat = (value: any) => {
         if (!value || value === 0 || value === "0") return "--";
@@ -166,6 +184,53 @@ export default function ProgressPage() {
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </main>
+            </div>
+        );
+    }
+
+    if (loadError === 'UNAUTHORIZED') {
+        return (
+            <div className="min-h-screen bg-gray-100 flex flex-col font-sans">
+                <StickyNavbar />
+                <main className="flex-grow flex items-center justify-center px-6 py-16">
+                    <div className="bg-white rounded-3xl p-8 sm:p-10 shadow-sm border border-gray-200 max-w-md w-full text-center space-y-4">
+                        <div className="w-14 h-14 rounded-2xl bg-gray-100 text-[#5cb5db] flex items-center justify-center mx-auto">
+                            <LogIn size={28} />
+                        </div>
+                        <h1 className="text-2xl font-extrabold text-gray-800">เข้าสู่ระบบเพื่อดูสรุปผลรวม</h1>
+                        <p className="text-sm text-gray-500">
+                            เข้าสู่ระบบเพื่อดูสถิติการฝึกฝน ปฏิทินไฟต่อเนื่อง และความคืบหน้าบทเรียนทั้งหมดของคุณ
+                        </p>
+                        <Link
+                            href="/login?callbackUrl=/progress"
+                            className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-[#5cb5db] hover:bg-[#4ba3c9] text-white font-bold text-sm transition"
+                        >
+                            เข้าสู่ระบบ
+                        </Link>
+                    </div>
+                </main>
+            </div>
+        );
+    }
+
+    if (loadError) {
+        return (
+            <div className="min-h-screen bg-gray-100 flex flex-col font-sans">
+                <StickyNavbar />
+                <main className="flex-grow flex items-center justify-center px-6 py-16">
+                    <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-200 max-w-md w-full text-center space-y-4">
+                        <h1 className="text-xl font-bold text-gray-800">โหลดหน้าสรุปผลรวมไม่สำเร็จ</h1>
+                        <p className="text-sm text-gray-500">{loadError}</p>
+                        <button
+                            type="button"
+                            onClick={fetchData}
+                            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#5cb5db] hover:bg-[#4ba3c9] text-white font-bold text-sm transition cursor-pointer"
+                        >
+                            <RefreshCw size={16} />
+                            <span>ลองใหม่อีกครั้ง</span>
+                        </button>
                     </div>
                 </main>
             </div>

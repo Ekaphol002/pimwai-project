@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getRankFromExp, calculateRankInfo } from '@/lib/rankUtils';
 import { getStartOfTodayBangkok } from '@/lib/streakUtils';
+import { recordUserActiveDate } from '@/lib/activeDates';
 import { evaluateNewlyCompletedQuests } from '@/lib/questUtils';
 
 // 🛡️ In-memory rate limiting map (userId -> timestamp of last request)
@@ -115,6 +116,8 @@ export async function POST(request: Request) {
                 updatedUserRecord.rank = rankInfo.rank;
             }
 
+            await recordUserActiveDate(prisma, user.id);
+
             return NextResponse.json({
                 success: true,
                 updatedUser: updatedUserRecord
@@ -124,26 +127,63 @@ export async function POST(request: Request) {
         // 🛡️ Atomic Transaction: ป้องกัน Race Condition และ EXP สูญหาย (B8 Fix)
         // 🛡️ ถนอมดาวสะสม: ไม่เขียนทับ User.stars ด้วย rankInfo.stars เพื่อไม่ให้ดาวจากบทเรียนหาย (B7 Fix)
         const result = await prisma.$transaction(async (tx) => {
+            const startOfToday = getStartOfTodayBangkok();
             let createdFarmSessionId: string | undefined = undefined;
-            // 🛡️ ปรับการบันทึก FarmSession แบบใหม่:
-            // สร้างแถว FarmSession เพียง 1 แถวต่อเมื่อ "จบรอบ" หรือ "ออกจากหน้า" (isFinalSession === true)
-            // และต้องไม่ใช่การส่งซ้ำของ round เดิม
+            let prevFarmSnapshot: { duration: number; wpm: number; accuracy: number; wordsCount: number } | null = null;
+
+            // 🛡️ เก็บ FarmSession แค่ 1 แถวต่อวันต่อคน (อัปเดตบวกรวมเข้าแถวของวันนี้แทนการสร้างแถวใหม่ทุกจบรอบ)
             if (isFinalSession === true && !isDuplicateRound && (Number(sessionDuration) > 0 || addedDuration > 0 || numWords >= 1 || safeExp > 0 || Number(sessionExp) > 0)) {
                 const finalDuration = Math.min(7200, Math.max(1, Number(sessionDuration) || addedDuration));
                 const finalWords = Math.max(0, Number(sessionWords) || numWords);
                 const finalExp = Math.max(0, Number(sessionExp) || safeExp);
 
-                const newFarmSession = await tx.farmSession.create({
-                    data: {
+                const existingToday = await tx.farmSession.findFirst({
+                    where: {
                         userId: user.id,
-                        duration: finalDuration,
-                        expEarned: finalExp,
-                        wpm: numWpm,
-                        accuracy: numAccuracy,
-                        wordsCount: finalWords
-                    }
+                        createdAt: { gte: startOfToday }
+                    },
+                    orderBy: { createdAt: 'asc' }
                 });
-                createdFarmSessionId = newFarmSession.id;
+
+                if (existingToday) {
+                    const prevDur = Math.max(0, existingToday.duration || 0);
+                    const prevW = Math.max(1, prevDur);
+                    const newW = Math.max(1, finalDuration);
+                    const mergedDuration = prevDur + finalDuration;
+                    const mergedWpm = Math.round(((existingToday.wpm || 0) * prevW + numWpm * newW) / (prevW + newW));
+                    const mergedAcc = Math.round((((existingToday.accuracy !== undefined ? existingToday.accuracy : 100) * prevW) + numAccuracy * newW) / (prevW + newW));
+
+                    prevFarmSnapshot = {
+                        duration: existingToday.duration || 0,
+                        wpm: existingToday.wpm || 0,
+                        accuracy: existingToday.accuracy !== undefined ? existingToday.accuracy : 100,
+                        wordsCount: existingToday.wordsCount || 0
+                    };
+
+                    await tx.farmSession.update({
+                        where: { id: existingToday.id },
+                        data: {
+                            duration: mergedDuration,
+                            expEarned: (existingToday.expEarned || 0) + finalExp,
+                            wordsCount: (existingToday.wordsCount || 0) + finalWords,
+                            wpm: mergedWpm,
+                            accuracy: mergedAcc
+                        }
+                    });
+                    createdFarmSessionId = existingToday.id;
+                } else {
+                    const newFarmSession = await tx.farmSession.create({
+                        data: {
+                            userId: user.id,
+                            duration: finalDuration,
+                            expEarned: finalExp,
+                            wpm: numWpm,
+                            accuracy: numAccuracy,
+                            wordsCount: finalWords
+                        }
+                    });
+                    createdFarmSessionId = newFarmSession.id;
+                }
             }
 
             // ตรวจสอบว่ามีเควสรายวันไหนที่เพิ่งสำเร็จในรอบการซิงค์นี้หรือไม่
@@ -152,7 +192,8 @@ export async function POST(request: Request) {
                 userId: user.id,
                 currentActivity: {
                     type: 'farm',
-                    recordId: createdFarmSessionId
+                    recordId: createdFarmSessionId,
+                    prevFarmSession: prevFarmSnapshot
                 }
             });
 
@@ -195,21 +236,24 @@ export async function POST(request: Request) {
                 updatedUserRecord.rank = rankInfo.rank;
             }
 
-            const startOfToday = getStartOfTodayBangkok();
+            await recordUserActiveDate(tx, user.id);
+
             const todayFarm = await tx.farmSession.aggregate({
                 where: {
                     userId: user.id,
                     createdAt: { gte: startOfToday }
                 },
                 _sum: {
-                    duration: true
+                    duration: true,
+                    expEarned: true
                 }
             });
 
             return {
                 updatedUser: {
                     ...updatedUserRecord,
-                    todayFarmTimeSeconds: todayFarm._sum.duration || 0
+                    todayFarmTimeSeconds: todayFarm._sum.duration || 0,
+                    todayFarmExp: todayFarm._sum.expEarned || 0
                 },
                 completedQuests: newlyCompletedQuests,
                 questBonusXp: totalQuestBonusXp

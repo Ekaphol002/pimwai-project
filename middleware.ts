@@ -9,8 +9,6 @@ export default withAuth({
 })
 
 export const config = {
-  // 🔒 ล็อกเฉพาะหน้าสรุปผลส่วนตัว ส่วน /lesson และ /typing-test เปิดให้เล่นแบบ Guest ได้ทันที
-  matcher: [
-    "/progress/:path*",
-  ]
+  // ปลดล็อกทั้งหมดให้ตรวจสอบสิทธิ์ในแต่ละหน้า/API โดยตรง ป้องกันปัญหาวนลูปล็อกอินในหน้า /progress
+  matcher: []
 }

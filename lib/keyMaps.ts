@@ -143,8 +143,9 @@ export function subscribeCapsLock(listener: CapsLockListener): () => void {
 }
 
 /**
- * แปลงปุ่มที่กดเป็นตัวอักษรไทยตามสถานะ Shift หรือ CapsLock
- * ถ้าเปิด CapsLock อยู่ จะได้ตัวอักษรไทยแถวบน (Shift) ตลอดเวลาโดยไม่ต้องกด Shift ค้าง
+ * แปลงปุ่มที่กดเป็นตัวอักษรตามภาษาแป้นพิมพ์จริงของเครื่อง (e.key)
+ * - ถ้าแป้นพิมพ์เครื่องอยู่ภาษาอังกฤษ จะคืนค่าตัวอักษรอังกฤษตามจริง (พิมพ์ไทยไม่ผ่าน)
+ * - ถ้าแป้นพิมพ์เครื่องอยู่ภาษาไทยและเปิด CapsLock อยู่ จะสลับแถวบน/ล่างให้ถูกต้องบน Windows
  */
 export function resolveThaiKeyWithCapsLock(e: {
   key: string;
@@ -154,15 +155,33 @@ export function resolveThaiKeyWithCapsLock(e: {
   const capsOn = isCapsLockActive();
   const isEffectiveShift = Boolean(e.shiftKey) !== Boolean(capsOn);
 
-  if (e.code) {
-    if (e.code === 'Space' || e.key === ' ') {
-      return { typedChar: ' ', isEffectiveShift: false };
-    }
+  if (e.code === 'Space' || e.key === ' ') {
+    return { typedChar: ' ', isEffectiveShift: false };
+  }
+
+  // ถ้าไม่ได้เปิด CapsLock ให้ใช้ e.key จากภาษาคีย์บอร์ดจริงของเครื่องทันที
+  if (!capsOn) {
+    return { typedChar: e.key, isEffectiveShift: Boolean(e.shiftKey) };
+  }
+
+  // กรณีเปิด CapsLock: แปลงเฉพาะเมื่อแป้นพิมพ์เครื่องกำลังอยู่ภาษาไทยจริงๆ เท่านั้น
+  const isThaiKeyInput = /[\u0E00-\u0E7F]/.test(e.key);
+  if (isThaiKeyInput && e.code) {
     const mapped = isEffectiveShift
       ? thaiShiftKeyDisplayMap[e.code]
       : thaiKeyDisplayMap[e.code];
 
-    if (mapped && mapped !== 'Tab' && mapped !== 'Caps Lock' && mapped !== 'Shift' && mapped !== 'Enter' && mapped !== 'Ctrl' && mapped !== 'Alt' && mapped !== 'Cmd' && mapped !== 'Backspace') {
+    if (
+      mapped &&
+      mapped !== 'Tab' &&
+      mapped !== 'Caps Lock' &&
+      mapped !== 'Shift' &&
+      mapped !== 'Enter' &&
+      mapped !== 'Ctrl' &&
+      mapped !== 'Alt' &&
+      mapped !== 'Cmd' &&
+      mapped !== 'Backspace'
+    ) {
       return { typedChar: mapped.trim(), isEffectiveShift };
     }
   }

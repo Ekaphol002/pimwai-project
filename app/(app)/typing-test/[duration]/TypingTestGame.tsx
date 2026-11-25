@@ -7,6 +7,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import ConveyorBox from '@/components/ConveyorBox/ConveyorBox';
 import PracticeResultModal from '@/components/PracticeResultModal/PracticeResultModal';
 import PracticeNavbar from '@/components/PracticeNavbar/PracticeNavbar';
+import LessonLiveHud from '@/components/LessonLiveHud/LessonLiveHud';
 import { SENTENCES_POOL } from '@/data/sentences';
 import { thaiShiftKeyDisplayMap, resolveThaiKeyWithCapsLock } from '@/lib/keyMaps';
 import { soundManager } from '@/lib/soundEffects';
@@ -117,6 +118,7 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
   // Stats
   const [totalErrors, setTotalErrors] = useState(0);
   const [correctCharsCount, setCorrectCharsCount] = useState(0);
+  const [combo, setCombo] = useState(0);
   const correctCharsCountRef = useRef(0);
   const totalErrorsRef = useRef(0);
   const [problemKeys, setProblemKeys] = useState<{ [key: string]: number }>({});
@@ -125,6 +127,7 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
   const [earnedXP, setEarnedXP] = useState(0);
   const [totalXP, setTotalXP] = useState(0);
   const [dailyQuests, setDailyQuests] = useState<GuestDailyQuestItem[]>([]);
+  const [isSavingXP, setIsSavingXP] = useState(false);
   const isSubmittingRef = useRef(false);
   const [xpBreakdown, setXpBreakdown] = useState(null);
 
@@ -150,6 +153,7 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
     setCurrentCharIndexInLine(0);
     setCorrectCharsCount(0);
     setTotalErrors(0);
+    setCombo(0);
     correctCharsCountRef.current = 0;
     totalErrorsRef.current = 0;
     isSubmittingRef.current = false;
@@ -189,6 +193,7 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
     setFinalWPM(netWPM);
     setFinalAcc(accuracy);
 
+    setIsSavingXP(true);
     try {
       const guestTotalExp = getGuestExp();
       const res = await fetch('/api/save-test', {
@@ -232,6 +237,8 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
       }
     } catch (error) {
       console.error("Save failed:", error);
+    } finally {
+      setIsSavingXP(false);
     }
   };
 
@@ -342,11 +349,13 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
         }
         correctCharsCountRef.current += 1;
         setCorrectCharsCount(p => p + 1);
+        setCombo(p => p + 1);
         moveCursorForward();
       } else {
         // พิมพ์ผิด: นับ error แต่ไม่สั่น และเดินหน้าได้ทันที
         totalErrorsRef.current += 1;
         setTotalErrors(p => p + 1);
+        setCombo(0);
         setProblemKeys(p => ({ ...p, [expectedChar]: (p[expectedChar] || 0) + 1 }));
 
         // Mark as incorrect
@@ -372,6 +381,7 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
       <PracticeNavbar
         title={`ทดสอบ ${timeLimitMinutes} นาที`}
         timer={`${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, '0')}`}
+        timeProgressPercent={timeLimitSeconds > 0 ? (timeLeft / timeLimitSeconds) * 100 : 0}
       />
 
       <div className="pt-10 pb-10 flex flex-col items-center gap-8 w-full max-w-5xl mx-auto px-6">
@@ -390,6 +400,7 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
             totalXP={totalXP}
             xpBreakdown={xpBreakdown}
             dailyQuests={dailyQuests}
+            isLoadingXP={isSavingXP}
           />
         ) : isLoading ? (
           <div className="h-screen flex flex-col items-center justify-center py-20 text-gray-400 font-bold text-2xl">
@@ -397,15 +408,42 @@ export default function TypingTestGame({ durationParam }: TypingTestGameProps) {
             <span>กำลังโหลดบททดสอบ...</span>
           </div>
         ) : (
-          <ConveyorBox
-            lines={lines}
-            statuses={statuses}
-            currentLineIndex={currentLineIndex}
-            currentCharIndexInLine={currentCharIndexInLine}
-            lineHeightPx={60}
-            errorEffect={errorEffect}
-            visibleLines={7}
-          />
+          <>
+            <ConveyorBox
+              lines={lines}
+              statuses={statuses}
+              currentLineIndex={currentLineIndex}
+              currentCharIndexInLine={currentCharIndexInLine}
+              lineHeightPx={60}
+              errorEffect={errorEffect}
+              visibleLines={7}
+            />
+            <LessonLiveHud
+              completedChars={correctCharsCount}
+              totalChars={Math.max(1, timeLimitSeconds)}
+              liveAcc={
+                correctCharsCount + totalErrors > 0
+                  ? Math.round((correctCharsCount / (correctCharsCount + totalErrors)) * 100)
+                  : 100
+              }
+              combo={combo}
+              startTime={null}
+              isFinished={isFinished}
+              isTestMode={true}
+              overrideTimeText={`${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, '0')}`}
+              overrideWpm={(() => {
+                const elapsedSec = timeLimitSeconds - timeLeft;
+                return hasStarted && elapsedSec >= 1
+                  ? Math.max(0, Math.round((correctCharsCount / 5) / (elapsedSec / 60)))
+                  : 0;
+              })()}
+              overrideProgressPct={
+                timeLimitSeconds > 0
+                  ? ((timeLimitSeconds - timeLeft) / timeLimitSeconds) * 100
+                  : 0
+              }
+            />
+          </>
         )}
       </div>
     </div>

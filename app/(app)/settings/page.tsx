@@ -406,7 +406,6 @@ export default function SettingsPage() {
     const currentImage = (profile?.image && profile.image !== '/default-avatar.png')
         ? profile.image
         : `https://ui-avatars.com/api/?name=${encodeURIComponent(profile?.displayName || 'User')}&background=e2f1f8&color=3a90b5&bold=true`;
-    const userIsAdmin = isAdmin(session?.user?.email);
 
     return (
         <div className="min-h-screen bg-[#f4f7fb] py-10 px-4 sm:px-6 lg:px-8 flex justify-center">
@@ -422,17 +421,6 @@ export default function SettingsPage() {
                         </h1>
                         <p className="text-gray-500 text-sm sm:text-base mt-1">จัดการข้อมูลส่วนตัว เสียงพิมพ์ เพลงพื้นหลัง และส่งข้อเสนอแนะ</p>
                     </div>
-
-                    {/* Admin Dashboard Badge Button */}
-                    {userIsAdmin && (
-                        <Link
-                            href="/admin"
-                            className="px-5 py-2.5 bg-red-500 hover:from-red-600 hover:to-amber-600 text-white rounded-2xl font-bold text-sm shadow-md flex items-center gap-2 self-start sm:self-auto transition-all cursor-pointer"
-                        >
-                            <ShieldAlert size={18} />
-                            <span>Admin Panel (แผงควบคุม)</span>
-                        </Link>
-                    )}
                 </div>
 
                 {/* --- Section 1: ข้อมูลโปรไฟล์หลัก --- */}

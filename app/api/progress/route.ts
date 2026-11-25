@@ -6,6 +6,7 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { toDateKey } from '@/lib/streakUtils';
+import { getUserActiveDates } from '@/lib/activeDates';
 
 export async function GET(request: Request) {
   try {
@@ -38,18 +39,10 @@ export async function GET(request: Request) {
 
     const userId = user.id;
 
-    // โหมดดึงเฉพาะวันที่ทำกิจกรรมอย่างรวดเร็วสำหรับ Navbar Streak
+    // โหมดดึงเฉพาะวันที่ทำกิจกรรมอย่างรวดเร็วสำหรับ Navbar Streak (อ่านจาก User.activeDates ถาวรเป็นหลัก)
     if (isSummaryOnly) {
-      const [lpDates, stDates, fsDates] = await Promise.all([
-        prisma.lessonProgress.findMany({ where: { userId }, select: { updatedAt: true } }),
-        prisma.speedTestResult.findMany({ where: { userId }, select: { createdAt: true } }),
-        prisma.farmSession.findMany({ where: { userId }, select: { createdAt: true } }),
-      ]);
-
-      const dateSet = new Set<string>();
-      for (const l of lpDates) dateSet.add(toDateKey(l.updatedAt));
-      for (const s of stDates) dateSet.add(toDateKey(s.createdAt));
-      for (const f of fsDates) dateSet.add(toDateKey(f.createdAt));
+      const savedActiveDates = await getUserActiveDates(prisma, userId);
+      const dateSet = new Set<string>(savedActiveDates);
       if (user.lastPlayedAt) dateSet.add(toDateKey(user.lastPlayedAt));
 
       return NextResponse.json({
@@ -59,9 +52,17 @@ export async function GET(request: Request) {
     }
 
     // =========================================================
-    // 1. ดึงข้อมูลจาก Database แบบขนาน (Parallel) เพื่อความเร็วสูงสุด
+    // 1. ดึงข้อมูลจาก Database แบบขนาน (Parallel) และรวม FarmSession ในระดับ SQL เพื่อความเร็วสูงสุด
     // =========================================================
-    const [lessonProgress, speedTestResults, farmSessions, allLessons] = await Promise.all([
+    interface FarmDailyRow {
+      d: string;
+      total_dur: number;
+      weighted_wpm: number;
+      weighted_acc: number;
+      cnt: number;
+    }
+
+    const [lessonProgress, speedTestResults, recentFarmSessions, farmDailyRows, allLessons] = await Promise.all([
       // A. ดึงประวัติการเล่นบทเรียน (Lesson Progress)
       prisma.lessonProgress.findMany({
         where: { userId },
@@ -71,13 +72,27 @@ export async function GET(request: Request) {
       // B. ดึงประวัติการทดสอบความเร็ว (Speed Test)
       prisma.speedTestResult.findMany({
         where: { userId },
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: 'desc' },
+        take: 200
       }),
-      // C. ดึงประวัติการฟาร์ม (Farm Sessions) สำหรับคำนวณ Streak (ไฟ) และเวลาฟาร์ม
+      // C1. ดึงประวัติฟาร์มล่าสุดแค่ 5 รายการสำหรับ Recent Activity
       prisma.farmSession.findMany({
         where: { userId },
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: 'desc' },
+        take: 5
       }),
+      // C2. รวมสถิติรายวันของ FarmSession ใน PostgreSQL โดยตรง (ไม่ต้องโหลดหลายพันแถวเข้า Node.js)
+      prisma.$queryRaw<FarmDailyRow[]>`
+        SELECT
+          TO_CHAR((("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Bangkok')::date, 'YYYY-MM-DD') AS d,
+          COALESCE(SUM(GREATEST(COALESCE(duration, 1), 1)), 0)::int AS total_dur,
+          COALESCE(SUM(COALESCE(wpm, 0) * GREATEST(COALESCE(duration, 1), 1)), 0)::double precision AS weighted_wpm,
+          COALESCE(SUM(COALESCE(accuracy, 100) * GREATEST(COALESCE(duration, 1), 1)), 0)::double precision AS weighted_acc,
+          COUNT(*)::int AS cnt
+        FROM "FarmSession"
+        WHERE "userId" = ${userId}
+        GROUP BY 1
+      `,
       // D. ดึงโครงสร้างบทเรียนทั้งหมด
       prisma.lesson.findMany({
         include: { subLessons: true },
@@ -129,45 +144,53 @@ export async function GET(request: Request) {
     // 3. เตรียมข้อมูลสำหรับ Graph และ Widgets (รวมทั้ง Lesson, Speed Test และ Farm)
     // =========================================================
 
-    const allActivities = [
-      ...lessonProgress.map(l => ({ ...l, type: 'lesson', date: l.updatedAt })),
-      ...speedTestResults.map(s => ({ ...s, type: 'test', date: s.createdAt, stars: 0 })),
-      ...farmSessions.map(f => ({ ...f, type: 'farm', date: f.createdAt, stars: 0 }))
+    const recentCandidates = [
+      ...lessonProgress.slice(0, 5).map(l => ({ ...l, type: 'lesson', date: l.updatedAt })),
+      ...speedTestResults.slice(0, 5).map(s => ({ ...s, type: 'test', date: s.createdAt, stars: 0 })),
+      ...recentFarmSessions.map(f => ({ ...f, type: 'farm', date: f.createdAt, stars: 0 }))
     ];
+    recentCandidates.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    // ถ้าเคยเล่น Farm มาก่อนแต่ยังไม่มีในตาราง farmSessions ให้นำ lastPlayedAt มารวมด้วยเพื่อความต่อเนื่องของ Streak
-    if (user.lastPlayedAt && farmSessions.length === 0) {
-      allActivities.push({
-        id: 'legacy-farm',
-        type: 'farm',
-        date: user.lastPlayedAt,
-        stars: 0
-      } as any);
+    // วันที่ที่มีกิจกรรม (สำหรับ Activity Graph และระบบ Streak / ไฟ 🔥) รวม User.activeDates ถาวรและ lastPlayedAt เสมอ
+    const savedActiveDates = await getUserActiveDates(prisma, userId);
+    const activityDateSet = new Set<string>(savedActiveDates);
+    const dailyStatsMap: Record<string, { duration: number; weightedWpm: number; weightedAcc: number; count: number }> = {};
+
+    const addDailyPoint = (dKey: string, dur: number, wpm: number, acc: number, cnt: number = 1) => {
+      if (!dKey) return;
+      activityDateSet.add(dKey);
+      if (!dailyStatsMap[dKey]) {
+        dailyStatsMap[dKey] = { duration: 0, weightedWpm: 0, weightedAcc: 0, count: 0 };
+      }
+      dailyStatsMap[dKey].duration += dur;
+      dailyStatsMap[dKey].weightedWpm += wpm * dur;
+      dailyStatsMap[dKey].weightedAcc += acc * dur;
+      dailyStatsMap[dKey].count += cnt;
+    };
+
+    for (const l of lessonProgress) {
+      addDailyPoint(toDateKey(l.updatedAt), l.duration || 1, l.wpm || 0, l.accuracy !== undefined ? l.accuracy : 100);
+    }
+    for (const s of speedTestResults) {
+      const durSec = (s.duration || 1) < 10 ? (s.duration || 1) * 60 : (s.duration || 1);
+      addDailyPoint(toDateKey(s.createdAt), durSec, s.wpm || 0, s.accuracy !== undefined ? s.accuracy : 100);
+    }
+    for (const f of farmDailyRows) {
+      if (!f.d) continue;
+      activityDateSet.add(f.d);
+      if (!dailyStatsMap[f.d]) {
+        dailyStatsMap[f.d] = { duration: 0, weightedWpm: 0, weightedAcc: 0, count: 0 };
+      }
+      dailyStatsMap[f.d].duration += Number(f.total_dur) || 0;
+      dailyStatsMap[f.d].weightedWpm += Number(f.weighted_wpm) || 0;
+      dailyStatsMap[f.d].weightedAcc += Number(f.weighted_acc) || 0;
+      dailyStatsMap[f.d].count += Number(f.cnt) || 1;
     }
 
-    allActivities.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-    // วันที่ที่มีกิจกรรม (สำหรับ Activity Graph และระบบ Streak / ไฟ 🔥) รวม lastPlayedAt เสมอ
-    const activityDateSet = new Set(allActivities.map(item => toDateKey(item.date)));
     if (user.lastPlayedAt) {
       activityDateSet.add(toDateKey(user.lastPlayedAt));
     }
     const activityDates = Array.from(activityDateSet);
-
-    // คำนวณสถิติรายวัน (WPM, Acc, Time) สำหรับปฏิทินเมื่อผู้ใช้กดดูวันที่ใน Activity Graph
-    const dailyStatsMap: Record<string, { duration: number; weightedWpm: number; weightedAcc: number; count: number }> = {};
-
-    for (const item of allActivities) {
-      const dKey = toDateKey(item.date);
-      if (!dailyStatsMap[dKey]) {
-        dailyStatsMap[dKey] = { duration: 0, weightedWpm: 0, weightedAcc: 0, count: 0 };
-      }
-      const dur = item.duration || 1;
-      dailyStatsMap[dKey].duration += dur;
-      dailyStatsMap[dKey].weightedWpm += ((item as any).wpm || 0) * dur;
-      dailyStatsMap[dKey].weightedAcc += ((item as any).accuracy !== undefined ? (item as any).accuracy : 100) * dur;
-      dailyStatsMap[dKey].count += 1;
-    }
 
     const dailyStats: Record<string, { wpm: number; accuracy: number; duration: number }> = {};
     for (const [dKey, val] of Object.entries(dailyStatsMap)) {
@@ -179,7 +202,7 @@ export async function GET(request: Request) {
     }
 
     // 5 รายการล่าสุด (สำหรับ Recent Activity Widget)
-    const recentActivity = allActivities.slice(0, 5).map(item => {
+    const recentActivity = recentCandidates.slice(0, 5).map(item => {
       let title = "";
       if (item.type === 'lesson') {
         const lessonTitle = (item as any)?.subLesson?.lesson?.title || 'บทเรียน';

@@ -202,23 +202,12 @@ export async function GET(request: Request) {
             }
         }
         else if (mode === 'streak') {
-            // คำนวณจำนวนวันที่เล่นทั้งหมด (Total Days) ในระดับ Database (PostgreSQL) โดยตรง
-            // เพื่อไม่ต้องดึงข้อมูล 85,000+ แถวมาประมวลผลใน Node.js ซึ่งทำให้โหลดช้าหรือค้าง
+            // นับจำนวนไฟ (วันที่เข้าเล่นทั้งหมดแบบถาวร) จากคอลัมน์ User.activeDates โดยตรง (เร็วและไม่หายเมื่อลบประวัติเก่า)
             const streakRows = await prisma.$queryRaw<{ userId: string; total_days: number }[]>`
-                SELECT "userId", COUNT(DISTINCT d)::int AS total_days
-                FROM (
-                    SELECT "userId", (("updatedAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Bangkok')::date AS d FROM "LessonProgress"
-                    UNION ALL
-                    SELECT "userId", (("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Bangkok')::date AS d FROM "SpeedTestResult"
-                    UNION ALL
-                    SELECT "userId", (("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Bangkok')::date AS d FROM "FarmSession"
-                    UNION ALL
-                    SELECT "id" AS "userId", (("lastPlayedAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Bangkok')::date AS d FROM "User" WHERE "lastPlayedAt" IS NOT NULL
-                ) t
-                WHERE "userId" IS NOT NULL AND d IS NOT NULL
-                GROUP BY "userId"
-                HAVING COUNT(DISTINCT d) > 0
-                ORDER BY total_days DESC
+                SELECT id AS "userId", COALESCE(array_length("activeDates", 1), 0)::int AS total_days
+                FROM "User"
+                WHERE COALESCE(array_length("activeDates", 1), 0) > 0
+                ORDER BY total_days DESC, "currentExp" DESC
             `;
 
             const topCandidateIds = streakRows.slice(0, 70).map(r => r.userId);

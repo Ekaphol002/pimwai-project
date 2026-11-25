@@ -11,6 +11,7 @@ import QuickAudioModal from '@/components/QuickAudioModal/QuickAudioModal';
 type Props = {
   title?: string;
   timer?: string;
+  timeProgressPercent?: number;
   currentScreen?: number;
   totalScreens?: number;
   backHref?: string;
@@ -19,6 +20,7 @@ type Props = {
 export default function PracticeNavbar({
   title,
   timer,
+  timeProgressPercent,
   currentScreen = 1,
   totalScreens = 1,
   backHref
@@ -92,6 +94,45 @@ export default function PracticeNavbar({
           </button>
         </div>
       </nav>
+
+      {/* หลอดนับเวลาถอยหลังสำหรับโหมดทดสอบ (ลดจาก 100% -> 0% ติดขอบล่าง Navbar) */}
+      {timer && typeof timeProgressPercent === 'number' && (
+        <div className="w-full h-1.5 bg-gray-200 overflow-hidden z-40">
+          <div
+            className={`h-full transition-[width,background-color] duration-1000 linear ${
+              timeProgressPercent <= 15
+                ? 'bg-red-500'
+                : timeProgressPercent <= 30
+                  ? 'bg-amber-400'
+                  : 'bg-emerald-500'
+            }`}
+            style={{ width: `${Math.min(100, Math.max(0, timeProgressPercent))}%` }}
+          />
+        </div>
+      )}
+
+      {/* หลอดความคืบหน้าของบทเรียนแบบมีเส้นคั่นบางชัดเจนทั้งในส่วนสีเขียวและสีเทา ติดขอบล่าง Navbar */}
+      {!timer && totalScreens > 0 && (
+        <div
+          className="w-full h-1.5 bg-gray-200 flex z-40"
+          title={`ความคืบหน้าบทเรียน ${currentScreen}/${totalScreens} ด่าน`}
+        >
+          {Array.from({ length: totalScreens }, (_, idx) => {
+            const screenNum = idx + 1;
+            const isFilled = screenNum <= currentScreen;
+            return (
+              <div
+                key={screenNum}
+                className={`flex-1 h-full border-r last:border-r-0 transition-colors duration-300 ${
+                  isFilled
+                    ? 'bg-emerald-500 border-white/75'
+                    : 'bg-gray-200 border-gray-400/70'
+                }`}
+              />
+            );
+          })}
+        </div>
+      )}
 
       {/* Unified Quick Audio & YouTube Music Settings Modal */}
       <QuickAudioModal

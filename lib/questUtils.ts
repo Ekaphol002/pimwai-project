@@ -182,10 +182,13 @@ export function computeDailyStatsFromRecords(
       totalDurationSeconds += dur;
       weightedWpmSum += wpm * dur;
       weightedAccSum += acc * dur;
-      todayWordsCount += f.wordsCount && f.wordsCount > 0
+      const words = f.wordsCount && f.wordsCount > 0
         ? f.wordsCount
         : Math.max(0, Math.round((wpm * dur) / 60));
-      activeActivitiesCount++;
+      todayWordsCount += words;
+      // รองรับ FarmSession ที่รวมเป็น 1 แถว/วัน: ทุกๆ 25 คำหรือ 30 วินาทีนับเป็น 1 รอบฝึก
+      const estimatedRounds = Math.max(1, Math.floor(words / 25), Math.floor(dur / 30));
+      activeActivitiesCount += estimatedRounds;
     }
   }
 
@@ -216,6 +219,7 @@ export async function evaluateNewlyCompletedQuests(params: {
     recordId?: string;
     subLessonId?: string;
     prevLessonProgress?: { duration: number; wpm: number; accuracy: number; updatedToday: boolean } | null;
+    prevFarmSession?: { duration: number; wpm: number; accuracy: number; wordsCount: number } | null;
   };
 }): Promise<{
   newlyCompletedQuests: CompletedQuestNotification[];
@@ -272,6 +276,9 @@ export async function evaluateNewlyCompletedQuests(params: {
     beforeTests = todaysTests.filter((t: any) => t.id !== currentActivity.recordId);
   } else if (currentActivity.type === 'farm' && currentActivity.recordId) {
     beforeFarm = todaysFarm.filter((f: any) => f.id !== currentActivity.recordId);
+    if (currentActivity.prevFarmSession) {
+      beforeFarm.push(currentActivity.prevFarmSession);
+    }
   }
 
   const beforeStats = computeDailyStatsFromRecords(

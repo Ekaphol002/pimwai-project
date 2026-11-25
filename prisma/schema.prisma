@@ -75,11 +75,12 @@ model User {
   sessions Session[]
 
   // --- Gamification Data ---
-  rank       Int @default(1) // 1, 2, 3
-  stars      Int @default(0) // ดาวสะสม
-  currentExp Int @default(0) // Exp ปัจจุบัน
-  xp         Int @default(0) // เก็บค่าประสบการณ์รวม
-  farmTimeSeconds Int @default(0) // ✅ เวลาเล่นสะสมในโหมด Farm (วินาที)
+  rank            Int      @default(1) // 1, 2, 3
+  stars           Int      @default(0) // ดาวสะสม
+  currentExp      Int      @default(0) // Exp ปัจจุบัน
+  xp              Int      @default(0) // เก็บค่าประสบการณ์รวม
+  farmTimeSeconds Int      @default(0) // ✅ เวลาเล่นสะสมในโหมด Farm (วินาที)
+  activeDates     String[] @default([]) // 🔥 วันที่เข้าฝึกพิมพ์ทั้งหมดแบบถาวร ("YYYY-MM-DD" เวลาไทย) ไม่หายแม้ลบประวัติเก่า
 
   // --- App Relations ---
   progress    LessonProgress[]

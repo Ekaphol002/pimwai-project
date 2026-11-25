@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getRankFromExp, calculateRankInfo, getRankMultiplierConfig } from '@/lib/rankUtils';
 import { evaluateNewlyCompletedQuests } from '@/lib/questUtils';
+import { recordUserActiveDate } from '@/lib/activeDates';
 
 export async function POST(request: Request) {
   try {
@@ -156,6 +157,9 @@ export async function POST(request: Request) {
           }
         });
       }
+
+      // บันทึกวันที่เข้าเล่นแบบถาวร (ไฟไม่หายแม้ลบประวัติ SpeedTest เก่าเกิน 30 วัน)
+      await recordUserActiveDate(tx, user.id);
 
       // 3.3 Auto-cleanup: ลบประวัติ speed test เก่าเกิน 30 วันอัตโนมัติ (ยกเว้น Best Scores ของแต่ละ duration)
       try {

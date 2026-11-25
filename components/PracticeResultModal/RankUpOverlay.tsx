@@ -40,6 +40,7 @@ export default function RankUpOverlay({
 
     const [showNewRank, setShowNewRank] = useState(false);
     const [isNewRankLoaded, setIsNewRankLoaded] = useState(false);
+    const [canDismiss, setCanDismiss] = useState(false);
 
     const tierInfo = RANK_TIERS.find(t => t.rank === curRank) || RANK_TIERS[curRank - 1] || RANK_TIERS[0];
     const theme = RANK_THEMES[curRank] || RANK_THEMES[1];
@@ -78,10 +79,43 @@ export default function RankUpOverlay({
         }
     }, [isNewRankLoaded, activeMode]);
 
+    // รอให้แอนิเมชันขึ้นแรงค์/ขึ้นดาวแสดงจบก่อน (~900ms หลังโผล่) แล้วค่อยอนุญาตให้กดปุ่มใดก็ได้หรือคลิกเพื่อปิด
+    useEffect(() => {
+        if (!showNewRank) {
+            setCanDismiss(false);
+            return;
+        }
+        const readyTimer = setTimeout(() => {
+            setCanDismiss(true);
+        }, 900);
+        return () => clearTimeout(readyTimer);
+    }, [showNewRank]);
+
+    useEffect(() => {
+        const handleAnyKey = (e: KeyboardEvent) => {
+            if (!e.isTrusted || e.repeat) return;
+            // กันไม่ให้ปุ่มทะลุไปกด Enter หน้าสรุปผลด้านล่างระหว่างที่ Overlay เปิดอยู่
+            e.preventDefault();
+            e.stopPropagation();
+            if (canDismiss) {
+                onClose();
+            }
+        };
+        window.addEventListener('keydown', handleAnyKey, true);
+        return () => window.removeEventListener('keydown', handleAnyKey, true);
+    }, [canDismiss, onClose]);
+
+    const handleOverlayClick = () => {
+        if (canDismiss) {
+            onClose();
+        }
+    };
+
     return (
         <div
-            className="fixed inset-0 z-[9999] bg-black/95 flex flex-col items-center justify-center overflow-y-auto overflow-x-hidden cursor-pointer select-none p-4"
-            onClick={onClose}
+            data-rank-up-overlay="true"
+            className={`fixed inset-0 z-[9999] bg-black/95 flex flex-col items-center justify-center overflow-y-auto overflow-x-hidden select-none p-4 ${canDismiss ? 'cursor-pointer' : 'cursor-default'}`}
+            onClick={handleOverlayClick}
         >
             {/* Ambient Dynamic Background Light Burst */}
             <div
@@ -246,8 +280,8 @@ export default function RankUpOverlay({
                     </div>
                 )}
 
-                <p className="mt-4 sm:mt-6 text-gray-400 text-xs sm:text-sm animate-pulse tracking-wide select-none">
-                    คลิกตรงที่ว่างเพื่อปิด
+                <p className={`mt-4 sm:mt-6 text-gray-400 text-xs sm:text-sm tracking-wide select-none transition-opacity duration-300 ${canDismiss ? 'opacity-100 animate-pulse' : 'opacity-0'}`}>
+                    กดปุ่มใดก็ได้หรือคลิกเพื่อปิด
                 </p>
             </div>
         </div>

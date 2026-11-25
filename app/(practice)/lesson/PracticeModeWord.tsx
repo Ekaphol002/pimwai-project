@@ -6,6 +6,7 @@ import ConveyorBox from '@/components/ConveyorBox/ConveyorBox';
 import Keyboard from '@/components/Keyboard/Keyboard';
 import PracticeResultModal from '@/components/PracticeResultModal/PracticeResultModal';
 import NewKeyIntro from '@/components/NewKeyIntro/NewKeyIntro'; // Import
+import LessonLiveHud from '@/components/LessonLiveHud/LessonLiveHud';
 import {
   reverseThaiKeyMap,
   thaiShiftKeyDisplayMap,
@@ -144,6 +145,7 @@ export default function PracticeModeWord({
   const [pressedKey, setPressedKey] = useState<string | null>(null);
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [errorEffect, setErrorEffect] = useState<'none' | 'shake-box' | 'shake-text'>('none');
+  const [combo, setCombo] = useState(0);
 
   // State สำหรับสถิติ
   const [isFinished, setIsFinished] = useState(false);
@@ -162,6 +164,7 @@ export default function PracticeModeWord({
   const [xpBreakdown, setXpBreakdown] = useState<XpBreakdown | null>(null);
   const [totalXP, setTotalXP] = useState(0);
   const [dailyQuests, setDailyQuests] = useState<GuestDailyQuestItem[]>([]);
+  const [isSavingXP, setIsSavingXP] = useState(false);
 
   const handleNextLesson = () => {
     if (nextUrl) {
@@ -171,11 +174,12 @@ export default function PracticeModeWord({
     }
   };
 
-  // ✅ 2. แก้ไข useEffect ให้คูณข้อความ (x4) ก่อนนำไปใช้งาน
+  // ✅ 2. Adaptive Length: ปรับความยาวอัตโนมัติตามความยาวต้นฉบับให้ทุกด่านยาวกำลังพอดี (~30-50 วินาที/ด่าน)
   useEffect(() => {
     if (initialText) {
-      // สร้าง array ขนาด 4 ช่อง ใส่ text เดิมลงไป แล้ว join ด้วยช่องว่าง
-      const multipliedText = Array(1).fill(initialText).join(' ');
+      const len = initialText.trim().length;
+      const repeatCount = len < 70 ? 3 : len <= 130 ? 2 : 1;
+      const multipliedText = Array(repeatCount).fill(initialText.trim()).join(' ');
 
       setExpandedText(multipliedText); // เก็บไว้คำนวณคะแนน
       const chunkedLines = chunkTextIntoCharLines(multipliedText); // ตัดบรรทัดจากตัวที่คูณแล้ว
@@ -186,6 +190,7 @@ export default function PracticeModeWord({
   }, [initialText]);
 
   const saveResultToDb = async (wpm: number, accuracy: number, stars: number, duration: number) => {
+    setIsSavingXP(true);
     try {
       const guestContext = getGuestLessonMetaForSave(subLessonId);
       const res = await fetch('/api/save-lesson', {
@@ -237,6 +242,8 @@ export default function PracticeModeWord({
       }
     } catch (error) {
       console.error('บันทึกผลล้มเหลว:', error);
+    } finally {
+      setIsSavingXP(false);
     }
   };
 
@@ -293,6 +300,7 @@ export default function PracticeModeWord({
 
     setStartTime(null);
     setTotalErrors(0);
+    setCombo(0);
     setProblemKeys({});
     setFinalWPM(0);
     setFinalAcc(0);
@@ -434,9 +442,11 @@ export default function PracticeModeWord({
           setStatuses(newStatuses);
         }
         setErrorKey(null);
+        setCombo(prev => prev + 1);
         moveCursorForward();
       } else {
         setErrorKey(typedKeyCode);
+        setCombo(0);
         setTotalErrors((prev) => prev + 1);
         const char = expectedChar;
         setProblemKeys((prev) => ({
@@ -505,6 +515,7 @@ export default function PracticeModeWord({
           questText={questText}
           totalXP={totalXP}
           dailyQuests={dailyQuests}
+          isLoadingXP={isSavingXP}
         />
       ) : showIntro && hasNewKeys ? (
         // Intro Screen - แสดงเฉพาะเมื่อมี newKeys
@@ -532,6 +543,31 @@ export default function PracticeModeWord({
             currentCharIndexInLine={currentCharIndexInLine}
             lineHeightPx={60}
             errorEffect={errorEffect}
+          />
+          <LessonLiveHud
+            completedChars={
+              lines.slice(0, currentLineIndex).reduce((sum, l) => sum + l.length, 0) +
+              currentCharIndexInLine
+            }
+            totalChars={lines.reduce((sum, l) => sum + l.length, 0)}
+            liveAcc={(() => {
+              const done =
+                lines.slice(0, currentLineIndex).reduce((sum, l) => sum + l.length, 0) +
+                currentCharIndexInLine;
+              const total = done + totalErrors;
+              return total > 0 ? Math.round((done / total) * 100) : 100;
+            })()}
+            currentStars={(() => {
+              const done =
+                lines.slice(0, currentLineIndex).reduce((sum, l) => sum + l.length, 0) +
+                currentCharIndexInLine;
+              const total = done + totalErrors;
+              const acc = total > 0 ? Math.round((done / total) * 100) : 100;
+              return acc >= 90 ? 3 : acc >= 80 ? 2 : 1;
+            })()}
+            combo={combo}
+            startTime={startTime}
+            isFinished={isFinished}
           />
           <Keyboard
             pressedKey={pressedKey}

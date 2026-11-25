@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { Star, ChevronDown, Clock, Sparkles } from 'lucide-react';
+import { Star, ChevronDown, Clock, Check } from 'lucide-react';
 import StarParticleEffect from '../StarParticleEffect/StarParticleEffect';
 import Keyboard from '@/components/Keyboard/Keyboard';
 import RankProgressBox from './RankProgressBox';
@@ -18,6 +18,16 @@ interface XpBreakdown {
   wpm: number;
   grinder: number;
   firstWin: number;
+}
+
+interface DailyQuestProgressItem {
+  id: number;
+  text: string;
+  current: number;
+  target: number;
+  unit: string;
+  rewardXp: number;
+  isCompleted: boolean;
 }
 
 type Props = {
@@ -34,6 +44,8 @@ type Props = {
   xpBreakdown?: XpBreakdown | null;
   questText?: string | null;
   totalXP?: number;
+  dailyQuests?: DailyQuestProgressItem[];
+  isLoadingXP?: boolean;
 };
 
 function useCountUp(endValue: number, duration: number) {
@@ -71,7 +83,9 @@ export default function PracticeResultModal({
   earnedXP = 0,
   xpBreakdown = null, // Default value is null
   questText = null,
-  totalXP = 0
+  totalXP = 0,
+  dailyQuests = [],
+  isLoadingXP = false
 }: Props) {
 
   const { data: session } = useSession();
@@ -125,6 +139,27 @@ export default function PracticeResultModal({
     }
     return () => timers.forEach(timer => clearTimeout(timer));
   }, [isWpmDone, isAccDone, stars, isTestMode]);
+
+  // กด Enter เพื่อไปด่านต่อไปได้เลยโดยไม่ต้องคลิก (รอให้บันทึก XP เสร็จและไม่มี RankUpOverlay เปิดบังอยู่)
+  useEffect(() => {
+    const handleEnterNext = (e: KeyboardEvent) => {
+      if (!e.isTrusted || e.repeat) return;
+      if (e.key !== 'Enter') return;
+      if (isLoadingXP) return;
+      if (document.querySelector('[data-rank-up-overlay="true"]')) return;
+
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        return;
+      }
+
+      e.preventDefault();
+      onNextLesson();
+    };
+
+    window.addEventListener('keydown', handleEnterNext);
+    return () => window.removeEventListener('keydown', handleEnterNext);
+  }, [onNextLesson, isLoadingXP]);
 
   const problemKeyEntries = Object.entries(problemKeys)
     .sort(([, countA], [, countB]) => countB - countA)
@@ -337,6 +372,54 @@ export default function PracticeResultModal({
           </div>
         )}
 
+        {/* ความคืบหน้าภารกิจรายวัน (พื้นขาวล้วนขอบเทา ไม่มีพื้นหลังสีอ่อน) */}
+        {dailyQuests && dailyQuests.length > 0 && (
+          <div className="mb-5 px-5 py-4 rounded-2xl bg-white border border-gray-200">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-bold text-gray-800">
+                ภารกิจรายวัน
+              </span>
+              <span className="text-xs font-bold text-[#5cb5db]">
+                สำเร็จ {dailyQuests.filter((q) => q.isCompleted).length}/{dailyQuests.length}
+              </span>
+            </div>
+            <div className="space-y-2.5">
+              {dailyQuests.map((q) => {
+                const pct = Math.min(100, Math.round((Math.min(q.current, q.target) / Math.max(1, q.target)) * 100));
+                return (
+                  <div key={q.id} className="space-y-1">
+                    <div className="flex items-center justify-between gap-2 text-xs">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span
+                          className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${q.isCompleted
+                            ? 'bg-emerald-600 text-white'
+                            : 'border border-gray-300 text-transparent'
+                            }`}
+                        >
+                          <Check size={11} strokeWidth={3} />
+                        </span>
+                        <span className={`font-semibold truncate ${q.isCompleted ? 'text-emerald-600' : 'text-gray-700'}`}>
+                          {q.text}
+                        </span>
+                      </div>
+                      <span className={`font-mono shrink-0 ${q.isCompleted ? 'text-emerald-600 font-bold' : 'text-gray-500'}`}>
+                        {q.isCompleted ? 'สำเร็จแล้ว' : `${Math.min(q.current, q.target)}/${q.target} ${q.unit}`}
+                      </span>
+                    </div>
+                    <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${q.isCompleted ? 'bg-emerald-600' : 'bg-[#5cb5db]'
+                          }`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Guest Save EXP Prompt: ชวนล็อกอินเมื่อเล่นแบบไม่ได้ล็อกอินแล้วได้ EXP */}
         {!session?.user && totalXP > 0 && (
           <div className="mb-6 px-5 py-3.5 rounded-2xl bg-white border border-gray-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -364,8 +447,9 @@ export default function PracticeResultModal({
           </button>
           <div className="flex gap-2">
             <button onClick={onRetry} className="px-6 py-2 rounded-lg font-bold text-gray-700 border border-gray-300 hover:bg-gray-100">เริ่มใหม่</button>
-            <button onClick={onNextLesson} className="px-6 py-2 rounded-lg font-bold text-white bg-yellow-500 hover:bg-yellow-600">
-              {isTestMode ? "ตกลง" : "ต่อไป"}
+            <button onClick={onNextLesson} className="px-6 py-2 rounded-lg font-bold text-white bg-yellow-500 hover:bg-yellow-600 flex items-center gap-1.5 cursor-pointer">
+              <span>{isTestMode ? "ตกลง" : "ต่อไป"}</span>
+              <span className="text-[14px] font-medium">(Enter)</span>
             </button>
           </div>
         </div>

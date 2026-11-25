@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getRankFromExp, calculateRankInfo, getRankMultiplierConfig } from '@/lib/rankUtils';
 import { getStartOfTodayBangkok, toDateKey } from '@/lib/streakUtils';
+import { recordUserActiveDate } from '@/lib/activeDates';
 import { evaluateNewlyCompletedQuests } from '@/lib/questUtils';
 
 // Config ค่า EXP และโบนัสต่างๆ ให้สะใจ (150 - 300 XP ต่อด่าน)
@@ -64,11 +65,24 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Suspicious activity detected" }, { status: 400 });
         }
 
-        // ดึงข้อมูล Lesson แม่
-        const subLessonInfo = await prisma.subLesson.findUnique({
-            where: { id: subLessonId },
-            include: { lesson: true }
-        });
+        // ดึงข้อมูล Lesson แม่และ User แบบขนาน (ลดเวลา Round-Trip ลงครึ่งหนึ่ง)
+        const cleanEmail = session?.user?.email?.trim().toLowerCase();
+        const [subLessonInfo, user] = await Promise.all([
+            prisma.subLesson.findUnique({
+                where: { id: subLessonId },
+                include: { lesson: true }
+            }),
+            session?.user?.email
+                ? prisma.user.findFirst({
+                    where: {
+                        OR: [
+                            ...((session.user as any)?.id ? [{ id: (session.user as any).id }] : []),
+                            ...(cleanEmail ? [{ email: cleanEmail }] : [])
+                        ]
+                    }
+                })
+                : Promise.resolve(null)
+        ]);
 
         let difficultyMultiplier = 1.0;
         if (subLessonInfo?.lesson?.level) {
@@ -146,15 +160,6 @@ export async function POST(request: Request) {
             });
         }
 
-        const cleanEmail = session.user.email?.trim().toLowerCase();
-        const user = await prisma.user.findFirst({
-            where: {
-                OR: [
-                    ...((session.user as any)?.id ? [{ id: (session.user as any).id }] : []),
-                    ...(cleanEmail ? [{ email: cleanEmail }] : [])
-                ]
-            }
-        });
         if (!user) return NextResponse.json({ success: false, error: "User not found" }, { status: 404 });
 
         const userId = user.id;
@@ -307,6 +312,8 @@ export async function POST(request: Request) {
                     lastPlayedAt: new Date()
                 }
             });
+
+            await recordUserActiveDate(tx, userId);
 
             // คืนค่าทั้งหมดแยกตามประเภท เพื่อให้ Frontend นำไปแสดงผลได้
             return {

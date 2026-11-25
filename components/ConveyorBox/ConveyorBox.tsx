@@ -210,11 +210,16 @@ export default function ConveyorBox({
                 const isPrevModerateHigh = 'ั็'.includes(prevChar) || prevChar === 'ำ'; // สระปานกลาง
 
                 let charTop = 0;
+                let charLeft = 0;
 
-                // Logic ยก Tone ขึ้น (เมื่อตัวก่อนหน้าเป็นสระบน)
+                // Logic ยก Tone ขึ้น (เมื่อตัวก่อนหน้าเป็นสระบน หรือตัวถัดไปเป็นสระอำ เช่น น้ำ/ค้ำ/ต่ำ)
                 if (isTone) {
                   if (isPrevExtremeHigh) charTop = -12;
                   else if (isPrevModerateHigh) charTop = -12;
+                  else if (isToneBeforeAm) {
+                    charTop = -9;
+                    charLeft = 4; // จัดให้วรรณยุกต์ตรงกับวงกลมของสระอำพอดี ไม่เอียงซ้าย
+                  }
                 }
 
                 // Logic ยก Upper Vowel ขึ้น (เมื่อตัวก่อนหน้าเป็นสระบนหรือวรรณยุกต์)
@@ -255,7 +260,10 @@ export default function ConveyorBox({
                       {/* ตัวอักษร (ดันขึ้นถ้าจำเป็น) */}
                       <span
                         className="relative"
-                        style={{ top: charTop ? `${charTop}px` : '0px' }}
+                        style={{
+                          top: charTop ? `${charTop}px` : '0px',
+                          left: charLeft ? `${charLeft}px` : '0px',
+                        }}
                       >
                         {displayChar}
                       </span>

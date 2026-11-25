@@ -182,8 +182,9 @@ export async function GET() {
             console.error('Error verifying Top 10 rank status:', e);
         }
 
-        // คำนวณเวลาฟาร์มเฉพาะของวันนี้ (Today's Farm Playtime)
+        // คำนวณเวลาฟาร์มและ EXP เฉพาะของวันนี้ (Today's Farm Playtime & EXP)
         let todayFarmTimeSeconds = 0;
+        let todayFarmExp = 0;
         try {
             const startOfToday = getStartOfTodayBangkok();
 
@@ -193,10 +194,12 @@ export async function GET() {
                     createdAt: { gte: startOfToday }
                 },
                 _sum: {
-                    duration: true
+                    duration: true,
+                    expEarned: true
                 }
             });
             todayFarmTimeSeconds = todayFarm._sum.duration || 0;
+            todayFarmExp = todayFarm._sum.expEarned || 0;
         } catch (e) {
             console.error('Error fetching today farm time:', e);
         }
@@ -217,7 +220,8 @@ export async function GET() {
                 lessonPerks: perks,
                 antiCheatNotice,
                 isTop10,
-                todayFarmTimeSeconds
+                todayFarmTimeSeconds,
+                todayFarmExp
             },
             isTop10,
             antiCheatNotice,

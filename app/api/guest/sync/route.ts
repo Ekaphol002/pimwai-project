@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { getRankFromExp } from '@/lib/rankUtils';
+import { recordUserActiveDate } from '@/lib/activeDates';
 
 export async function POST(request: Request) {
   try {
@@ -127,7 +128,7 @@ export async function POST(request: Request) {
 
       const newRank = getRankFromExp(nextTotalExp, isTop10);
 
-      return tx.user.update({
+      const updated = await tx.user.update({
         where: { id: userId },
         data: {
           currentExp: nextTotalExp,
@@ -142,6 +143,9 @@ export async function POST(request: Request) {
           stars: true,
         },
       });
+
+      await recordUserActiveDate(tx, userId);
+      return updated;
     });
 
     return NextResponse.json({
