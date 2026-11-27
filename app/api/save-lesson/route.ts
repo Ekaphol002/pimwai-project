@@ -4,10 +4,11 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getRankFromExp, calculateRankInfo, getRankMultiplierConfig } from '@/lib/rankUtils';
 import { getStartOfTodayBangkok, toDateKey } from '@/lib/streakUtils';
-import { recordUserActiveDate } from '@/lib/activeDates';
 import { evaluateQuestsFromSnapshot, getTotalSubLessonsCount } from '@/lib/questUtils';
 
-// แคชระดับความยากของ SubLesson ในหน่วยความจำ (10 นาที) ลดการ join ซ้ำทุกครั้งที่จบด่าน
+export const preferredRegion = 'sin1';
+
+// แคชระดับความยากของ SubLesson ในหน่วยความจำ (10 นาที)
 const subLessonLevelCache = new Map<string, { level: string; expiresAt: number }>();
 
 async function getSubLessonLevel(subLessonId: string): Promise<string | null> {
@@ -79,7 +80,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Suspicious activity detected" }, { status: 400 });
         }
 
-        // 🌟 กรณีไม่ได้ล็อกอิน (Guest Mode): ใช้แค่ level (มักได้จาก cache = 0ms)
+        // 🌟 กรณีไม่ได้ล็อกอิน (Guest Mode)
         if (!session || !session.user?.email) {
             const level = await getSubLessonLevel(subLessonId);
             const difficultyMultiplier = level
@@ -155,111 +156,74 @@ export async function POST(request: Request) {
             });
         }
 
-        // 🚀 ULTRA-FAST PATH: ลดจาก 14 sequential round-trips เหลือแค่ 2 parallel round-trips!
-        const sessionUserId = (session.user as any)?.id as string | undefined;
+        // ⚡ ULTRA-FAST SINGLE-QUERY READ: ดึงทุกอย่างที่ต้องใช้ใน SQL เดียว (ใช้ 1 connection, 1 round-trip!)
+        const sessionUserId = ((session.user as any)?.id as string) || '';
         const cleanEmail = session.user.email.trim().toLowerCase();
         const today = getStartOfTodayBangkok();
 
-        // Round-trip 1: อ่านข้อมูลทุกอย่างแบบขนานจริง (ไม่ติด interactive transaction serialization)
-        let user: { id: string; currentExp: number; rank: number; stars: number; lastPlayedAt: Date | null } | null = null;
-        let level: string | null = null;
-        let existingProgress: any = null;
-        let totalSubLessons = 0;
-        let completedLessonsCount = 0;
-        let todaysProgress: any[] = [];
-        let todaysTests: any[] = [];
-        let todaysFarm: any[] = [];
+        const [snapshotRows, totalSubLessons] = await Promise.all([
+            prisma.$queryRaw<any[]>`
+                WITH target_user AS (
+                    SELECT id, "currentExp", rank, stars, "lastPlayedAt"
+                    FROM "User"
+                    WHERE (id = ${sessionUserId} AND ${sessionUserId} <> '')
+                       OR LOWER(email) = ${cleanEmail}
+                    ORDER BY CASE WHEN id = ${sessionUserId} THEN 0 ELSE 1 END
+                    LIMIT 1
+                )
+                SELECT
+                    u.id,
+                    u."currentExp",
+                    u.rank,
+                    u.stars,
+                    u."lastPlayedAt",
+                    (SELECT l.level FROM "SubLesson" sl JOIN "Lesson" l ON l.id = sl."lessonId" WHERE sl.id = ${subLessonId} LIMIT 1) AS "lessonLevel",
+                    (SELECT COUNT(*)::int FROM "LessonProgress" lp WHERE lp."userId" = u.id) AS "completedLessonsCount",
+                    (SELECT row_to_json(ep) FROM (
+                        SELECT wpm, accuracy, stars, duration, "updatedAt"
+                        FROM "LessonProgress"
+                        WHERE "userId" = u.id AND "subLessonId" = ${subLessonId}
+                        LIMIT 1
+                    ) ep) AS "existingProgress",
+                    COALESCE((SELECT json_agg(json_build_object('subLessonId', lp."subLessonId", 'duration', lp.duration, 'wpm', lp.wpm, 'accuracy', lp.accuracy))
+                        FROM "LessonProgress" lp WHERE lp."userId" = u.id AND lp."updatedAt" >= ${today}), '[]'::json) AS "todaysProgress",
+                    COALESCE((SELECT json_agg(json_build_object('duration', st.duration, 'wpm', st.wpm, 'accuracy', st.accuracy))
+                        FROM "SpeedTestResult" st WHERE st."userId" = u.id AND st."createdAt" >= ${today}), '[]'::json) AS "todaysTests",
+                    COALESCE((SELECT json_agg(json_build_object('duration', fs.duration, 'wpm', fs.wpm, 'accuracy', fs.accuracy, 'wordsCount', fs."wordsCount"))
+                        FROM "FarmSession" fs WHERE fs."userId" = u.id AND fs."createdAt" >= ${today}), '[]'::json) AS "todaysFarm"
+                FROM target_user u
+            `,
+            getTotalSubLessonsCount(prisma)
+        ]);
 
-        if (sessionUserId) {
-            const [u, lvl, exProg, totSubs, compCount, tProg, tTests, tFarm] = await Promise.all([
-                prisma.user.findUnique({
-                    where: { id: sessionUserId },
-                    select: { id: true, currentExp: true, rank: true, stars: true, lastPlayedAt: true }
-                }),
-                getSubLessonLevel(subLessonId),
-                prisma.lessonProgress.findUnique({
-                    where: { userId_subLessonId: { userId: sessionUserId, subLessonId } }
-                }),
-                getTotalSubLessonsCount(prisma),
-                prisma.lessonProgress.count({ where: { userId: sessionUserId } }),
-                prisma.lessonProgress.findMany({
-                    where: { userId: sessionUserId, updatedAt: { gte: today } },
-                    select: { subLessonId: true, duration: true, wpm: true, accuracy: true }
-                }),
-                prisma.speedTestResult.findMany({
-                    where: { userId: sessionUserId, createdAt: { gte: today } },
-                    select: { duration: true, wpm: true, accuracy: true }
-                }),
-                prisma.farmSession.findMany({
-                    where: { userId: sessionUserId, createdAt: { gte: today } },
-                    select: { duration: true, wpm: true, accuracy: true, wordsCount: true }
-                })
-            ]);
-            user = u;
-            level = lvl;
-            existingProgress = exProg;
-            totalSubLessons = totSubs;
-            completedLessonsCount = compCount;
-            todaysProgress = tProg;
-            todaysTests = tTests;
-            todaysFarm = tFarm;
+        const snap = snapshotRows?.[0];
+        if (!snap) {
+            return NextResponse.json({ success: false, error: "User not found" }, { status: 404 });
         }
 
-        // Fallback กรณี session ไม่มี id หรือหาไม่เจอด้วย id
-        if (!user) {
-            const [u, lvl] = await Promise.all([
-                prisma.user.findFirst({
-                    where: { email: cleanEmail },
-                    select: { id: true, currentExp: true, rank: true, stars: true, lastPlayedAt: true }
-                }),
-                level ? Promise.resolve(level) : getSubLessonLevel(subLessonId)
-            ]);
-            if (!u) return NextResponse.json({ success: false, error: "User not found" }, { status: 404 });
-            user = u;
-            level = lvl;
+        const userId: string = snap.id;
+        const userCurrentExp = Number(snap.currentExp || 0);
+        const userRank = Number(snap.rank || 1);
+        const existingProgress = snap.existingProgress || null;
+        const completedLessonsCount = Number(snap.completedLessonsCount || 0);
+        const todaysProgress: any[] = Array.isArray(snap.todaysProgress) ? snap.todaysProgress : [];
+        const todaysTests: any[] = Array.isArray(snap.todaysTests) ? snap.todaysTests : [];
+        const todaysFarm: any[] = Array.isArray(snap.todaysFarm) ? snap.todaysFarm : [];
 
-            const [exProg, totSubs, compCount, tProg, tTests, tFarm] = await Promise.all([
-                prisma.lessonProgress.findUnique({
-                    where: { userId_subLessonId: { userId: user.id, subLessonId } }
-                }),
-                getTotalSubLessonsCount(prisma),
-                prisma.lessonProgress.count({ where: { userId: user.id } }),
-                prisma.lessonProgress.findMany({
-                    where: { userId: user.id, updatedAt: { gte: today } },
-                    select: { subLessonId: true, duration: true, wpm: true, accuracy: true }
-                }),
-                prisma.speedTestResult.findMany({
-                    where: { userId: user.id, createdAt: { gte: today } },
-                    select: { duration: true, wpm: true, accuracy: true }
-                }),
-                prisma.farmSession.findMany({
-                    where: { userId: user.id, createdAt: { gte: today } },
-                    select: { duration: true, wpm: true, accuracy: true, wordsCount: true }
-                })
-            ]);
-            existingProgress = exProg;
-            totalSubLessons = totSubs;
-            completedLessonsCount = compCount;
-            todaysProgress = tProg;
-            todaysTests = tTests;
-            todaysFarm = tFarm;
-        }
-
-        const userId = user.id;
-        const difficultyMultiplier = level
-            ? (EXP_CONFIG.MULTIPLIER[level as keyof typeof EXP_CONFIG.MULTIPLIER] || 1.0)
+        const difficultyMultiplier = snap.lessonLevel
+            ? (EXP_CONFIG.MULTIPLIER[snap.lessonLevel as keyof typeof EXP_CONFIG.MULTIPLIER] || 1.0)
             : 1.0;
 
-        const prevUpdatedToday = existingProgress
+        const prevUpdatedToday = existingProgress?.updatedAt
             ? new Date(existingProgress.updatedAt).getTime() >= today.getTime()
             : false;
 
-        // คำนวณทุกอย่างในหน่วยความจำ (0ms!)
-        const userRankInfo = calculateRankInfo(user.currentExp || 0, user.rank === 7);
+        // คำนวณทุกอย่างในหน่วยความจำ (0ms)
+        const userRankInfo = calculateRankInfo(userCurrentExp, userRank === 7);
         const rankMul = getRankMultiplierConfig(userRankInfo.rank, userRankInfo.stars).totalBaseMultiplier;
 
         let baseLessonExp = 0;
-        const isFirstClear = !existingProgress || existingProgress.stars === 0;
+        const isFirstClear = !existingProgress || Number(existingProgress.stars || 0) === 0;
         let isNewHighScore = false;
 
         let nextWpm = wpm;
@@ -276,20 +240,21 @@ export async function POST(request: Request) {
             baseLessonExp = Math.round(rawExp * rankMul);
             isNewHighScore = true;
         } else {
-            const isBetterScore = wpm > existingProgress.wpm || stars > existingProgress.stars;
-            if (isBetterScore) {
+            const prevWpm = Number(existingProgress.wpm || 0);
+            const prevStars = Number(existingProgress.stars || 0);
+            const prevAcc = Number(existingProgress.accuracy || 0);
+            const prevDur = Number(existingProgress.duration || 0);
+
+            if (wpm > prevWpm || stars > prevStars) {
                 baseLessonExp = Math.round(EXP_CONFIG.REPLAY_SCORE * rankMul);
                 isNewHighScore = true;
             }
-            nextWpm = Math.max(wpm, existingProgress.wpm);
-            nextAccuracy = Math.max(accuracy, existingProgress.accuracy);
-            nextStars = Math.max(stars, existingProgress.stars);
-            nextDuration = prevUpdatedToday
-                ? (existingProgress.duration || 0) + duration
-                : duration;
+            nextWpm = Math.max(wpm, prevWpm);
+            nextAccuracy = Math.max(accuracy, prevAcc);
+            nextStars = Math.max(stars, prevStars);
+            nextDuration = prevUpdatedToday ? prevDur + duration : duration;
         }
 
-        // จำลองรายการ todaysProgress หลังบันทึก (After) เพื่อคำนวณเควสรายวันและ Grinder Bonus โดยไม่ต้อง query ซ้ำ
         const otherTodayProgress = todaysProgress.filter(p => p.subLessonId !== subLessonId);
         const afterProgress = [
             ...otherTodayProgress,
@@ -331,16 +296,16 @@ export async function POST(request: Request) {
         }
 
         let firstWinBonus = 0;
-        const userLastPlayedDateKey = user.lastPlayedAt ? toDateKey(user.lastPlayedAt) : null;
         const todayDateKey = toDateKey(new Date());
+        const userLastPlayedDateKey = snap.lastPlayedAt ? toDateKey(new Date(snap.lastPlayedAt)) : null;
         if (!userLastPlayedDateKey || userLastPlayedDateKey !== todayDateKey) {
             firstWinBonus = Math.round(EXP_CONFIG.FIRST_WIN_REWARD * rankMul);
         }
 
         const totalExpGained = baseLessonExp + questBonus + wpmBonus + grinderBonus + firstWinBonus;
-        const currentTotalExp = (user.currentExp || 0) + totalExpGained;
+        const currentTotalExp = userCurrentExp + totalExpGained;
 
-        let isTop10 = user.rank === 7;
+        let isTop10 = userRank === 7;
         if (currentTotalExp >= 234000) {
             const higherCount = await prisma.user.count({
                 where: {
@@ -355,13 +320,13 @@ export async function POST(request: Request) {
         let starsToAdd = 0;
         if (isFirstClear) {
             starsToAdd = stars;
-        } else if (stars > (existingProgress?.stars || 0)) {
-            starsToAdd = stars - (existingProgress?.stars || 0);
+        } else if (stars > Number(existingProgress?.stars || 0)) {
+            starsToAdd = stars - Number(existingProgress?.stars || 0);
         }
 
-        // Round-trip 2: บันทึกข้อมูลทั้งหมดแบบขนานในรอบเดียว!
+        // ⚡ Round-trip 2: บันทึก LessonProgress + อัปเดต User (รวม activeDates ในคำสั่งเดียว!) แค่ 2 query พร้อมกัน
         const nowDate = new Date();
-        const [, updatedUser] = await Promise.all([
+        await Promise.all([
             prisma.lessonProgress.upsert({
                 where: { userId_subLessonId: { userId, subLessonId } },
                 create: {
@@ -382,17 +347,19 @@ export async function POST(request: Request) {
                     updatedAt: nowDate
                 }
             }),
-            prisma.user.update({
-                where: { id: userId },
-                data: {
-                    currentExp: { increment: totalExpGained },
-                    rank: newRank,
-                    ...(starsToAdd > 0 ? { stars: { increment: starsToAdd } } : {}),
-                    lastPlayedAt: nowDate
-                },
-                select: { currentExp: true, rank: true }
-            }),
-            recordUserActiveDate(prisma, userId)
+            prisma.$executeRaw`
+                UPDATE "User"
+                SET "currentExp" = "currentExp" + ${totalExpGained},
+                    "rank" = ${newRank},
+                    "stars" = "stars" + ${starsToAdd},
+                    "lastPlayedAt" = ${nowDate},
+                    "activeDates" = CASE
+                        WHEN ${todayDateKey} = ANY(COALESCE("activeDates", ARRAY[]::text[]))
+                        THEN COALESCE("activeDates", ARRAY[]::text[])
+                        ELSE array_append(COALESCE("activeDates", ARRAY[]::text[]), ${todayDateKey})
+                    END
+                WHERE id = ${userId}
+            `
         ]);
 
         return NextResponse.json({
@@ -409,8 +376,8 @@ export async function POST(request: Request) {
             completedQuests: newlyCompletedQuests,
             dailyQuests,
             isNewHighScore,
-            totalXP: updatedUser.currentExp,
-            rank: updatedUser.rank
+            totalXP: currentTotalExp,
+            rank: newRank
         });
 
     } catch (error) {
