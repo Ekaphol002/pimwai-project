@@ -207,6 +207,69 @@ export function computeDailyStatsFromRecords(
   };
 }
 
+export function evaluateQuestsFromSnapshot(params: {
+  userId: string;
+  totalSubLessons: number;
+  completedLessonsCount: number;
+  beforeProgress: Array<{ duration?: number; wpm?: number; accuracy?: number }>;
+  afterProgress: Array<{ duration?: number; wpm?: number; accuracy?: number }>;
+  beforeTests: Array<{ duration?: number; wpm?: number; accuracy?: number }>;
+  afterTests: Array<{ duration?: number; wpm?: number; accuracy?: number }>;
+  beforeFarm: Array<{ duration?: number; wpm?: number; accuracy?: number; wordsCount?: number }>;
+  afterFarm: Array<{ duration?: number; wpm?: number; accuracy?: number; wordsCount?: number }>;
+}): {
+  newlyCompletedQuests: CompletedQuestNotification[];
+  totalQuestBonusXp: number;
+  dailyQuests: DailyQuestItem[];
+} {
+  const {
+    userId,
+    totalSubLessons,
+    completedLessonsCount,
+    beforeProgress,
+    afterProgress,
+    beforeTests,
+    afterTests,
+    beforeFarm,
+    afterFarm
+  } = params;
+
+  const todayKey = `${userId}:${toDateKey(new Date())}`;
+  if (!globalSubLessonCountCache.awardedQuestsByUserDay) {
+    globalSubLessonCountCache.awardedQuestsByUserDay = new Map();
+  }
+  let awardedSet = globalSubLessonCountCache.awardedQuestsByUserDay.get(todayKey);
+  if (!awardedSet) {
+    awardedSet = new Set<number>();
+    globalSubLessonCountCache.awardedQuestsByUserDay.set(todayKey, awardedSet);
+  }
+
+  const isAllLessonsCompleted = totalSubLessons > 0 && completedLessonsCount >= totalSubLessons;
+  const afterStats = computeDailyStatsFromRecords(afterProgress, afterTests, afterFarm, isAllLessonsCompleted);
+  const afterQuests = buildDailyQuests(afterStats);
+  const beforeStats = computeDailyStatsFromRecords(beforeProgress, beforeTests, beforeFarm, isAllLessonsCompleted);
+  const beforeQuests = buildDailyQuests(beforeStats);
+
+  for (const bq of beforeQuests) {
+    if (bq.isCompleted) awardedSet.add(bq.id);
+  }
+
+  const newlyCompletedQuests: CompletedQuestNotification[] = [];
+  let totalQuestBonusXp = 0;
+
+  for (const aq of afterQuests) {
+    const bq = beforeQuests.find(q => q.id === aq.id);
+    const wasCompletedBefore = bq ? bq.isCompleted : false;
+    if (aq.isCompleted && !wasCompletedBefore && !awardedSet.has(aq.id)) {
+      awardedSet.add(aq.id);
+      newlyCompletedQuests.push({ id: aq.id, text: aq.text, xp: aq.rewardXp });
+      totalQuestBonusXp += aq.rewardXp;
+    }
+  }
+
+  return { newlyCompletedQuests, totalQuestBonusXp, dailyQuests: afterQuests };
+}
+
 /**
  * ตรวจสอบว่ามีเควสรายวันไหนที่เพิ่งสำเร็จในรอบนี้หรือไม่ (เปรียบเทียบก่อน-หลังการบันทึกกิจกรรมปัจจุบัน)
  * พร้อมแคชป้องกันการแจกซ้ำในวันเดียวกัน

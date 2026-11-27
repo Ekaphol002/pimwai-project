@@ -5,38 +5,51 @@ import { authOptions } from "@/lib/auth";
 import { getRankFromExp, calculateRankInfo, getRankMultiplierConfig } from '@/lib/rankUtils';
 import { getStartOfTodayBangkok, toDateKey } from '@/lib/streakUtils';
 import { recordUserActiveDate } from '@/lib/activeDates';
-import { evaluateNewlyCompletedQuests } from '@/lib/questUtils';
+import { evaluateQuestsFromSnapshot, getTotalSubLessonsCount } from '@/lib/questUtils';
 
-// Config ค่า EXP และโบนัสต่างๆ ให้สะใจ (150 - 300 XP ต่อด่าน)
-// Rank 1: 0 - 3,000 XP (ผ่านช่วงต้นของ Beginner 1-2 บทเรียนก็ขึ้น Rank 2)
-// Rank 2: 3,000 - 9,000 XP
-// Rank 3: 9,000 - 24,000 XP
-// Rank 4: 24,000 - 54,000 XP (จบครบ 21 บทเรียน 210 ด่านจะสะสมได้ประมาณ 45,000 - 52,000 XP ทะลุเข้า Rank 4 ปลายๆ เกือบถึง Rank 5)
-// Rank 5 (54k - 114k), Rank 6 (114k - 234k), Rank 7 (234k+ Top 10): สำหรับผู้เล่นลุยฟาร์มและประลองในโหมดพิมพ์ด่วน (Farm Mode)
+// แคชระดับความยากของ SubLesson ในหน่วยความจำ (10 นาที) ลดการ join ซ้ำทุกครั้งที่จบด่าน
+const subLessonLevelCache = new Map<string, { level: string; expiresAt: number }>();
+
+async function getSubLessonLevel(subLessonId: string): Promise<string | null> {
+    const now = Date.now();
+    const cached = subLessonLevelCache.get(subLessonId);
+    if (cached && cached.expiresAt > now) {
+        return cached.level;
+    }
+    const row = await prisma.subLesson.findUnique({
+        where: { id: subLessonId },
+        select: { lesson: { select: { level: true } } }
+    });
+    const level = row?.lesson?.level || null;
+    if (level) {
+        subLessonLevelCache.set(subLessonId, { level, expiresAt: now + 10 * 60 * 1000 });
+    }
+    return level;
+}
+
 const EXP_CONFIG = {
     BASE_CLEAR: 60,
     PER_STAR: 20,
-    BONUS_3_STARS: 90,       // 3 ดาว: Base 60 + 90 = 150 XP (ก่อนคูณระดับความยาก)
-    REPLAY_SCORE: 20,        // เล่นด่านเดิมซ้ำเมื่อทำสถิติดีขึ้น ได้ 20 XP (เพื่อดึงดูดให้ไปฟาร์มพิมพ์ด่วนถ้าต้องการ EXP สูงๆ)
-    PERFECT_BONUS: 20,       // ความแม่นยำ 100% ได้ +20 XP
-    QUEST_REWARD: 100,       // รางวัลเควสรายวัน 100 XP
+    BONUS_3_STARS: 90,
+    REPLAY_SCORE: 20,
+    PERFECT_BONUS: 20,
+    QUEST_REWARD: 100,
 
-    // 🌟 โบนัสเสริมรายวันและฝีมือ
-    FIRST_WIN_REWARD: 50,    // ประเดิมด่านแรกของวัน +50 XP
-    WPM_MILESTONES: {        // รางวัลเจ้าความเร็ว
-        FAST: 30,   // > 30 WPM ได้ +10
-        FASTER: 40, // > 40 WPM ได้ +20
-        FASTEST: 50 // > 50 WPM ได้ +30
+    FIRST_WIN_REWARD: 50,
+    WPM_MILESTONES: {
+        FAST: 30,
+        FASTER: 40,
+        FASTEST: 50
     },
     WPM_BONUS: {
         FAST: 10,
         FASTER: 20,
         FASTEST: 30
     },
-    GRINDER_MILESTONES: {    // โบนัสคนขยันรายวัน (เล่นครบกี่ด่าน)
-        LEVEL_1: 5,  // ครบ 5 ด่าน +30
-        LEVEL_2: 10, // ครบ 10 ด่าน +60
-        LEVEL_3: 20  // ครบ 20 ด่าน +100
+    GRINDER_MILESTONES: {
+        LEVEL_1: 5,
+        LEVEL_2: 10,
+        LEVEL_3: 20
     },
     GRINDER_BONUS: {
         LEVEL_1: 30,
@@ -44,18 +57,19 @@ const EXP_CONFIG = {
         LEVEL_3: 100
     },
 
-    // ตัวคูณระดับความยากของบทเรียน
     MULTIPLIER: {
-        beginner: 1.0,       // เริ่มต้น: 3 ดาว = ~150 - 170 XP / ด่าน
-        intermediate: 1.4,   // ปานกลาง: 3 ดาว = ~210 - 230 XP / ด่าน
-        advanced: 1.8        // ขั้นสูง: 3 ดาว = ~270 - 300 XP / ด่าน
+        beginner: 1.0,
+        intermediate: 1.4,
+        advanced: 1.8
     }
 };
 
 export async function POST(request: Request) {
     try {
-        const session = await getServerSession(authOptions);
-        const body = await request.json();
+        const [session, body] = await Promise.all([
+            getServerSession(authOptions),
+            request.json()
+        ]);
         const { subLessonId, wpm, accuracy, stars, duration, guestContext } = body;
 
         // 🚨 1. Validation & Anti-Cheat
@@ -65,32 +79,13 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Suspicious activity detected" }, { status: 400 });
         }
 
-        // ดึงข้อมูล Lesson แม่และ User แบบขนาน (ลดเวลา Round-Trip ลงครึ่งหนึ่ง)
-        const cleanEmail = session?.user?.email?.trim().toLowerCase();
-        const [subLessonInfo, user] = await Promise.all([
-            prisma.subLesson.findUnique({
-                where: { id: subLessonId },
-                include: { lesson: true }
-            }),
-            session?.user?.email
-                ? prisma.user.findFirst({
-                    where: {
-                        OR: [
-                            ...((session.user as any)?.id ? [{ id: (session.user as any).id }] : []),
-                            ...(cleanEmail ? [{ email: cleanEmail }] : [])
-                        ]
-                    }
-                })
-                : Promise.resolve(null)
-        ]);
-
-        let difficultyMultiplier = 1.0;
-        if (subLessonInfo?.lesson?.level) {
-            difficultyMultiplier = EXP_CONFIG.MULTIPLIER[subLessonInfo.lesson.level as keyof typeof EXP_CONFIG.MULTIPLIER] || 1.0;
-        }
-
-        // 🌟 กรณีไม่ได้ล็อกอิน (Guest Mode): คำนวณ EXP และ Breakdown ให้เหมือนล็อกอิน 100% เพื่อเก็บไว้ซิงค์ตอนล็อกอิน
+        // 🌟 กรณีไม่ได้ล็อกอิน (Guest Mode): ใช้แค่ level (มักได้จาก cache = 0ms)
         if (!session || !session.user?.email) {
+            const level = await getSubLessonLevel(subLessonId);
+            const difficultyMultiplier = level
+                ? (EXP_CONFIG.MULTIPLIER[level as keyof typeof EXP_CONFIG.MULTIPLIER] || 1.0)
+                : 1.0;
+
             const prevStars = Number(guestContext?.prevStars) || 0;
             const prevWpm = Number(guestContext?.prevWpm) || 0;
             const hasExisting = Boolean(guestContext?.hasExisting);
@@ -160,195 +155,262 @@ export async function POST(request: Request) {
             });
         }
 
-        if (!user) return NextResponse.json({ success: false, error: "User not found" }, { status: 404 });
+        // 🚀 ULTRA-FAST PATH: ลดจาก 14 sequential round-trips เหลือแค่ 2 parallel round-trips!
+        const sessionUserId = (session.user as any)?.id as string | undefined;
+        const cleanEmail = session.user.email.trim().toLowerCase();
+        const today = getStartOfTodayBangkok();
+
+        // Round-trip 1: อ่านข้อมูลทุกอย่างแบบขนานจริง (ไม่ติด interactive transaction serialization)
+        let user: { id: string; currentExp: number; rank: number; stars: number; lastPlayedAt: Date | null } | null = null;
+        let level: string | null = null;
+        let existingProgress: any = null;
+        let totalSubLessons = 0;
+        let completedLessonsCount = 0;
+        let todaysProgress: any[] = [];
+        let todaysTests: any[] = [];
+        let todaysFarm: any[] = [];
+
+        if (sessionUserId) {
+            const [u, lvl, exProg, totSubs, compCount, tProg, tTests, tFarm] = await Promise.all([
+                prisma.user.findUnique({
+                    where: { id: sessionUserId },
+                    select: { id: true, currentExp: true, rank: true, stars: true, lastPlayedAt: true }
+                }),
+                getSubLessonLevel(subLessonId),
+                prisma.lessonProgress.findUnique({
+                    where: { userId_subLessonId: { userId: sessionUserId, subLessonId } }
+                }),
+                getTotalSubLessonsCount(prisma),
+                prisma.lessonProgress.count({ where: { userId: sessionUserId } }),
+                prisma.lessonProgress.findMany({
+                    where: { userId: sessionUserId, updatedAt: { gte: today } },
+                    select: { subLessonId: true, duration: true, wpm: true, accuracy: true }
+                }),
+                prisma.speedTestResult.findMany({
+                    where: { userId: sessionUserId, createdAt: { gte: today } },
+                    select: { duration: true, wpm: true, accuracy: true }
+                }),
+                prisma.farmSession.findMany({
+                    where: { userId: sessionUserId, createdAt: { gte: today } },
+                    select: { duration: true, wpm: true, accuracy: true, wordsCount: true }
+                })
+            ]);
+            user = u;
+            level = lvl;
+            existingProgress = exProg;
+            totalSubLessons = totSubs;
+            completedLessonsCount = compCount;
+            todaysProgress = tProg;
+            todaysTests = tTests;
+            todaysFarm = tFarm;
+        }
+
+        // Fallback กรณี session ไม่มี id หรือหาไม่เจอด้วย id
+        if (!user) {
+            const [u, lvl] = await Promise.all([
+                prisma.user.findFirst({
+                    where: { email: cleanEmail },
+                    select: { id: true, currentExp: true, rank: true, stars: true, lastPlayedAt: true }
+                }),
+                level ? Promise.resolve(level) : getSubLessonLevel(subLessonId)
+            ]);
+            if (!u) return NextResponse.json({ success: false, error: "User not found" }, { status: 404 });
+            user = u;
+            level = lvl;
+
+            const [exProg, totSubs, compCount, tProg, tTests, tFarm] = await Promise.all([
+                prisma.lessonProgress.findUnique({
+                    where: { userId_subLessonId: { userId: user.id, subLessonId } }
+                }),
+                getTotalSubLessonsCount(prisma),
+                prisma.lessonProgress.count({ where: { userId: user.id } }),
+                prisma.lessonProgress.findMany({
+                    where: { userId: user.id, updatedAt: { gte: today } },
+                    select: { subLessonId: true, duration: true, wpm: true, accuracy: true }
+                }),
+                prisma.speedTestResult.findMany({
+                    where: { userId: user.id, createdAt: { gte: today } },
+                    select: { duration: true, wpm: true, accuracy: true }
+                }),
+                prisma.farmSession.findMany({
+                    where: { userId: user.id, createdAt: { gte: today } },
+                    select: { duration: true, wpm: true, accuracy: true, wordsCount: true }
+                })
+            ]);
+            existingProgress = exProg;
+            totalSubLessons = totSubs;
+            completedLessonsCount = compCount;
+            todaysProgress = tProg;
+            todaysTests = tTests;
+            todaysFarm = tFarm;
+        }
 
         const userId = user.id;
+        const difficultyMultiplier = level
+            ? (EXP_CONFIG.MULTIPLIER[level as keyof typeof EXP_CONFIG.MULTIPLIER] || 1.0)
+            : 1.0;
 
-        const result = await prisma.$transaction(async (tx) => {
-            const today = getStartOfTodayBangkok();
-            const existingProgress = await tx.lessonProgress.findUnique({
-                where: { userId_subLessonId: { userId, subLessonId } },
-            });
+        const prevUpdatedToday = existingProgress
+            ? new Date(existingProgress.updatedAt).getTime() >= today.getTime()
+            : false;
 
-            const prevLessonProgress = existingProgress ? {
-                duration: existingProgress.duration || 0,
-                wpm: existingProgress.wpm || 0,
-                accuracy: existingProgress.accuracy || 0,
-                updatedToday: new Date(existingProgress.updatedAt).getTime() >= today.getTime()
-            } : null;
+        // คำนวณทุกอย่างในหน่วยความจำ (0ms!)
+        const userRankInfo = calculateRankInfo(user.currentExp || 0, user.rank === 7);
+        const rankMul = getRankMultiplierConfig(userRankInfo.rank, userRankInfo.stars).totalBaseMultiplier;
 
-            // คำนวณตัวคูณแรงค์ (Rank Multiplier) เพื่อให้ EXP ในบทเรียนโตตามแรงค์และสู้โหมดพิมพ์ด่วน (Farm) ได้
-            const userRankInfo = calculateRankInfo(user.currentExp || 0, user.rank === 7);
-            const rankMul = getRankMultiplierConfig(userRankInfo.rank, userRankInfo.stars).totalBaseMultiplier;
+        let baseLessonExp = 0;
+        const isFirstClear = !existingProgress || existingProgress.stars === 0;
+        let isNewHighScore = false;
 
-            // --- 2. คำนวณ Base XP ---
-            let baseLessonExp = 0;
-            const isFirstClear = !existingProgress || existingProgress.stars === 0;
-            let isNewHighScore = false;
+        let nextWpm = wpm;
+        let nextAccuracy = accuracy;
+        let nextStars = stars;
+        let nextDuration = duration;
 
-            if (isFirstClear) {
-                const starBonus = stars === 3 ? EXP_CONFIG.BONUS_3_STARS : stars * EXP_CONFIG.PER_STAR;
-                let rawExp = EXP_CONFIG.BASE_CLEAR + starBonus;
-                rawExp = Math.round(rawExp * difficultyMultiplier);
-                if (accuracy === 100) rawExp += EXP_CONFIG.PERFECT_BONUS;
+        if (isFirstClear) {
+            const starBonus = stars === 3 ? EXP_CONFIG.BONUS_3_STARS : stars * EXP_CONFIG.PER_STAR;
+            let rawExp = EXP_CONFIG.BASE_CLEAR + starBonus;
+            rawExp = Math.round(rawExp * difficultyMultiplier);
+            if (accuracy === 100) rawExp += EXP_CONFIG.PERFECT_BONUS;
 
-                baseLessonExp = Math.round(rawExp * rankMul);
+            baseLessonExp = Math.round(rawExp * rankMul);
+            isNewHighScore = true;
+        } else {
+            const isBetterScore = wpm > existingProgress.wpm || stars > existingProgress.stars;
+            if (isBetterScore) {
+                baseLessonExp = Math.round(EXP_CONFIG.REPLAY_SCORE * rankMul);
                 isNewHighScore = true;
-
-                if (!existingProgress) {
-                    await tx.lessonProgress.create({
-                        data: { userId, subLessonId, wpm, accuracy, stars, duration, status: "completed" },
-                    });
-                } else {
-                    await tx.lessonProgress.update({
-                        where: { userId_subLessonId: { userId, subLessonId } },
-                        data: { wpm, accuracy, stars, duration, status: "completed", updatedAt: new Date() },
-                    });
-                }
-            } else {
-                // Replay Mode
-                const isBetterScore = wpm > existingProgress.wpm || stars > existingProgress.stars;
-                if (isBetterScore) {
-                    baseLessonExp = Math.round(EXP_CONFIG.REPLAY_SCORE * rankMul);
-                    isNewHighScore = true;
-                }
-                // อัปเดต updatedAt และสะสม duration ของวันนี้เพื่อให้เควสรายวันทำงานแม้เล่นด่านซ้ำ
-                const nextDuration = prevLessonProgress?.updatedToday
-                    ? (existingProgress.duration || 0) + duration
-                    : duration;
-                await tx.lessonProgress.update({
-                    where: { userId_subLessonId: { userId, subLessonId } },
-                    data: {
-                        wpm: Math.max(wpm, existingProgress.wpm),
-                        accuracy: Math.max(accuracy, existingProgress.accuracy),
-                        stars: Math.max(stars, existingProgress.stars),
-                        duration: nextDuration,
-                        status: "completed",
-                        updatedAt: new Date()
-                    },
-                });
             }
+            nextWpm = Math.max(wpm, existingProgress.wpm);
+            nextAccuracy = Math.max(accuracy, existingProgress.accuracy);
+            nextStars = Math.max(stars, existingProgress.stars);
+            nextDuration = prevUpdatedToday
+                ? (existingProgress.duration || 0) + duration
+                : duration;
+        }
 
-            // --- 3. คำนวณโบนัสต่างๆ (Quest, WPM, Grinder, First Win) ---
-            const dailyStats = await tx.lessonProgress.aggregate({
-                where: { userId: userId, updatedAt: { gte: today } },
-                _count: { subLessonId: true }
+        // จำลองรายการ todaysProgress หลังบันทึก (After) เพื่อคำนวณเควสรายวันและ Grinder Bonus โดยไม่ต้อง query ซ้ำ
+        const otherTodayProgress = todaysProgress.filter(p => p.subLessonId !== subLessonId);
+        const afterProgress = [
+            ...otherTodayProgress,
+            { subLessonId, duration: nextDuration, wpm: nextWpm, accuracy: nextAccuracy }
+        ];
+        const dailyTotalLessons = afterProgress.length;
+        const nextCompletedCount = existingProgress ? completedLessonsCount : completedLessonsCount + 1;
+
+        const { newlyCompletedQuests, totalQuestBonusXp, dailyQuests } = evaluateQuestsFromSnapshot({
+            userId,
+            totalSubLessons,
+            completedLessonsCount: nextCompletedCount,
+            beforeProgress: todaysProgress,
+            afterProgress,
+            beforeTests: todaysTests,
+            afterTests: todaysTests,
+            beforeFarm: todaysFarm,
+            afterFarm: todaysFarm
+        });
+
+        const questBonus = totalQuestBonusXp;
+        const completedQuestInfo = newlyCompletedQuests.length > 0 ? {
+            text: newlyCompletedQuests.map(q => q.text).join(" + "),
+            xp: questBonus
+        } : null;
+
+        let wpmBonus = 0;
+        if (accuracy >= 90) {
+            if (wpm >= EXP_CONFIG.WPM_MILESTONES.FASTEST) wpmBonus = Math.round(EXP_CONFIG.WPM_BONUS.FASTEST * rankMul);
+            else if (wpm >= EXP_CONFIG.WPM_MILESTONES.FASTER) wpmBonus = Math.round(EXP_CONFIG.WPM_BONUS.FASTER * rankMul);
+            else if (wpm >= EXP_CONFIG.WPM_MILESTONES.FAST) wpmBonus = Math.round(EXP_CONFIG.WPM_BONUS.FAST * rankMul);
+        }
+
+        let grinderBonus = 0;
+        if (!prevUpdatedToday) {
+            if (dailyTotalLessons === EXP_CONFIG.GRINDER_MILESTONES.LEVEL_1) grinderBonus = Math.round(EXP_CONFIG.GRINDER_BONUS.LEVEL_1 * rankMul);
+            else if (dailyTotalLessons === EXP_CONFIG.GRINDER_MILESTONES.LEVEL_2) grinderBonus = Math.round(EXP_CONFIG.GRINDER_BONUS.LEVEL_2 * rankMul);
+            else if (dailyTotalLessons === EXP_CONFIG.GRINDER_MILESTONES.LEVEL_3) grinderBonus = Math.round(EXP_CONFIG.GRINDER_BONUS.LEVEL_3 * rankMul);
+        }
+
+        let firstWinBonus = 0;
+        const userLastPlayedDateKey = user.lastPlayedAt ? toDateKey(user.lastPlayedAt) : null;
+        const todayDateKey = toDateKey(new Date());
+        if (!userLastPlayedDateKey || userLastPlayedDateKey !== todayDateKey) {
+            firstWinBonus = Math.round(EXP_CONFIG.FIRST_WIN_REWARD * rankMul);
+        }
+
+        const totalExpGained = baseLessonExp + questBonus + wpmBonus + grinderBonus + firstWinBonus;
+        const currentTotalExp = (user.currentExp || 0) + totalExpGained;
+
+        let isTop10 = user.rank === 7;
+        if (currentTotalExp >= 234000) {
+            const higherCount = await prisma.user.count({
+                where: {
+                    id: { not: userId },
+                    currentExp: { gt: currentTotalExp }
+                }
             });
-            const dailyTotalLessons = dailyStats._count.subLessonId;
+            isTop10 = higherCount < 10;
+        }
+        const newRank = getRankFromExp(currentTotalExp, isTop10);
 
-            const { newlyCompletedQuests, totalQuestBonusXp, dailyQuests } = await evaluateNewlyCompletedQuests({
-                tx,
-                userId,
-                currentActivity: {
-                    type: 'lesson',
+        let starsToAdd = 0;
+        if (isFirstClear) {
+            starsToAdd = stars;
+        } else if (stars > (existingProgress?.stars || 0)) {
+            starsToAdd = stars - (existingProgress?.stars || 0);
+        }
+
+        // Round-trip 2: บันทึกข้อมูลทั้งหมดแบบขนานในรอบเดียว!
+        const nowDate = new Date();
+        const [, updatedUser] = await Promise.all([
+            prisma.lessonProgress.upsert({
+                where: { userId_subLessonId: { userId, subLessonId } },
+                create: {
+                    userId,
                     subLessonId,
-                    prevLessonProgress
+                    wpm: nextWpm,
+                    accuracy: nextAccuracy,
+                    stars: nextStars,
+                    duration: nextDuration,
+                    status: "completed"
+                },
+                update: {
+                    wpm: nextWpm,
+                    accuracy: nextAccuracy,
+                    stars: nextStars,
+                    duration: nextDuration,
+                    status: "completed",
+                    updatedAt: nowDate
                 }
-            });
-
-            const questBonus = totalQuestBonusXp;
-            const completedQuestInfo = newlyCompletedQuests.length > 0 ? {
-                text: newlyCompletedQuests.map(q => q.text).join(" + "),
-                xp: questBonus
-            } : null;
-
-            // --- 🌟 NEW BONUSES ---
-
-            // A. 🏎️ WPM Milestone Bonus
-            let wpmBonus = 0;
-            if (accuracy >= 90) { // ต้องแม่นด้วยถึงจะได้โบนัสความเร็ว
-                if (wpm >= EXP_CONFIG.WPM_MILESTONES.FASTEST) wpmBonus = Math.round(EXP_CONFIG.WPM_BONUS.FASTEST * rankMul);
-                else if (wpm >= EXP_CONFIG.WPM_MILESTONES.FASTER) wpmBonus = Math.round(EXP_CONFIG.WPM_BONUS.FASTER * rankMul);
-                else if (wpm >= EXP_CONFIG.WPM_MILESTONES.FAST) wpmBonus = Math.round(EXP_CONFIG.WPM_BONUS.FAST * rankMul);
-            }
-
-            // B. 🏋️ Grinder Bonus (โบนัสคนขยัน: ให้เฉพาะเมื่อนับด่านใหม่ของวันนี้เท่านั้น ป้องกันการเล่นด่านเดิมซ้ำเพื่อปั๊มโบนัส)
-            let grinderBonus = 0;
-            const wasUpdatedToday = prevLessonProgress?.updatedToday;
-            if (!wasUpdatedToday) {
-                if (dailyTotalLessons === EXP_CONFIG.GRINDER_MILESTONES.LEVEL_1) grinderBonus = Math.round(EXP_CONFIG.GRINDER_BONUS.LEVEL_1 * rankMul);
-                else if (dailyTotalLessons === EXP_CONFIG.GRINDER_MILESTONES.LEVEL_2) grinderBonus = Math.round(EXP_CONFIG.GRINDER_BONUS.LEVEL_2 * rankMul);
-                else if (dailyTotalLessons === EXP_CONFIG.GRINDER_MILESTONES.LEVEL_3) grinderBonus = Math.round(EXP_CONFIG.GRINDER_BONUS.LEVEL_3 * rankMul);
-            }
-
-            // C. 🌅 First Win of the Day (เทียบตามเวลาประเทศไทยป้องกัน Timezone UTC คลาดเคลื่อน)
-            let firstWinBonus = 0;
-            const userLastPlayedDateKey = user.lastPlayedAt ? toDateKey(user.lastPlayedAt) : null;
-            const todayDateKey = toDateKey(new Date());
-
-            if (!userLastPlayedDateKey || userLastPlayedDateKey !== todayDateKey) {
-                firstWinBonus = Math.round(EXP_CONFIG.FIRST_WIN_REWARD * rankMul);
-            }
-
-            // --- 4. รวม XP และอัปเดต User ---
-            const totalExpGained = baseLessonExp + questBonus + wpmBonus + grinderBonus + firstWinBonus;
-
-            const currentTotalExp = (user.currentExp || 0) + totalExpGained;
-            let isTop10 = false;
-            if (currentTotalExp >= 234000) {
-                const higherCount = await tx.user.count({
-                    where: {
-                        id: { not: userId },
-                        currentExp: { gt: currentTotalExp }
-                    }
-                });
-                isTop10 = higherCount < 10;
-            }
-            const newRank = getRankFromExp(currentTotalExp, isTop10);
-
-            let starsToAdd = 0;
-            if (isFirstClear) {
-                starsToAdd = stars;
-            } else if (stars > (existingProgress?.stars || 0)) {
-                starsToAdd = stars - (existingProgress?.stars || 0);
-            }
-
-            const updatedUser = await tx.user.update({
+            }),
+            prisma.user.update({
                 where: { id: userId },
                 data: {
-                    currentExp: currentTotalExp,
+                    currentExp: { increment: totalExpGained },
                     rank: newRank,
-                    stars: { increment: starsToAdd },
-                    lastPlayedAt: new Date()
-                }
-            });
-
-            await recordUserActiveDate(tx, userId);
-
-            // คืนค่าทั้งหมดแยกตามประเภท เพื่อให้ Frontend นำไปแสดงผลได้
-            return {
-                baseLessonExp,
-                questBonus,
-                completedQuestInfo,
-                newlyCompletedQuests,
-                dailyQuests,
-                wpmBonus,      // 🌟 ส่งกลับ
-                grinderBonus,  // 🌟 ส่งกลับ
-                firstWinBonus, // 🌟 ส่งกลับ
-                isNewHighScore,
-                updatedUser
-            };
-        });
+                    ...(starsToAdd > 0 ? { stars: { increment: starsToAdd } } : {}),
+                    lastPlayedAt: nowDate
+                },
+                select: { currentExp: true, rank: true }
+            }),
+            recordUserActiveDate(prisma, userId)
+        ]);
 
         return NextResponse.json({
             success: true,
-            earnedXP: result.baseLessonExp + result.questBonus + result.wpmBonus + result.grinderBonus + result.firstWinBonus, // รวม XP ที่โชว์ตัวใหญ่
-
-            // ✅ ส่ง Breakdown ไปให้หน้าจบเกมแสดงผล
+            earnedXP: totalExpGained,
             xpBreakdown: {
-                base: result.baseLessonExp,
-                quest: result.questBonus,
-                wpm: result.wpmBonus,
-                grinder: result.grinderBonus,
-                firstWin: result.firstWinBonus
+                base: baseLessonExp,
+                quest: questBonus,
+                wpm: wpmBonus,
+                grinder: grinderBonus,
+                firstWin: firstWinBonus
             },
-
-            completedQuest: result.completedQuestInfo,
-            completedQuests: result.newlyCompletedQuests,
-            dailyQuests: result.dailyQuests,
-            isNewHighScore: result.isNewHighScore,
-            totalXP: result.updatedUser.currentExp,
-            rank: result.updatedUser.rank
+            completedQuest: completedQuestInfo,
+            completedQuests: newlyCompletedQuests,
+            dailyQuests,
+            isNewHighScore,
+            totalXP: updatedUser.currentExp,
+            rank: updatedUser.rank
         });
 
     } catch (error) {
