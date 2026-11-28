@@ -23,6 +23,8 @@ export interface DailyQuestStats {
   minutes: number;
   dailyAvgWpm: number;
   dailyAvgAcc: number;
+  dailyBestWpm: number;
+  dailyBestAcc: number;
   dailyTotalSessions: number;
   todayWordsCount: number;
   isAllLessonsCompleted: boolean;
@@ -55,10 +57,15 @@ export function buildDailyQuests(stats: DailyQuestStats): DailyQuestItem[] {
     minutes,
     dailyAvgWpm,
     dailyAvgAcc,
+    dailyBestWpm,
+    dailyBestAcc,
     dailyTotalSessions,
     todayWordsCount,
     isAllLessonsCompleted
   } = stats;
+
+  const bestWpm = Math.max(dailyAvgWpm, dailyBestWpm || 0);
+  const bestAcc = Math.max(dailyAvgAcc, dailyBestAcc || 0);
 
   // สำหรับผู้ที่เคลียร์ครบทุกด่านแล้ว (Endgame Quests): รางวัลเควสละ +500 EXP (รวม 1,500 EXP/วัน)
   if (isAllLessonsCompleted) {
@@ -86,12 +93,12 @@ export function buildDailyQuests(stats: DailyQuestStats): DailyQuestItem[] {
       {
         id: 103,
         tier: 2,
-        text: 'ทำความเร็วเฉลี่ย 40+ WPM',
-        current: dailyAvgWpm,
+        text: 'ทำความเร็วให้ได้ 40+ WPM',
+        current: bestWpm,
         target: 40,
         unit: 'WPM',
         rewardXp: 500,
-        isCompleted: dailyTotalSessions > 0 && dailyAvgWpm >= 40
+        isCompleted: dailyTotalSessions > 0 && bestWpm >= 40
       }
     ];
   }
@@ -122,11 +129,11 @@ export function buildDailyQuests(stats: DailyQuestStats): DailyQuestItem[] {
       id: 3,
       tier: 1,
       text: 'ทำความแม่นยำให้ได้ 95%',
-      current: dailyAvgAcc,
+      current: bestAcc,
       target: 95,
       unit: '%',
       rewardXp: 150,
-      isCompleted: dailyTotalSessions > 0 && dailyAvgWpm >= 15 && dailyAvgAcc >= 95
+      isCompleted: dailyTotalSessions > 0 && bestAcc >= 95
     }
   ];
 }
@@ -143,6 +150,8 @@ export function computeDailyStatsFromRecords(
   let totalDurationSeconds = 0;
   let weightedWpmSum = 0;
   let weightedAccSum = 0;
+  let dailyBestWpm = 0;
+  let dailyBestAcc = 0;
   let todayWordsCount = 0;
 
   let activeActivitiesCount = 0;
@@ -154,6 +163,8 @@ export function computeDailyStatsFromRecords(
     totalDurationSeconds += dur;
     weightedWpmSum += wpm * dur;
     weightedAccSum += acc * dur;
+    if (wpm > dailyBestWpm) dailyBestWpm = Math.round(wpm);
+    if (acc > dailyBestAcc) dailyBestAcc = Math.round(acc);
     todayWordsCount += Math.max(0, Math.round((wpm * dur) / 60));
     activeActivitiesCount++;
   }
@@ -169,6 +180,8 @@ export function computeDailyStatsFromRecords(
       totalDurationSeconds += durSec;
       weightedWpmSum += wpm * durSec;
       weightedAccSum += acc * durSec;
+      if (wpm > dailyBestWpm) dailyBestWpm = Math.round(wpm);
+      if (acc > dailyBestAcc) dailyBestAcc = Math.round(acc);
       todayWordsCount += Math.max(0, Math.round((wpm * durSec) / 60));
       activeActivitiesCount++;
     }
@@ -182,6 +195,8 @@ export function computeDailyStatsFromRecords(
       totalDurationSeconds += dur;
       weightedWpmSum += wpm * dur;
       weightedAccSum += acc * dur;
+      if (wpm > dailyBestWpm) dailyBestWpm = Math.round(wpm);
+      if (acc > dailyBestAcc) dailyBestAcc = Math.round(acc);
       const words = f.wordsCount && f.wordsCount > 0
         ? f.wordsCount
         : Math.max(0, Math.round((wpm * dur) / 60));
@@ -201,6 +216,8 @@ export function computeDailyStatsFromRecords(
     minutes,
     dailyAvgWpm,
     dailyAvgAcc,
+    dailyBestWpm,
+    dailyBestAcc,
     dailyTotalSessions: activeActivitiesCount,
     todayWordsCount,
     isAllLessonsCompleted

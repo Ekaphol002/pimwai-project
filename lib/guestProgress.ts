@@ -270,6 +270,7 @@ export function computeGuestDailyQuests(): GuestDailyQuestItem[] {
   let totalDurationSeconds = 0;
   let weightedWpmSum = 0;
   let weightedAccSum = 0;
+  let dailyBestAcc = 0;
   let activeActivitiesCount = 0;
 
   for (const p of lessons) {
@@ -279,6 +280,7 @@ export function computeGuestDailyQuests(): GuestDailyQuestItem[] {
     totalDurationSeconds += dur;
     weightedWpmSum += wpm * dur;
     weightedAccSum += acc * dur;
+    if (acc > dailyBestAcc) dailyBestAcc = Math.round(acc);
     activeActivitiesCount++;
   }
 
@@ -291,12 +293,11 @@ export function computeGuestDailyQuests(): GuestDailyQuestItem[] {
       totalDurationSeconds += durSec;
       weightedWpmSum += wpm * durSec;
       weightedAccSum += acc * durSec;
+      if (acc > dailyBestAcc) dailyBestAcc = Math.round(acc);
       activeActivitiesCount++;
     }
   }
 
-  const dailyAvgWpm = totalDurationSeconds > 0 ? Math.round(weightedWpmSum / totalDurationSeconds) : 0;
-  const dailyAvgAcc = totalDurationSeconds > 0 ? Math.round(weightedAccSum / totalDurationSeconds) : 0;
   const minutes = Math.floor(totalDurationSeconds / 60);
 
   return [
@@ -324,11 +325,11 @@ export function computeGuestDailyQuests(): GuestDailyQuestItem[] {
       id: 3,
       tier: 1,
       text: 'ทำความแม่นยำให้ได้ 95%',
-      current: dailyAvgAcc,
+      current: dailyBestAcc,
       target: 95,
       unit: '%',
       rewardXp: 150,
-      isCompleted: activeActivitiesCount > 0 && dailyAvgWpm >= 15 && dailyAvgAcc >= 95,
+      isCompleted: activeActivitiesCount > 0 && dailyBestAcc >= 95,
     },
   ];
 }
